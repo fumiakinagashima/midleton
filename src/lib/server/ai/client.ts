@@ -5,12 +5,13 @@ import { tools, dispatchTool } from '$lib/server/mcp';
 import type { Db } from '$lib/server/db';
 import type { MessageContent } from '$lib/types/chat';
 
-const MODEL = 'claude-haiku-4-5-20251001';
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
 export async function chat(
 	db: Db,
 	apiKey: string,
-	history: MessageParam[]
+	history: MessageParam[],
+	model?: string
 ): Promise<MessageContent[]> {
 	const anthropic = new Anthropic({ apiKey });
 
@@ -20,7 +21,7 @@ export async function chat(
 	// ツールコールのループ（最大5回）
 	for (let i = 0; i < 5; i++) {
 		const response = await anthropic.messages.create({
-			model: MODEL,
+			model: model ?? DEFAULT_MODEL,
 			max_tokens: 4096,
 			system: SYSTEM_PROMPT,
 			tools,
@@ -100,6 +101,9 @@ function parseTextContent(text: string): MessageContent[] {
 			} else if (type === 'actions') {
 				const actions = JSON.parse(body);
 				contents.push({ type: 'actions', title, actions });
+			} else if (type === 'values') {
+				const items = JSON.parse(body);
+				contents.push({ type: 'values', title, items });
 			}
 		} catch {
 			contents.push({ type: 'text', text: body });

@@ -106,9 +106,9 @@
 **目標：AIを介さない管理画面を整備する**
 
 ### 設定画面（`/settings`）
-- [ ] ルーティング・レイアウト
-- [ ] ユーザー設定（表示名・言語等）
-- [ ] AI モデル選択・APIキー設定
+- [x] ルーティング・レイアウト
+- [x] ユーザー設定（Enterで送信する、localStorage保存）
+- [x] AI モデル選択・APIキー設定（localStorage保存、リクエスト時にサーバーへ渡す）
 
 ### テンプレート管理（`/templates`）
 - [ ] テンプレート一覧・作成・編集・削除
@@ -116,9 +116,9 @@
 - [ ] テンプレートを AI が選択できるように MCP ツールに追加
 
 ### 外部API連携設定（`/settings/integrations`）
-- [ ] API連携の追加・編集・削除 UI
-- [ ] 接続情報の暗号化保存（Cloudflare KV）
-- [ ] MCP ツールとして外部APIをコールできる仕組み
+- [x] API連携の追加・編集・削除 UI（`/settings/integrations`）
+- [x] 接続情報をD1に保存（auth_config はJSONカラム、認証方式: none/api_key/bearer/basic）
+- [x] MCPツール（`list_integrations`, `call_external_api`）でClaudeから任意の外部APIを呼び出せる仕組み
 
 
 ## フェーズ5：定期実行・品質向上

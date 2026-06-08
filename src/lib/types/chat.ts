@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'email' | 'tel' | 'number' | 'textarea' | 'select' | 'date';
+export type FieldType = 'text' | 'email' | 'tel' | 'number' | 'textarea' | 'select' | 'date' | 'hidden';
 
 export type FormField = {
 	key: string;
@@ -6,6 +6,7 @@ export type FormField = {
 	type: FieldType;
 	required?: boolean;
 	placeholder?: string;
+	value?: string;
 	options?: { label: string; value: string }[];
 };
 
@@ -44,7 +45,21 @@ export type ActionContent = {
 	actions: ActionItem[];
 };
 
-export type MessageContent = TextContent | FormContent | TableContent | ActionContent;
+export type ValueFormat = 'currency' | 'number' | 'date' | 'datetime' | 'text';
+
+export type ValueItem = {
+	label: string;
+	value: string | number | null;
+	format: ValueFormat;
+};
+
+export type ValuesContent = {
+	type: 'values';
+	title?: string;
+	items: ValueItem[];
+};
+
+export type MessageContent = TextContent | FormContent | TableContent | ActionContent | ValuesContent;
 
 export type Message = {
 	id: string;

@@ -12,7 +12,7 @@
 	let { title, fields, onsubmit }: Props = $props();
 
 	let values = $state<Record<string, string>>(
-		untrack(() => Object.fromEntries(fields.map((f) => [f.key, ''])))
+		untrack(() => Object.fromEntries(fields.map((f) => [f.key, f.value ?? ''])))
 	);
 
 	function handleSubmit(e: Event) {
@@ -27,6 +27,9 @@
 	{/if}
 
 	{#each fields as field}
+		{#if field.type === 'hidden'}
+			<input type="hidden" id={field.key} bind:value={values[field.key]} />
+		{:else}
 		<div class="field">
 			<label for={field.key}>
 				{field.label}
@@ -57,6 +60,7 @@
 				/>
 			{/if}
 		</div>
+		{/if}
 	{/each}
 
 	<button type="submit">{m.form_submit()}</button>
