@@ -7,7 +7,7 @@ AIファーストなチャットベースの CRM/SFA。ユーザーはチャッ�
 | 分類 | 技術 |
 |------|------|
 | パッケージマネージャー | Bun |
-| フロントエンド | SvelteKit 5, TypeScript |
+| フロントエンド | SvelteKit, TypeScript |
 | バリデーション | Zod |
 | ORM | DrizzleORM |
 | インフラ | Cloudflare (Wrangler, D1, R2, KV, Queue) |
