@@ -2,7 +2,6 @@
 	import Form from '$lib/components/ui/Form.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
 	import type { Message, MessageContent } from '$lib/types/chat';
-	import * as m from '$lib/paraglide/messages.js';
 
 	let messages = $state<Message[]>([]);
 	let input = $state('');
@@ -13,28 +12,26 @@
 		if (listEl) listEl.scrollTop = listEl.scrollHeight;
 	});
 
-	function addUserMessage(text: string) {
-		messages = [
-			...messages,
-			{
-				id: crypto.randomUUID(),
-				role: 'user',
-				contents: [{ type: 'text', text }],
-				createdAt: new Date()
-			}
-		];
+	function addUserMessage(text: string): Message {
+		const msg: Message = {
+			id: crypto.randomUUID(),
+			role: 'user',
+			contents: [{ type: 'text', text }],
+			createdAt: new Date()
+		};
+		messages = [...messages, msg];
+		return msg;
 	}
 
 	function addAssistantMessage(contents: MessageContent[]) {
-		messages = [
-			...messages,
-			{
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				contents,
-				createdAt: new Date()
-			}
-		];
+		const msg: Message = {
+			id: crypto.randomUUID(),
+			role: 'assistant',
+			contents,
+			createdAt: new Date()
+		};
+		messages = [...messages, msg];
+		return msg;
 	}
 
 	async function handleSubmit() {
@@ -54,7 +51,7 @@
 			const data = await res.json();
 			addAssistantMessage(data.contents);
 		} catch {
-			addAssistantMessage([{ type: 'text', text: m.chat_error() }]);
+			addAssistantMessage([{ type: 'text', text: 'エラーが発生しました。' }]);
 		} finally {
 			loading = false;
 		}
@@ -71,27 +68,31 @@
 			const result = await res.json();
 			addAssistantMessage(result.contents);
 		} catch {
-			addAssistantMessage([{ type: 'text', text: m.chat_error() }]);
+			addAssistantMessage([{ type: 'text', text: 'エラーが発生しました。' }]);
 		} finally {
 			loading = false;
 		}
 	}
 
 	function handleKey(e: KeyboardEvent) {
-		if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
 			handleSubmit();
 		}
 	}
 </script>
 
-<div class="chat">
-	<div class="messages" bind:this={listEl}>
+<div class="layout">
+	<header>
+		<span class="logo">Midleton</span>
+	</header>
+
+	<main bind:this={listEl}>
 		{#if messages.length === 0}
-			<p class="empty">{m.chat_empty()}</p>
+			<p class="empty">何でも聞いてください。</p>
 		{/if}
 
-		{#each messages as msg (msg.id)}
+		{#each messages as msg}
 			<div class="message {msg.role}">
 				{#each msg.contents as content}
 					{#if content.type === 'text'}
@@ -111,35 +112,46 @@
 
 		{#if loading}
 			<div class="message assistant">
-				<p class="bubble loading">{m.chat_loading()}</p>
+				<p class="bubble loading">入力中…</p>
 			</div>
 		{/if}
-	</div>
+	</main>
 
 	<footer>
 		<textarea
 			bind:value={input}
 			onkeydown={handleKey}
-			placeholder={m.chat_placeholder()}
-			rows="2"
+			placeholder="メッセージを入力（Shift+Enter で改行）"
+			rows="1"
 			disabled={loading}
 		></textarea>
-		<button onclick={handleSubmit} disabled={loading || !input.trim()}>{m.chat_submit()}</button>
+		<button onclick={handleSubmit} disabled={loading || !input.trim()}>送信</button>
 	</footer>
 </div>
 
 <style>
-	.chat {
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		overflow: hidden;
+	.layout {
+		display: grid;
+		grid-template-rows: auto 1fr auto;
+		height: 100vh;
+		max-width: 800px;
+		margin: 0 auto;
 	}
 
-	.messages {
-		flex: 1;
+	header {
+		padding: 12px 16px;
+		border-bottom: 1px solid var(--color-border);
+		font-weight: 700;
+		font-size: 1.125rem;
+	}
+
+	.logo {
+		color: var(--color-primary);
+	}
+
+	main {
 		overflow-y: auto;
-		padding: 24px 32px;
+		padding: 16px;
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
@@ -148,8 +160,7 @@
 	.empty {
 		text-align: center;
 		color: var(--color-text-muted);
-		margin-top: 80px;
-		font-size: 0.9375rem;
+		margin-top: 40px;
 	}
 
 	.message {
@@ -169,10 +180,9 @@
 	.bubble {
 		padding: 10px 14px;
 		border-radius: 12px;
-		max-width: 68%;
+		max-width: 72%;
 		white-space: pre-wrap;
 		line-height: 1.6;
-		font-size: 0.9375rem;
 	}
 
 	.message.user .bubble {
@@ -193,13 +203,13 @@
 	footer {
 		display: flex;
 		gap: 8px;
-		padding: 12px 32px 20px;
+		padding: 12px 16px;
 		border-top: 1px solid var(--color-border);
 	}
 
 	footer textarea {
 		flex: 1;
-		padding: 10px 14px;
+		padding: 10px 12px;
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		background: var(--color-background);
@@ -208,7 +218,6 @@
 		resize: none;
 		outline: none;
 		font-family: inherit;
-		line-height: 1.5;
 	}
 
 	footer textarea:focus {
@@ -224,7 +233,6 @@
 		font-size: 0.9375rem;
 		cursor: pointer;
 		white-space: nowrap;
-		align-self: flex-end;
 	}
 
 	footer button:disabled {
