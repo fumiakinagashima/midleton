@@ -32,7 +32,19 @@ export type TableContent = {
 	rows: Record<string, unknown>[];
 };
 
-export type MessageContent = TextContent | FormContent | TableContent;
+export type ActionItem = {
+	id: string;
+	label: string;
+	description?: string;
+};
+
+export type ActionContent = {
+	type: 'actions';
+	title?: string;
+	actions: ActionItem[];
+};
+
+export type MessageContent = TextContent | FormContent | TableContent | ActionContent;
 
 export type Message = {
 	id: string;

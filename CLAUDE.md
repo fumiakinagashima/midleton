@@ -13,26 +13,31 @@ SvelteKit + Claude AI + MCP サーバー構成。ユーザーはチャットで�
 - **AI**: Claude API (Anthropic)
 - **プロトコル**: MCP (Model Context Protocol)
 
-## ディレクトリ構成（予定）
+## ディレクトリ構成
 
 ```
 midleton/
 ├── src/
 │   ├── routes/
-│   │   ├── chat/         # チャット画面
-│   │   ├── settings/     # 設定画面
-│   │   └── templates/    # テンプレート管理
+│   │   ├── +layout.svelte    # サイドバー・テーマ切り替え
+│   │   ├── +page.svelte      # チャット画面（/）
+│   │   ├── ui/               # UIコンポーネントデモ（/ui）
+│   │   ├── settings/         # 設定画面（/settings）
+│   │   └── api/chat/         # チャット API エンドポイント
 │   ├── lib/
-│   │   ├── components/   # UIコンポーネント（デザインシステム）
+│   │   ├── components/
+│   │   │   ├── ui/       # アプリUIコンポーネント（デザインシステム: Textbox, Select, Table, DataGrid, BarChart 等）
+│   │   │   └── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector 等）
 │   │   ├── server/       # サーバーサイドロジック
 │   │   │   ├── db/       # DrizzleORM スキーマ・クエリ
 │   │   │   ├── mcp/      # MCPサーバー・ツール定義
-│   │   │   └── ai/       # Claude API 連携
+│   │   │   └── ai/       # Claude API 連携・システムプロンプト・モック
+│   │   ├── styles/       # グローバルスタイル・テーマ定義
 │   │   └── types/        # 共通型定義
 │   └── app.html
+├── messages/             # i18n リソース（ja.json）
 ├── drizzle/              # マイグレーションファイル
 ├── docs/
-│   ├── concept.md
 │   └── ROADMAP.md
 ├── wrangler.toml
 └── CLAUDE.md
@@ -65,7 +70,7 @@ midleton/
 
 ## 開発ルール
 
-- UIコンポーネントは `src/lib/components/` に集約する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
+- UIコンポーネントは `src/lib/components/` に集約する。アプリUI（デザインシステム）は `ui/`、AIがノーコードとしてレスポンスに返すコンポーネント（Form, Table 等）は `chat/` に配置する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
 - DBスキーマ変更は必ず Drizzle マイグレーションを通す。直接 D1 を操作しない。将来のインフラ移行を考慮し、D1 固有 API への直接依存を避ける（DrizzleORM 経由を徹底）。
 - MCP ツールは `src/lib/server/mcp/` に定義し、Zod でスキーマを検証する。Zod スキーマの命名は camelCase + `Schema` サフィックス（例: `createCustomerInputSchema`）。
 - 秘匿情報（API キー等）は Cloudflare の環境変数または KV に保存する。コードに埋め込まない。

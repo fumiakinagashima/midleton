@@ -15,5 +15,6 @@
   "form_select_placeholder": "選択してください",
   "form_submit": "登録",
   "table_empty": "データがありません",
-  "table_count": "{count} 件"
+  "table_count": "{count} 件",
+  "ui_components": "UIコンポーネント"
 }
