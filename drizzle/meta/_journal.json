@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1780881386550,
+      "tag": "0000_previous_paibok",
+      "breakpoints": true
+    }
+  ]
+}

@@ -6,10 +6,10 @@ main = ".svelte-kit/cloudflare/_worker.js"
 assets = { directory = ".svelte-kit/cloudflare/", binding = "ASSETS" }
 
 # D1: wrangler d1 create midleton を実行後、database_id を設定してコメントを外す
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "midleton"
-# database_id = ""
+[[d1_databases]]
+binding = "midleton"
+database_name = "midleton"
+database_id = "06f71c5e-2de6-4db4-b951-64705293e69a"
 
 # KV: wrangler kv namespace create midleton を実行後、id を設定してコメントを外す
 # [[kv_namespaces]]
