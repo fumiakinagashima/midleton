@@ -1,6 +1,37 @@
 import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 
 export const tools: Tool[] = [
+	// ── External API integrations ──────────────────────────────────────────
+	{
+		name: 'list_integrations',
+		description: '登録済みの外部API連携の一覧を取得する。どの外部APIが使えるか確認するために使う。',
+		input_schema: { type: 'object', properties: {}, required: [] }
+	},
+	{
+		name: 'call_external_api',
+		description:
+			'設定済みの外部APIを呼び出す。Slackへの通知送信・外部サービスのデータ取得など。まず list_integrations で使える連携を確認してから使う。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				integration_id: { type: 'string', description: '連携のID（list_integrations で確認）' },
+				endpoint: {
+					type: 'string',
+					description: 'エンドポイントのパス（例: /chat.postMessage）またはフルURL。Webhook のようにベースURLだけで完結する場合は省略するか "/" を指定する'
+				},
+				method: {
+					type: 'string',
+					enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+					description: 'HTTPメソッド'
+				},
+				body: { type: 'object', description: 'リクエストボディ（JSON）' },
+				query: { type: 'object', description: 'クエリパラメータ' },
+				headers: { type: 'object', description: '追加リクエストヘッダー' }
+			},
+			required: ['integration_id', 'endpoint', 'method']
+		}
+	},
+
 	// ── Search ─────────────────────────────────────────────────────────────
 	{
 		name: 'search_customers',
