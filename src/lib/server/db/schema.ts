@@ -12,6 +12,102 @@ export const customers = sqliteTable('customers', {
 		.notNull()
 		.default('active'),
 	notes: text('notes'),
+	custom: text('custom').default('{}'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const contacts = sqliteTable('contacts', {
+	id: text('id').primaryKey(),
+	customerId: text('customer_id')
+		.notNull()
+		.references(() => customers.id),
+	name: text('name').notNull(),
+	email: text('email'),
+	phone: text('phone'),
+	role: text('role'),
+	notes: text('notes'),
+	custom: text('custom').default('{}'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const deals = sqliteTable('deals', {
+	id: text('id').primaryKey(),
+	customerId: text('customer_id')
+		.notNull()
+		.references(() => customers.id),
+	title: text('title').notNull(),
+	amount: integer('amount'),
+	status: text('status', { enum: ['open', 'won', 'lost'] })
+		.notNull()
+		.default('open'),
+	closedAt: integer('closed_at', { mode: 'timestamp' }),
+	notes: text('notes'),
+	custom: text('custom').default('{}'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const activities = sqliteTable('activities', {
+	id: text('id').primaryKey(),
+	entityType: text('entity_type', { enum: ['customer', 'contact', 'deal', 'entity'] }).notNull(),
+	entityId: text('entity_id').notNull(),
+	type: text('type', { enum: ['note', 'call', 'email', 'meeting'] })
+		.notNull()
+		.default('note'),
+	content: text('content').notNull(),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const entityTypes = sqliteTable('entity_types', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull().unique(),
+	label: text('label').notNull(),
+	icon: text('icon'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const entityFields = sqliteTable('entity_fields', {
+	id: text('id').primaryKey(),
+	entityTypeId: text('entity_type_id')
+		.notNull()
+		.references(() => entityTypes.id),
+	key: text('key').notNull(),
+	label: text('label').notNull(),
+	type: text('type', { enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea'] })
+		.notNull()
+		.default('text'),
+	required: integer('required', { mode: 'boolean' }).notNull().default(false),
+	options: text('options').default('[]'),
+	sortOrder: integer('sort_order').notNull().default(0),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const entities = sqliteTable('entities', {
+	id: text('id').primaryKey(),
+	entityTypeId: text('entity_type_id')
+		.notNull()
+		.references(() => entityTypes.id),
+	data: text('data').notNull().default('{}'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`),
@@ -22,3 +118,12 @@ export const customers = sqliteTable('customers', {
 
 export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
+export type Contact = typeof contacts.$inferSelect;
+export type NewContact = typeof contacts.$inferInsert;
+export type Deal = typeof deals.$inferSelect;
+export type NewDeal = typeof deals.$inferInsert;
+export type Activity = typeof activities.$inferSelect;
+export type NewActivity = typeof activities.$inferInsert;
+export type EntityType = typeof entityTypes.$inferSelect;
+export type EntityField = typeof entityFields.$inferSelect;
+export type Entity = typeof entities.$inferSelect;
