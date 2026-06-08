@@ -1,17 +1,21 @@
 <script lang="ts">
 	import Form from '$lib/components/ui/Form.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
+	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
 	import type { Message, MessageContent } from '$lib/types/chat';
 	import * as m from '$lib/paraglide/messages.js';
+	import { tick } from 'svelte';
 
 	let messages = $state<Message[]>([]);
 	let input = $state('');
 	let loading = $state(false);
 	let listEl = $state<HTMLElement | null>(null);
 
-	$effect(() => {
-		if (listEl) listEl.scrollTop = listEl.scrollHeight;
-	});
+	async function scrollToBottom(smooth = false) {
+		await tick();
+		if (!listEl) return;
+		listEl.scrollTo({ top: listEl.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+	}
 
 	function addUserMessage(text: string) {
 		messages = [
@@ -23,6 +27,7 @@
 				createdAt: new Date()
 			}
 		];
+		scrollToBottom(true);
 	}
 
 	function addAssistantMessage(contents: MessageContent[]) {
@@ -35,6 +40,7 @@
 				createdAt: new Date()
 			}
 		];
+		scrollToBottom(true);
 	}
 
 	async function handleSubmit() {
@@ -44,6 +50,7 @@
 		input = '';
 		addUserMessage(text);
 		loading = true;
+		await scrollToBottom(true);
 
 		try {
 			const res = await fetch('/api/chat', {
@@ -62,6 +69,7 @@
 
 	async function handleFormSubmit(tool: string, data: Record<string, string>) {
 		loading = true;
+		await scrollToBottom(true);
 		try {
 			const res = await fetch('/api/chat', {
 				method: 'POST',
@@ -111,7 +119,7 @@
 
 		{#if loading}
 			<div class="message assistant">
-				<p class="bubble loading">{m.chat_loading()}</p>
+				<TypingIndicator />
 			</div>
 		{/if}
 	</div>
@@ -143,6 +151,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
+		scroll-behavior: smooth;
 	}
 
 	.empty {
@@ -156,6 +165,18 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+		animation: slideUp 0.22s ease-out both;
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.message.user {
@@ -184,10 +205,6 @@
 	.message.assistant .bubble {
 		background: var(--color-surface);
 		border-bottom-left-radius: 4px;
-	}
-
-	.loading {
-		color: var(--color-text-muted);
 	}
 
 	footer {
