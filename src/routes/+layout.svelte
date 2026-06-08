@@ -36,70 +36,70 @@
 </svelte:head>
 
 <div class="shell">
-		<aside class="sidebar">
-			<div class="sidebar-header">
-				<span class="logo">Midleton</span>
-				<a href="/" class="new-chat-btn" title={m.new_chat()}>
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M12 5v14M5 12h14" />
-					</svg>
-				</a>
-			</div>
-
-			<a href="/" class="new-chat-row">
-				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+	<aside class="sidebar">
+		<div class="sidebar-header">
+			<span class="logo">Midleton</span>
+			<a href="/" class="new-chat-btn" title={m.new_chat()}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M12 5v14M5 12h14" />
 				</svg>
-				{m.new_chat()}
 			</a>
+		</div>
 
-			<nav class="history">
-				{#each historyGroups as group}
-					<p class="group-label">{group.label}</p>
-					{#each group.items as item}
-						<a href="/?id={item.id}" class="history-item">{item.title}</a>
-					{/each}
+		<a href="/" class="new-chat-row">
+			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M12 5v14M5 12h14" />
+			</svg>
+			{m.new_chat()}
+		</a>
+
+		<nav class="history">
+			{#each historyGroups as group}
+				<p class="group-label">{group.label}</p>
+				{#each group.items as item}
+					<a href="/?id={item.id}" class="history-item">{item.title}</a>
 				{/each}
-			</nav>
+			{/each}
+		</nav>
 
-			<div class="sidebar-footer">
-				<div class="theme-switcher">
-					<button class:active={theme === 'light'} onclick={() => (theme = 'light')} title={m.theme_light()}>
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="4"/>
-							<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-						</svg>
-						<span>{m.theme_light()}</span>
-					</button>
-					<button class:active={theme === 'system'} onclick={() => (theme = 'system')} title={m.theme_auto()}>
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="2" y="3" width="20" height="14" rx="2"/>
-							<path d="M8 21h8M12 17v4"/>
-						</svg>
-						<span>{m.theme_auto()}</span>
-					</button>
-					<button class:active={theme === 'dark'} onclick={() => (theme = 'dark')} title={m.theme_dark()}>
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-						</svg>
-						<span>{m.theme_dark()}</span>
-					</button>
-				</div>
-
-				<a href="/settings" class="settings-row">
-					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="3"/>
-						<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+		<div class="sidebar-footer">
+			<div class="theme-switcher">
+				<button class:active={theme === 'light'} onclick={() => (theme = 'light')} title={m.theme_light()}>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="4"/>
+						<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
 					</svg>
-					{m.settings()}
-				</a>
+					<span>{m.theme_light()}</span>
+				</button>
+				<button class:active={theme === 'system'} onclick={() => (theme = 'system')} title={m.theme_auto()}>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="2" y="3" width="20" height="14" rx="2"/>
+						<path d="M8 21h8M12 17v4"/>
+					</svg>
+					<span>{m.theme_auto()}</span>
+				</button>
+				<button class:active={theme === 'dark'} onclick={() => (theme = 'dark')} title={m.theme_dark()}>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+					</svg>
+					<span>{m.theme_dark()}</span>
+				</button>
 			</div>
-		</aside>
 
-		<main class="content">
-			{@render children()}
-		</main>
-	</div>
+			<a href="/settings" class="settings-row">
+				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="3"/>
+					<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+				</svg>
+				{m.settings()}
+			</a>
+		</div>
+	</aside>
+
+	<main class="content">
+		{@render children()}
+	</main>
+</div>
 
 <style>
 	.shell {

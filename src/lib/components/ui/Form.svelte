@@ -70,7 +70,7 @@
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
-		max-width: 480px;
+		max-width: 680px;
 	}
 
 	.form-title {
