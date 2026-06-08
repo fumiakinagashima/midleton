@@ -61,8 +61,8 @@ midleton/
 ## 開発ルール
 
 - UIコンポーネントは `src/lib/components/` に集約する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
-- DBスキーマ変更は必ず Drizzle マイグレーションを通す。直接 D1 を操作しない。
-- MCP ツールは `src/lib/server/mcp/` に定義し、Zod でスキーマを検証する。
+- DBスキーマ変更は必ず Drizzle マイグレーションを通す。直接 D1 を操作しない。将来のインフラ移行を考慮し、D1 固有 API への直接依存を避ける（DrizzleORM 経由を徹底）。
+- MCP ツールは `src/lib/server/mcp/` に定義し、Zod でスキーマを検証する。Zod スキーマの命名は camelCase + `Schema` サフィックス（例: `createCustomerInputSchema`）。
 - 秘匿情報（API キー等）は Cloudflare の環境変数または KV に保存する。コードに埋め込まない。
 - AIへのシステムプロンプトは `src/lib/server/ai/` で一元管理する。
 
