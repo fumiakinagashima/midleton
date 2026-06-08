@@ -1,0 +1,21 @@
+# docs
+docs/
+
+# dependencies
+node_modules/
+
+# build
+.svelte-kit/
+build/
+dist/
+
+# env
+.env
+.env.*
+!.env.example
+
+# cloudflare
+.wrangler/
+
+# OS
+.DS_Store
