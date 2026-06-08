@@ -1,0 +1,120 @@
+<script lang="ts">
+	import { untrack } from 'svelte';
+	import type { FieldDef } from '$lib/server/db/table-service';
+
+	type Props = {
+		fields: FieldDef[];
+		initialValues?: Record<string, string>;
+		onsubmit: (data: Record<string, string>) => void;
+		submitting?: boolean;
+	};
+
+	let { fields, initialValues = {}, onsubmit, submitting = false }: Props = $props();
+
+	let values = $state<Record<string, string>>(
+		untrack(() => Object.fromEntries(fields.map(f => [f.key, initialValues[f.key] ?? ''])))
+	);
+
+	function handleSubmit(e: Event) {
+		e.preventDefault();
+		onsubmit({ ...values });
+	}
+</script>
+
+<form class="form" onsubmit={handleSubmit}>
+	{#each fields as field}
+		<div class="field">
+			<label for={field.key}>
+				{field.label}
+				{#if field.required}<span class="req">*</span>{/if}
+			</label>
+
+			{#if field.type === 'textarea'}
+				<textarea
+					id={field.key}
+					required={field.required}
+					bind:value={values[field.key]}
+				></textarea>
+			{:else if field.type === 'select'}
+				<select id={field.key} required={field.required} bind:value={values[field.key]}>
+					<option value="">選択してください</option>
+					{#each field.options ?? [] as opt}
+						<option value={opt.value}>{opt.label}</option>
+					{/each}
+				</select>
+			{:else}
+				<input
+					id={field.key}
+					type={field.type}
+					required={field.required}
+					bind:value={values[field.key]}
+				/>
+			{/if}
+		</div>
+	{/each}
+
+	<div class="footer">
+		<button type="submit" disabled={submitting}>
+			{submitting ? '保存中...' : '保存'}
+		</button>
+	</div>
+</form>
+
+<style>
+	.form {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		max-width: 560px;
+	}
+
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--color-text-muted);
+	}
+
+	.req { color: var(--color-danger, #dc2626); margin-left: 2px; }
+
+	input, textarea, select {
+		padding: 8px 12px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: var(--color-background);
+		color: var(--color-text);
+		font-size: 0.9375rem;
+		font-family: inherit;
+		outline: none;
+	}
+
+	input:focus, textarea:focus, select:focus {
+		border-color: var(--color-primary);
+	}
+
+	textarea { min-height: 100px; resize: vertical; }
+
+	.footer {
+		display: flex;
+		justify-content: flex-end;
+		padding-top: 8px;
+	}
+
+	button {
+		padding: 8px 24px;
+		background: var(--color-primary);
+		color: #fff;
+		border: none;
+		border-radius: 6px;
+		font-size: 0.9375rem;
+		cursor: pointer;
+	}
+
+	button:disabled { opacity: 0.5; cursor: not-allowed; }
+	button:not(:disabled):hover { opacity: 0.88; }
+</style>
