@@ -28,6 +28,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		tool?: string;
 		data?: Record<string, string>;
 		history?: Message[];
+		model?: string;
+		apiKey?: string;
 	};
 
 	// フォーム送信（tool + data）
@@ -61,7 +63,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return json({ contents: mockChat() });
 	}
 
-	const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
+	const apiKey = body.apiKey || (platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '');
 	const history: MessageParam[] = (body.history ?? [])
 		.filter((m) => m.role === 'user' || m.role === 'assistant')
 		.flatMap((m): MessageParam[] => {
@@ -76,6 +78,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 	history.push({ role: 'user', content: userMessage });
 
-	const contents = await chat(db, apiKey, history);
+	const contents = await chat(db, apiKey, history, body.model);
 	return json({ contents });
 };
