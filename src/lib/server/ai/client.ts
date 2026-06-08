@@ -97,6 +97,9 @@ function parseTextContent(text: string): MessageContent[] {
 			} else if (type === 'table') {
 				const { columns, rows } = JSON.parse(body);
 				contents.push({ type: 'table', columns, rows });
+			} else if (type === 'actions') {
+				const actions = JSON.parse(body);
+				contents.push({ type: 'actions', title, actions });
 			}
 		} catch {
 			contents.push({ type: 'text', text: body });

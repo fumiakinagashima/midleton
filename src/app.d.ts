@@ -10,6 +10,7 @@ declare global {
 			env: {
 				DB: D1Database;
 				ANTHROPIC_API_KEY: string;
+				MOCK_AI: string;
 			};
 		}
 	}

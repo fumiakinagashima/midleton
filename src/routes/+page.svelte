@@ -1,8 +1,9 @@
 <script lang="ts">
-	import Form from '$lib/components/ui/Form.svelte';
-	import Table from '$lib/components/ui/Table.svelte';
+	import Form from '$lib/components/chat/Form.svelte';
+	import Table from '$lib/components/chat/Table.svelte';
+	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent } from '$lib/types/chat';
+	import type { Message, MessageContent, ActionItem } from '$lib/types/chat';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick } from 'svelte';
 
@@ -43,28 +44,35 @@
 		scrollToBottom(true);
 	}
 
-	async function handleSubmit() {
-		const text = input.trim();
-		if (!text || loading) return;
-
-		input = '';
+	async function sendMessage(text: string) {
 		addUserMessage(text);
 		loading = true;
 		await scrollToBottom(true);
-
 		try {
 			const res = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ message: text, history: messages })
 			});
-			const data = await res.json();
+			const data = await res.json() as { contents: MessageContent[] };
 			addAssistantMessage(data.contents);
 		} catch {
 			addAssistantMessage([{ type: 'text', text: m.chat_error() }]);
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function handleSubmit() {
+		const text = input.trim();
+		if (!text || loading) return;
+		input = '';
+		await sendMessage(text);
+	}
+
+	async function handleActionSelect(action: ActionItem) {
+		if (loading) return;
+		await sendMessage(action.label);
 	}
 
 	async function handleFormSubmit(tool: string, data: Record<string, string>) {
@@ -76,7 +84,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ tool, data, history: messages })
 			});
-			const result = await res.json();
+			const result = await res.json() as { contents: MessageContent[] };
 			addAssistantMessage(result.contents);
 		} catch {
 			addAssistantMessage([{ type: 'text', text: m.chat_error() }]);
@@ -112,6 +120,12 @@
 						/>
 					{:else if content.type === 'table'}
 						<Table columns={content.columns} rows={content.rows} />
+					{:else if content.type === 'actions'}
+						<ActionSelector
+							title={content.title}
+							actions={content.actions}
+							onselect={handleActionSelect}
+						/>
 					{/if}
 				{/each}
 			</div>

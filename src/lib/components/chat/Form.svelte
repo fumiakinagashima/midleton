@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { FormField } from '$lib/types/chat';
 	import * as m from '$lib/paraglide/messages.js';
 
@@ -11,7 +12,7 @@
 	let { title, fields, onsubmit }: Props = $props();
 
 	let values = $state<Record<string, string>>(
-		Object.fromEntries(fields.map((f) => [f.key, '']))
+		untrack(() => Object.fromEntries(fields.map((f) => [f.key, ''])))
 	);
 
 	function handleSubmit(e: Event) {
@@ -70,7 +71,8 @@
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
-		max-width: 680px;
+		width: 100%;
+		max-width: 620px;
 	}
 
 	.form-title {

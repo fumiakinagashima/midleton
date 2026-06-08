@@ -24,3 +24,5 @@ migrations_dir = "drizzle"
 [vars]
 # 本番は `wrangler secret put ANTHROPIC_API_KEY` で管理する
 ANTHROPIC_API_KEY = ""
+# ローカル開発時のモックモード（.dev.vars で上書き可能）
+MOCK_AI = "false"

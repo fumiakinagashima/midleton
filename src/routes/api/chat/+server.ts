@@ -3,18 +3,23 @@ import type { RequestHandler } from './$types';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { env } from '$env/dynamic/private';
 import { chat } from '$lib/server/ai/client';
+import { mockChat } from '$lib/server/ai/mock';
 import { createDb } from '$lib/server/db';
 import { dispatchTool } from '$lib/server/mcp';
 import type { Message, MessageContent } from '$lib/types/chat';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
-	const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
-	if (!apiKey) {
-		return json({ error: 'ANTHROPIC_API_KEY が設定されていません。' }, { status: 500 });
-	}
+	const mockMode = platform?.env?.MOCK_AI === 'true' || env.MOCK_AI === 'true';
 
 	if (!platform?.env?.DB) {
 		return json({ error: 'D1データベースが設定されていません。wrangler dev で起動してください。' }, { status: 500 });
+	}
+
+	if (!mockMode) {
+		const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
+		if (!apiKey) {
+			return json({ error: 'ANTHROPIC_API_KEY が設定されていません。' }, { status: 500 });
+		}
 	}
 
 	const db = createDb(platform.env.DB);
@@ -51,6 +56,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return json({ error: 'メッセージが空です。' }, { status: 400 });
 	}
 
+	if (mockMode) {
+		await new Promise((r) => setTimeout(r, 800));
+		return json({ contents: mockChat() });
+	}
+
+	const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
 	const history: MessageParam[] = (body.history ?? [])
 		.filter((m) => m.role === 'user' || m.role === 'assistant')
 		.flatMap((m): MessageParam[] => {

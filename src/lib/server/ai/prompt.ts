@@ -27,6 +27,15 @@ export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステム�
 {"columns":[{"key":"name","label":"会社名"},{"key":"contact_name","label":"担当者"},{"key":"email","label":"メール"},{"key":"status","label":"ステータス"}],"rows":[...取得したデータ...]}
 </ui>
 
+アクション選択の指定例（ユーザーに次の操作を選んでもらう場合）:
+<ui type="actions" title="どうしますか？">
+[
+  {"id":"create","label":"顧客を登録する","description":"新規顧客情報をフォームで入力します"},
+  {"id":"list","label":"顧客一覧を見る","description":"登録済みの顧客一覧を表示します"}
+]
+</ui>
+ユーザーがアクションを選択すると、そのラベルがメッセージとして送信される。
+
 ## 使用可能なフィールドtype
 text / email / tel / number / textarea / select / date
 `;
