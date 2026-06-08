@@ -9,10 +9,12 @@
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "db:studio": "drizzle-kit studio --config=drizzle.local.config.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260607.1",
+    "@libsql/client": "^0.17.3",
     "@sveltejs/adapter-auto": "^7.0.1",
     "@sveltejs/adapter-cloudflare": "^7.2.8",
     "@sveltejs/kit": "^2.57.0",
@@ -29,6 +31,7 @@
     "@anthropic-ai/sdk": "^0.102.0",
     "@inlang/paraglide-sveltekit": "^0.16.1",
     "drizzle-orm": "^0.45.2",
+    "marked": "^18.0.5",
     "zod": "^4.4.3"
   },
   "trustedDependencies": [

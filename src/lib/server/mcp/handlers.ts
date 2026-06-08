@@ -8,7 +8,8 @@ import {
 	activities,
 	entityTypes,
 	entityFields,
-	entities
+	entities,
+	integrations
 } from '../db/schema';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -31,6 +32,85 @@ function mergeCustom(existing: string | null | undefined, incoming: unknown): st
 
 function now(): Date {
 	return new Date();
+}
+
+// ── External API integrations ──────────────────────────────────────────────
+
+async function handleListIntegrations(db: Db) {
+	const rows = await db
+		.select({
+			id: integrations.id,
+			name: integrations.name,
+			description: integrations.description,
+			baseUrl: integrations.baseUrl,
+			authType: integrations.authType,
+			createdAt: integrations.createdAt
+		})
+		.from(integrations)
+		.orderBy(integrations.name);
+	return rows;
+}
+
+const callExternalApiSchema = z.object({
+	integration_id: z.string(),
+	endpoint: z.string(),
+	method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
+	body: z.record(z.string(), z.unknown()).optional(),
+	query: z.record(z.string(), z.unknown()).optional(),
+	headers: z.record(z.string(), z.string()).optional()
+});
+
+async function handleCallExternalApi(db: Db, input: unknown) {
+	const p = callExternalApiSchema.parse(input);
+
+	const [integration] = await db
+		.select()
+		.from(integrations)
+		.where(eq(integrations.id, p.integration_id));
+	if (!integration) throw new Error(`連携が見つかりません: ${p.integration_id}`);
+
+	const authConfig = parseJson(integration.authConfig);
+
+	const base = integration.baseUrl.replace(/\/$/, '');
+	const path = !p.endpoint || p.endpoint === '/'
+		? base
+		: p.endpoint.startsWith('http')
+			? p.endpoint
+			: `${base}/${p.endpoint.replace(/^\//, '')}`;
+
+	let url = path;
+	if (p.query && Object.keys(p.query).length > 0) {
+		const params = new URLSearchParams();
+		for (const [k, v] of Object.entries(p.query)) params.set(k, String(v));
+		url += (url.includes('?') ? '&' : '?') + params.toString();
+	}
+
+	const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json', ...p.headers };
+
+	switch (integration.authType) {
+		case 'api_key':
+			reqHeaders[(authConfig.headerName as string) || 'X-API-Key'] = authConfig.value as string;
+			break;
+		case 'bearer':
+			reqHeaders['Authorization'] = `Bearer ${authConfig.value}`;
+			break;
+		case 'basic': {
+			const encoded = btoa(`${authConfig.username}:${authConfig.password}`);
+			reqHeaders['Authorization'] = `Basic ${encoded}`;
+			break;
+		}
+	}
+
+	const res = await fetch(url, {
+		method: p.method,
+		headers: reqHeaders,
+		body: p.body !== undefined ? JSON.stringify(p.body) : undefined
+	});
+
+	const ct = res.headers.get('content-type') ?? '';
+	const resBody = ct.includes('application/json') ? await res.json() : await res.text();
+
+	return { status: res.status, ok: res.ok, body: resBody };
 }
 
 // ── Search ─────────────────────────────────────────────────────────────────
@@ -769,6 +849,8 @@ async function handleUpdateEntity(db: Db, input: unknown) {
 // ── Dispatch ───────────────────────────────────────────────────────────────
 
 export type ToolName =
+	| 'list_integrations'
+	| 'call_external_api'
 	| 'search_customers'
 	| 'search_deals'
 	| 'search_activities'
@@ -799,6 +881,8 @@ export type ToolName =
 
 export async function dispatchTool(db: Db, name: ToolName, input: unknown) {
 	switch (name) {
+		case 'list_integrations':   return handleListIntegrations(db);
+		case 'call_external_api':   return handleCallExternalApi(db, input);
 		case 'search_customers':    return handleSearchCustomers(db, input);
 		case 'search_deals':        return handleSearchDeals(db, input);
 		case 'search_activities':   return handleSearchActivities(db, input);

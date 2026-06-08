@@ -116,6 +116,23 @@ export const entities = sqliteTable('entities', {
 		.default(sql`(unixepoch())`)
 });
 
+export const integrations = sqliteTable('integrations', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	description: text('description'),
+	baseUrl: text('base_url').notNull(),
+	authType: text('auth_type', { enum: ['none', 'api_key', 'bearer', 'basic'] })
+		.notNull()
+		.default('none'),
+	authConfig: text('auth_config').notNull().default('{}'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
 export type Contact = typeof contacts.$inferSelect;
@@ -127,3 +144,5 @@ export type NewActivity = typeof activities.$inferInsert;
 export type EntityType = typeof entityTypes.$inferSelect;
 export type EntityField = typeof entityFields.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
+export type Integration = typeof integrations.$inferSelect;
+export type NewIntegration = typeof integrations.$inferInsert;
