@@ -5,6 +5,7 @@ SvelteKit + Claude AI + MCP サーバー構成。ユーザーはチャットで�
 
 ## 技術スタック
 
+- **パッケージマネージャー**: Bun
 - **フロントエンド**: SvelteKit, TypeScript
 - **バリデーション**: Zod
 - **ORM**: DrizzleORM
