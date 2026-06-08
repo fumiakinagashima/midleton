@@ -1,0 +1,26 @@
+name = "midleton"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+main = ".svelte-kit/cloudflare/_worker.js"
+assets = { directory = ".svelte-kit/cloudflare/", binding = "ASSETS" }
+
+# D1: wrangler d1 create midleton を実行後、database_id を設定してコメントを外す
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "midleton"
+# database_id = ""
+
+# KV: wrangler kv namespace create midleton を実行後、id を設定してコメントを外す
+# [[kv_namespaces]]
+# binding = "KV"
+# id = ""
+
+# R2: wrangler r2 bucket create midleton を実行後にコメントを外す
+# [[r2_buckets]]
+# binding = "R2"
+# bucket_name = "midleton"
+
+[vars]
+# 本番は `wrangler secret put ANTHROPIC_API_KEY` で管理する
+ANTHROPIC_API_KEY = ""
