@@ -51,6 +51,10 @@ midleton/
 - ユーザー設定は `localStorage` に保存する
 - システムは `prefers-color-scheme` メディアクエリに追従する
 
+## TODO
+
+- [ ] チャット入力欄の Enter キー送信をユーザー設定で切り替えられるようにする（設定画面 `/settings` に「Enterで送信する」トグルを追加。設定値は localStorage または DB に保存）
+
 ## Git ルール
 
 - コミットメッセージは英語で記載する

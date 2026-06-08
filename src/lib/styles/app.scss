@@ -1,0 +1,101 @@
+// ─────────────────────────────────────────
+// Color tokens
+// ─────────────────────────────────────────
+
+// Dark (default / system dark)
+:root {
+  --color-background:  #0f0f0f;
+  --color-surface:     #1c1c1c;
+  --color-border:      #2e2e2e;
+  --color-text:        #f0f0f0;
+  --color-text-muted:  #9ca3af;
+  --color-primary:     #6366f1;
+  --color-danger:      #f87171;
+
+  --sidebar-bg:        #1a1a1a;
+  --sidebar-text:      #ececec;
+  --sidebar-text-muted:#8e8ea0;
+  --sidebar-hover:     rgba(255, 255, 255, 0.07);
+  --sidebar-active:    rgba(255, 255, 255, 0.12);
+  --sidebar-border:    rgba(255, 255, 255, 0.08);
+}
+
+// Light
+[data-theme='light'] {
+  --color-background:  #ffffff;
+  --color-surface:     #f5f5f5;
+  --color-border:      #e0e0e0;
+  --color-text:        #1a1a1a;
+  --color-text-muted:  #6b7280;
+  --color-primary:     #4f46e5;
+  --color-danger:      #ef4444;
+
+  --sidebar-bg:        #f5f5f5;
+  --sidebar-text:      #1a1a1a;
+  --sidebar-text-muted:#6b7280;
+  --sidebar-hover:     rgba(0, 0, 0, 0.05);
+  --sidebar-active:    rgba(0, 0, 0, 0.09);
+  --sidebar-border:    rgba(0, 0, 0, 0.08);
+}
+
+// System — light
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --color-background:  #ffffff;
+    --color-surface:     #f5f5f5;
+    --color-border:      #e0e0e0;
+    --color-text:        #1a1a1a;
+    --color-text-muted:  #6b7280;
+    --color-primary:     #4f46e5;
+    --color-danger:      #ef4444;
+
+    --sidebar-bg:        #f5f5f5;
+    --sidebar-text:      #1a1a1a;
+    --sidebar-text-muted:#6b7280;
+    --sidebar-hover:     rgba(0, 0, 0, 0.05);
+    --sidebar-active:    rgba(0, 0, 0, 0.09);
+    --sidebar-border:    rgba(0, 0, 0, 0.08);
+  }
+}
+
+// ─────────────────────────────────────────
+// Reset
+// ─────────────────────────────────────────
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+// ─────────────────────────────────────────
+// Base
+// ─────────────────────────────────────────
+
+html,
+body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  background: var(--color-background);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}

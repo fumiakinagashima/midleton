@@ -1,0 +1,19 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "new_chat": "新しいチャット",
+  "settings": "設定",
+  "theme_light": "ライト",
+  "theme_auto": "自動",
+  "theme_dark": "ダーク",
+  "history_today": "今日",
+  "history_yesterday": "昨日",
+  "chat_empty": "何でも聞いてください。",
+  "chat_loading": "入力中…",
+  "chat_placeholder": "メッセージを入力（Shift+Enter で改行）",
+  "chat_submit": "送信",
+  "chat_error": "エラーが発生しました。",
+  "form_select_placeholder": "選択してください",
+  "form_submit": "登録",
+  "table_empty": "データがありません",
+  "table_count": "{count} 件"
+}
