@@ -93,7 +93,10 @@
 - [x] 削除系ツール（`delete_customer`）
 - [x] 検索・フィルタ系ツール（名前・ステータス・顧客ID等）
 - [x] ユーザー定義エンティティ操作ツール（`list_entity_types`, `create_entity_type`, `add_entity_field`, `get_entities`, `create_entity`, `update_entity`）
-- [x] 集計系ツール（件数・合計等）（`summarize_deals`, `summarize_customers`, `summarize_activities`）
+- [x] 集計系ツール（`summarize_deals`, `summarize_customers`, `summarize_activities`）
+- [x] 詳細取得ツール（`get_customer_detail`：顧客＋担当者＋案件＋活動をまとめて返す）
+- [x] リレーション横断検索ツール（`search_customers`, `search_deals`, `search_activities`：IN サブクエリで関連エンティティをまたいで検索）
+- [x] 外部API連携ツール（`list_integrations`, `call_external_api`）
 
 ### ユースケース追加
 - [ ] 「今月完了した案件一覧」→ Table 表示
@@ -110,15 +113,28 @@
 - [x] ユーザー設定（Enterで送信する、localStorage保存）
 - [x] AI モデル選択・APIキー設定（localStorage保存、リクエスト時にサーバーへ渡す）
 
-### テンプレート管理（`/templates`）
-- [ ] テンプレート一覧・作成・編集・削除
-- [ ] フォームテンプレートの定義 UI
-- [ ] テンプレートを AI が選択できるように MCP ツールに追加
-
 ### 外部API連携設定（`/settings/integrations`）
 - [x] API連携の追加・編集・削除 UI（`/settings/integrations`）
 - [x] 接続情報をD1に保存（auth_config はJSONカラム、認証方式: none/api_key/bearer/basic）
 - [x] MCPツール（`list_integrations`, `call_external_api`）でClaudeから任意の外部APIを呼び出せる仕組み
+
+### チャット品質改善
+- [x] AIレスポンスのマークダウンレンダリング（marked）
+- [x] フォームの hidden フィールド対応（customer_id 等を透過的に送信）
+- [x] Values コンポーネント（数値・通貨・日付をフォーマット表示、AI が生値を渡して誤転記を防ぐ）
+
+### データ管理ページ（`/database`）
+- [x] テーブル一覧（コアテーブル＋カスタムテーブル、件数表示）
+- [x] レコード一覧（テーブル表示、詳細・編集・削除リンク）
+- [x] レコード詳細（全フィールド＋システム項目をラベル付き表示）
+- [x] レコード新規作成・編集フォーム（フィールド定義から動的生成）
+- [x] カスタムテーブル新規作成（テーブル名・表示名・フィールド定義 UI）
+- [x] カスタムテーブルスキーマ編集・削除（`/database/[type]/schema`）
+
+### テンプレート管理（`/templates`）
+- [ ] テンプレート一覧・作成・編集・削除
+- [ ] フォームテンプレートの定義 UI
+- [ ] テンプレートを AI が選択できるように MCP ツールに追加
 
 
 ## フェーズ5：定期実行・品質向上

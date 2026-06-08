@@ -1,11 +1,10 @@
 <script lang="ts">
-	type Props = {
+	import type { HTMLInputAttributes } from 'svelte/elements';
+
+	type Props = Omit<HTMLInputAttributes, 'value' | 'type'> & {
 		label?: string;
 		value?: string;
 		type?: 'text' | 'email' | 'tel' | 'number' | 'password' | 'url';
-		placeholder?: string;
-		required?: boolean;
-		disabled?: boolean;
 		error?: string;
 	};
 
@@ -13,10 +12,8 @@
 		label,
 		value = $bindable(''),
 		type = 'text',
-		placeholder = '',
-		required = false,
-		disabled = false,
-		error
+		error,
+		...rest
 	}: Props = $props();
 
 	const uid = `tb-${Math.random().toString(36).slice(2, 7)}`;
@@ -24,9 +21,9 @@
 
 <div class="field" class:has-error={!!error}>
 	{#if label}
-		<label for={uid}>{label}{#if required}<span class="req">*</span>{/if}</label>
+		<label for={uid}>{label}{#if rest.required}<span class="req">*</span>{/if}</label>
 	{/if}
-	<input id={uid} {type} bind:value {placeholder} {required} {disabled} />
+	<input id={uid} {type} bind:value {...rest} />
 	{#if error}<p class="err">{error}</p>{/if}
 </div>
 

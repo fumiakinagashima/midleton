@@ -22,14 +22,19 @@ midleton/
 │   │   ├── +layout.svelte    # サイドバー・テーマ切り替え
 │   │   ├── +page.svelte      # チャット画面（/）
 │   │   ├── ui/               # UIコンポーネントデモ（/ui）
-│   │   ├── settings/         # 設定画面（/settings）
-│   │   └── api/chat/         # チャット API エンドポイント
+│   │   ├── settings/         # 設定画面（/settings, /settings/integrations）
+│   │   ├── database/         # データ管理画面（/database, /database/[type], /database/[type]/[id] 等）
+│   │   └── api/
+│   │       ├── chat/         # チャット API エンドポイント
+│   │       ├── integrations/ # 外部API連携 CRUD エンドポイント
+│   │       └── database/     # データ管理 REST API（tables, records CRUD）
 │   ├── lib/
 │   │   ├── components/
 │   │   │   ├── ui/       # アプリUIコンポーネント（デザインシステム: Textbox, Select, Table, DataGrid, BarChart 等）
-│   │   │   └── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector 等）
+│   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values 等）
+│   │   │   └── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor）
 │   │   ├── server/       # サーバーサイドロジック
-│   │   │   ├── db/       # DrizzleORM スキーマ・クエリ
+│   │   │   ├── db/       # DrizzleORM スキーマ・クエリ（schema.ts, table-service.ts）
 │   │   │   ├── mcp/      # MCPサーバー・ツール定義
 │   │   │   └── ai/       # Claude API 連携・システムプロンプト・モック
 │   │   ├── styles/       # グローバルスタイル・テーマ定義
@@ -37,6 +42,7 @@ midleton/
 │   └── app.html
 ├── messages/             # i18n リソース（ja.json）
 ├── drizzle/              # マイグレーションファイル
+├── drizzle.local.config.ts  # ローカル D1 SQLite 向け Drizzle Studio 設定
 ├── docs/
 │   └── ROADMAP.md
 ├── wrangler.toml
@@ -57,9 +63,13 @@ midleton/
 - ユーザー設定は `localStorage` に保存する
 - システムは `prefers-color-scheme` メディアクエリに追従する
 
-## TODO
+## 非AIページの方針
 
-- [ ] チャット入力欄の Enter キー送信をユーザー設定で切り替えられるようにする（設定画面 `/settings` に「Enterで送信する」トグルを追加。設定値は localStorage または DB に保存）
+チャット中心の設計だが、すべての操作を AI 経由にする必要はない。  
+定型的な CRUD や設定はノーAI の管理画面を用意し、APIコスト削減・操作性向上を両立する。
+
+- `/database` — データ管理（コアテーブル＋カスタムテーブルの CRUD、スキーマ定義）
+- `/settings` — アプリ設定・外部API連携管理
 
 ## Git ルール
 
@@ -70,7 +80,7 @@ midleton/
 
 ## 開発ルール
 
-- UIコンポーネントは `src/lib/components/` に集約する。アプリUI（デザインシステム）は `ui/`、AIがノーコードとしてレスポンスに返すコンポーネント（Form, Table 等）は `chat/` に配置する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
+- UIコンポーネントは `src/lib/components/` に集約する。アプリUI（デザインシステム）は `ui/`、AIがノーコードとしてレスポンスに返すコンポーネント（Form, Table, Values 等）は `chat/`、データ管理ページ専用コンポーネント（RecordForm, FieldEditor）は `database/` に配置する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
 - DBスキーマ変更は必ず Drizzle マイグレーションを通す。直接 D1 を操作しない。将来のインフラ移行を考慮し、D1 固有 API への直接依存を避ける（DrizzleORM 経由を徹底）。
 - MCP ツールは `src/lib/server/mcp/` に定義し、Zod でスキーマを検証する。Zod スキーマの命名は camelCase + `Schema` サフィックス（例: `createCustomerInputSchema`）。
 - 秘匿情報（API キー等）は Cloudflare の環境変数または KV に保存する。コードに埋め込まない。
