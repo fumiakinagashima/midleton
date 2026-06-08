@@ -1,6 +1,152 @@
 import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 
 export const tools: Tool[] = [
+	// ── Search ─────────────────────────────────────────────────────────────
+	{
+		name: 'search_customers',
+		description:
+			'案件・活動のリレーション条件で顧客を検索する。「open案件を持つ顧客」「今月面談した顧客」など単純フィルタでは届かない絞り込みができる。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				name: { type: 'string', description: '顧客名（部分一致）' },
+				status: { type: 'string', enum: ['active', 'inactive'] },
+				has_deal_status: {
+					type: 'string',
+					enum: ['open', 'won', 'lost'],
+					description: '指定ステータスの案件を持つ顧客に絞り込む'
+				},
+				deal_since: { type: 'string', description: '案件の対象期間・開始日（ISO 8601）' },
+				deal_until: { type: 'string', description: '案件の対象期間・終了日（ISO 8601）' },
+				has_activity_type: {
+					type: 'string',
+					enum: ['note', 'call', 'email', 'meeting'],
+					description: '指定種別の活動を持つ顧客に絞り込む'
+				},
+				activity_since: { type: 'string', description: '活動の対象期間・開始日（ISO 8601）' },
+				activity_until: { type: 'string', description: '活動の対象期間・終了日（ISO 8601）' },
+				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
+			},
+			required: []
+		}
+	},
+	{
+		name: 'search_deals',
+		description:
+			'案件を複合条件で検索する。顧客名（JOIN）・金額範囲・期間など get_deals より柔軟な絞り込みができる。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				customer_name: { type: 'string', description: '顧客名（部分一致）' },
+				status: { type: 'string', enum: ['open', 'won', 'lost'] },
+				amount_min: { type: 'number', description: '金額の下限（円）' },
+				amount_max: { type: 'number', description: '金額の上限（円）' },
+				since: { type: 'string', description: '開始日（ISO 8601）' },
+				until: { type: 'string', description: '終了日（ISO 8601）' },
+				date_field: {
+					type: 'string',
+					enum: ['created_at', 'closed_at'],
+					description: '期間の基準日（デフォルト: created_at）'
+				},
+				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
+			},
+			required: []
+		}
+	},
+	{
+		name: 'search_activities',
+		description:
+			'活動履歴を複合条件で検索する。ユーザー定義テーブルの活動は entity_type_id で絞り込める。content のキーワード検索も可能。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				entity_type: {
+					type: 'string',
+					enum: ['customer', 'contact', 'deal', 'entity'],
+					description: 'エンティティの種別'
+				},
+				entity_type_id: {
+					type: 'string',
+					description: 'ユーザー定義テーブルのID（entity_type が entity のとき、そのテーブルの活動に絞り込む）'
+				},
+				type: { type: 'string', enum: ['note', 'call', 'email', 'meeting'] },
+				content: { type: 'string', description: '活動内容のキーワード（部分一致）' },
+				since: { type: 'string', description: '開始日（ISO 8601）' },
+				until: { type: 'string', description: '終了日（ISO 8601）' },
+				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
+			},
+			required: []
+		}
+	},
+
+	// ── Aggregations ───────────────────────────────────────────────────────
+	{
+		name: 'summarize_deals',
+		description:
+			'案件を件数・金額でステータス別に集計する。「今月の受注合計は？」「open案件の総額は？」などの質問に使う。期間・顧客で絞り込み可能。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				customer_id: { type: 'string', description: '特定の顧客に絞り込む' },
+				since: { type: 'string', description: '集計開始日（ISO 8601 形式 例: 2025-01-01）' },
+				until: { type: 'string', description: '集計終了日（ISO 8601 形式 例: 2025-12-31）' },
+				date_field: {
+					type: 'string',
+					enum: ['created_at', 'closed_at'],
+					description: '期間絞り込みの基準日（デフォルト: created_at）'
+				}
+			},
+			required: []
+		}
+	},
+	{
+		name: 'summarize_customers',
+		description: '顧客数をステータス別（active/inactive）に集計する。「顧客数は何社？」「アクティブな顧客は？」などに使う。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				since: { type: 'string', description: '登録日の開始日（ISO 8601 形式）' },
+				until: { type: 'string', description: '登録日の終了日（ISO 8601 形式）' }
+			},
+			required: []
+		}
+	},
+	{
+		name: 'summarize_activities',
+		description:
+			'活動履歴を種別（note/call/email/meeting）ごとに件数集計する。「今月の商談数は？」「電話した件数は？」などに使う。期間・対象エンティティで絞り込み可能。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				entity_id: { type: 'string', description: '特定のエンティティに絞り込む' },
+				entity_type: {
+					type: 'string',
+					enum: ['customer', 'contact', 'deal', 'entity'],
+					description: 'エンティティの種別'
+				},
+				since: { type: 'string', description: '集計開始日（ISO 8601 形式）' },
+				until: { type: 'string', description: '集計終了日（ISO 8601 形式）' }
+			},
+			required: []
+		}
+	},
+
+	// ── Customer detail ────────────────────────────────────────────────────
+	{
+		name: 'get_customer_detail',
+		description:
+			'顧客の詳細情報（基本情報・担当者・案件・活動履歴）をまとめて取得する。名前（部分一致）またはIDで検索できる。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				id: { type: 'string', description: '顧客ID（id か name のどちらか一方を指定）' },
+				name: { type: 'string', description: '顧客名（部分一致）（id か name のどちらか一方を指定）' },
+				activities_limit: { type: 'number', description: '活動履歴の取得件数（デフォルト: 10）' }
+			},
+			required: []
+		}
+	},
+
 	// ── Customers ──────────────────────────────────────────────────────────
 	{
 		name: 'get_customers',

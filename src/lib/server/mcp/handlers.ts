@@ -1,4 +1,4 @@
-import { and, eq, like, desc } from 'drizzle-orm';
+import { and, eq, like, desc, gte, lte, sql, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db';
 import {
@@ -31,6 +31,310 @@ function mergeCustom(existing: string | null | undefined, incoming: unknown): st
 
 function now(): Date {
 	return new Date();
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────
+
+const searchCustomersSchema = z.object({
+	name: z.string().optional(),
+	status: z.enum(['active', 'inactive']).optional(),
+	has_deal_status: z.enum(['open', 'won', 'lost']).optional(),
+	deal_since: z.string().optional(),
+	deal_until: z.string().optional(),
+	has_activity_type: z.enum(['note', 'call', 'email', 'meeting']).optional(),
+	activity_since: z.string().optional(),
+	activity_until: z.string().optional(),
+	limit: z.number().int().positive().default(50)
+});
+
+async function handleSearchCustomers(db: Db, input: unknown) {
+	const p = searchCustomersSchema.parse(input);
+
+	const dealSub = p.has_deal_status
+		? db.selectDistinct({ id: deals.customerId }).from(deals).where(
+				and(
+					eq(deals.status, p.has_deal_status),
+					p.deal_since ? gte(deals.createdAt, toDate(p.deal_since)) : undefined,
+					p.deal_until ? lte(deals.createdAt, toDate(p.deal_until)) : undefined
+				)
+			)
+		: null;
+
+	const actSub = p.has_activity_type
+		? db.selectDistinct({ id: activities.entityId }).from(activities).where(
+				and(
+					eq(activities.entityType, 'customer'),
+					eq(activities.type, p.has_activity_type),
+					p.activity_since ? gte(activities.createdAt, toDate(p.activity_since)) : undefined,
+					p.activity_until ? lte(activities.createdAt, toDate(p.activity_until)) : undefined
+				)
+			)
+		: null;
+
+	const rows = await db
+		.select()
+		.from(customers)
+		.where(
+			and(
+				p.name ? like(customers.name, `%${p.name}%`) : undefined,
+				p.status ? eq(customers.status, p.status) : undefined,
+				dealSub ? inArray(customers.id, dealSub) : undefined,
+				actSub ? inArray(customers.id, actSub) : undefined
+			)
+		)
+		.orderBy(desc(customers.createdAt))
+		.limit(p.limit);
+
+	return rows.map((r) => ({ ...r, custom: parseJson(r.custom) }));
+}
+
+const searchDealsSchema = z.object({
+	customer_name: z.string().optional(),
+	status: z.enum(['open', 'won', 'lost']).optional(),
+	amount_min: z.number().optional(),
+	amount_max: z.number().optional(),
+	since: z.string().optional(),
+	until: z.string().optional(),
+	date_field: z.enum(['created_at', 'closed_at']).default('created_at'),
+	limit: z.number().int().positive().default(50)
+});
+
+async function handleSearchDeals(db: Db, input: unknown) {
+	const p = searchDealsSchema.parse(input);
+	const dateCol = p.date_field === 'closed_at' ? deals.closedAt : deals.createdAt;
+
+	const rows = await db
+		.select({
+			id: deals.id,
+			customerId: deals.customerId,
+			customerName: customers.name,
+			title: deals.title,
+			amount: deals.amount,
+			status: deals.status,
+			closedAt: deals.closedAt,
+			notes: deals.notes,
+			custom: deals.custom,
+			createdAt: deals.createdAt,
+			updatedAt: deals.updatedAt
+		})
+		.from(deals)
+		.leftJoin(customers, eq(deals.customerId, customers.id))
+		.where(
+			and(
+				p.customer_name ? like(customers.name, `%${p.customer_name}%`) : undefined,
+				p.status ? eq(deals.status, p.status) : undefined,
+				p.amount_min !== undefined ? gte(deals.amount, p.amount_min) : undefined,
+				p.amount_max !== undefined ? lte(deals.amount, p.amount_max) : undefined,
+				p.since ? gte(dateCol, toDate(p.since)) : undefined,
+				p.until ? lte(dateCol, toDate(p.until)) : undefined
+			)
+		)
+		.orderBy(desc(deals.createdAt))
+		.limit(p.limit);
+
+	return rows.map((r) => ({ ...r, custom: parseJson(r.custom) }));
+}
+
+const searchActivitiesSchema = z.object({
+	entity_type: z.enum(['customer', 'contact', 'deal', 'entity']).optional(),
+	entity_type_id: z.string().optional(),
+	type: z.enum(['note', 'call', 'email', 'meeting']).optional(),
+	content: z.string().optional(),
+	since: z.string().optional(),
+	until: z.string().optional(),
+	limit: z.number().int().positive().default(50)
+});
+
+async function handleSearchActivities(db: Db, input: unknown) {
+	const p = searchActivitiesSchema.parse(input);
+
+	const entitySub = p.entity_type_id
+		? db.selectDistinct({ id: entities.id }).from(entities).where(
+				eq(entities.entityTypeId, p.entity_type_id)
+			)
+		: null;
+
+	const rows = await db
+		.select()
+		.from(activities)
+		.where(
+			and(
+				p.entity_type ? eq(activities.entityType, p.entity_type) : undefined,
+				entitySub ? eq(activities.entityType, 'entity') : undefined,
+				entitySub ? inArray(activities.entityId, entitySub) : undefined,
+				p.type ? eq(activities.type, p.type) : undefined,
+				p.content ? like(activities.content, `%${p.content}%`) : undefined,
+				p.since ? gte(activities.createdAt, toDate(p.since)) : undefined,
+				p.until ? lte(activities.createdAt, toDate(p.until)) : undefined
+			)
+		)
+		.orderBy(desc(activities.createdAt))
+		.limit(p.limit);
+
+	return rows;
+}
+
+// ── Aggregations ───────────────────────────────────────────────────────────
+
+function toDate(s: string): Date {
+	const d = new Date(s);
+	if (isNaN(d.getTime())) throw new Error(`無効な日付: ${s}`);
+	return d;
+}
+
+const summarizeDealsSchema = z.object({
+	customer_id: z.string().optional(),
+	since: z.string().optional(),
+	until: z.string().optional(),
+	date_field: z.enum(['created_at', 'closed_at']).default('created_at')
+});
+
+async function handleSummarizeDeals(db: Db, input: unknown) {
+	const { customer_id, since, until, date_field } = summarizeDealsSchema.parse(input);
+	const dateCol = date_field === 'closed_at' ? deals.closedAt : deals.createdAt;
+
+	const rows = await db
+		.select({
+			status: deals.status,
+			count: sql<number>`cast(count(*) as integer)`,
+			totalAmount: sql<number>`cast(coalesce(sum(${deals.amount}), 0) as integer)`,
+			avgAmount: sql<number>`cast(coalesce(avg(${deals.amount}), 0) as integer)`
+		})
+		.from(deals)
+		.where(
+			and(
+				customer_id ? eq(deals.customerId, customer_id) : undefined,
+				since ? gte(dateCol, toDate(since)) : undefined,
+				until ? lte(dateCol, toDate(until)) : undefined
+			)
+		)
+		.groupBy(deals.status);
+
+	const byStatus: Record<string, { count: number; total_amount: number; avg_amount: number }> = {};
+	let totalCount = 0;
+	let totalAmount = 0;
+	for (const r of rows) {
+		byStatus[r.status] = { count: r.count, total_amount: r.totalAmount, avg_amount: r.avgAmount };
+		totalCount += r.count;
+		totalAmount += r.totalAmount;
+	}
+
+	return { by_status: byStatus, total: { count: totalCount, total_amount: totalAmount } };
+}
+
+const summarizeCustomersSchema = z.object({
+	since: z.string().optional(),
+	until: z.string().optional()
+});
+
+async function handleSummarizeCustomers(db: Db, input: unknown) {
+	const { since, until } = summarizeCustomersSchema.parse(input);
+
+	const rows = await db
+		.select({
+			status: customers.status,
+			count: sql<number>`cast(count(*) as integer)`
+		})
+		.from(customers)
+		.where(
+			and(
+				since ? gte(customers.createdAt, toDate(since)) : undefined,
+				until ? lte(customers.createdAt, toDate(until)) : undefined
+			)
+		)
+		.groupBy(customers.status);
+
+	const byStatus: Record<string, number> = {};
+	let total = 0;
+	for (const r of rows) {
+		byStatus[r.status] = r.count;
+		total += r.count;
+	}
+
+	return { total, by_status: byStatus };
+}
+
+const summarizeActivitiesSchema = z.object({
+	entity_id: z.string().optional(),
+	entity_type: z.enum(['customer', 'contact', 'deal', 'entity']).optional(),
+	since: z.string().optional(),
+	until: z.string().optional()
+});
+
+async function handleSummarizeActivities(db: Db, input: unknown) {
+	const { entity_id, entity_type, since, until } = summarizeActivitiesSchema.parse(input);
+
+	const rows = await db
+		.select({
+			type: activities.type,
+			count: sql<number>`cast(count(*) as integer)`
+		})
+		.from(activities)
+		.where(
+			and(
+				entity_id ? eq(activities.entityId, entity_id) : undefined,
+				entity_type ? eq(activities.entityType, entity_type) : undefined,
+				since ? gte(activities.createdAt, toDate(since)) : undefined,
+				until ? lte(activities.createdAt, toDate(until)) : undefined
+			)
+		)
+		.groupBy(activities.type);
+
+	const byType: Record<string, number> = {};
+	let total = 0;
+	for (const r of rows) {
+		byType[r.type] = r.count;
+		total += r.count;
+	}
+
+	return { total, by_type: byType };
+}
+
+// ── Customer detail ────────────────────────────────────────────────────────
+
+const getCustomerDetailSchema = z.object({
+	id: z.string().optional(),
+	name: z.string().optional(),
+	activities_limit: z.number().int().positive().default(10)
+});
+
+async function handleGetCustomerDetail(db: Db, input: unknown) {
+	const { id, name, activities_limit } = getCustomerDetailSchema.parse(input);
+	if (!id && !name) throw new Error('id または name のどちらかを指定してください');
+
+	let customer;
+	if (id) {
+		const [row] = await db.select().from(customers).where(eq(customers.id, id));
+		if (!row) throw new Error(`顧客が見つかりません: ${id}`);
+		customer = row;
+	} else {
+		const rows = await db
+			.select()
+			.from(customers)
+			.where(like(customers.name, `%${name}%`))
+			.limit(1);
+		if (!rows[0]) throw new Error(`顧客が見つかりません: ${name}`);
+		customer = rows[0];
+	}
+
+	const [customerContacts, customerDeals, customerActivities] = await Promise.all([
+		db.select().from(contacts).where(eq(contacts.customerId, customer.id)).orderBy(desc(contacts.createdAt)),
+		db.select().from(deals).where(eq(deals.customerId, customer.id)).orderBy(desc(deals.createdAt)),
+		db
+			.select()
+			.from(activities)
+			.where(and(eq(activities.entityId, customer.id), eq(activities.entityType, 'customer')))
+			.orderBy(desc(activities.createdAt))
+			.limit(activities_limit)
+	]);
+
+	return {
+		...customer,
+		custom: parseJson(customer.custom),
+		contacts: customerContacts.map((r) => ({ ...r, custom: parseJson(r.custom) })),
+		deals: customerDeals.map((r) => ({ ...r, custom: parseJson(r.custom) })),
+		activities: customerActivities
+	};
 }
 
 // ── Customers ──────────────────────────────────────────────────────────────
@@ -465,6 +769,13 @@ async function handleUpdateEntity(db: Db, input: unknown) {
 // ── Dispatch ───────────────────────────────────────────────────────────────
 
 export type ToolName =
+	| 'search_customers'
+	| 'search_deals'
+	| 'search_activities'
+	| 'summarize_deals'
+	| 'summarize_customers'
+	| 'summarize_activities'
+	| 'get_customer_detail'
 	| 'get_customers'
 	| 'get_customer'
 	| 'create_customer'
@@ -488,6 +799,13 @@ export type ToolName =
 
 export async function dispatchTool(db: Db, name: ToolName, input: unknown) {
 	switch (name) {
+		case 'search_customers':    return handleSearchCustomers(db, input);
+		case 'search_deals':        return handleSearchDeals(db, input);
+		case 'search_activities':   return handleSearchActivities(db, input);
+		case 'summarize_deals':      return handleSummarizeDeals(db, input);
+		case 'summarize_customers':  return handleSummarizeCustomers(db, input);
+		case 'summarize_activities': return handleSummarizeActivities(db, input);
+		case 'get_customer_detail': return handleGetCustomerDetail(db, input);
 		case 'get_customers':      return handleGetCustomers(db, input);
 		case 'get_customer':       return handleGetCustomer(db, input);
 		case 'create_customer':    return handleCreateCustomer(db, input);

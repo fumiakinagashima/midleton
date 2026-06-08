@@ -67,7 +67,6 @@
 
 ### システムプロンプトの改善
 - [x] コンポーネント仕様をプロンプトに反映（form / table / actions UI 定義）
-- [ ] 日本語業務用語の扱いルール
 - [ ] 必須フィールドの扱い・バリデーションルール
 
 
@@ -75,22 +74,31 @@
 
 **目標：CRM/SFA として必要なデータ操作を網羅する**
 
+### DB設計方針（決定済み）
+- **2層構成**: 固定コアテーブル（custom JSON カラム付き）＋ユーザー定義エンティティ（メタ＋JSON）
+- コアテーブル: `customers` / `contacts` / `deals` / `activities`
+- ユーザー定義: `entity_types` / `entity_fields` / `entities`
+
 ### スキーマ拡張
-- [ ] `contacts`（担当者）テーブル
-- [ ] `deals`（案件）テーブル
-- [ ] `activities`（活動履歴）テーブル
-- [ ] テーブル間のリレーション定義
+- [x] `contacts`（担当者）テーブル
+- [x] `deals`（案件）テーブル
+- [x] `activities`（活動履歴）テーブル
+- [x] テーブル間のリレーション定義
+- [x] `entity_types` / `entity_fields` / `entities`（ユーザー定義エンティティ）
+- [x] `customers` に `custom` JSON カラム追加
+- [x] Drizzle マイグレーション作成（`0001_phase3_schema.sql`）
 
 ### MCPツール追加
-- [ ] 更新系ツール（`update_customer` 等）
-- [ ] 削除系ツール（論理削除）
-- [ ] 検索・フィルタ系ツール（日付範囲・ステータス等）
-- [ ] 集計系ツール（件数・合計等）
+- [x] 更新系ツール（`update_customer`, `update_contact`, `update_deal`, `update_entity`）
+- [x] 削除系ツール（`delete_customer`）
+- [x] 検索・フィルタ系ツール（名前・ステータス・顧客ID等）
+- [x] ユーザー定義エンティティ操作ツール（`list_entity_types`, `create_entity_type`, `add_entity_field`, `get_entities`, `create_entity`, `update_entity`）
+- [x] 集計系ツール（件数・合計等）（`summarize_deals`, `summarize_customers`, `summarize_activities`）
 
 ### ユースケース追加
 - [ ] 「今月完了した案件一覧」→ Table 表示
 - [ ] 「この顧客の活動履歴を見せて」→ Timeline 表示
-- [ ] 「担当者を変更したい」→ Form 表示 → 更新
+- [ ] 「在庫管理テーブルを作って」→ ユーザー定義エンティティ作成
 
 
 ## フェーズ4：設定・テンプレート画面
