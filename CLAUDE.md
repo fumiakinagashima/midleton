@@ -37,6 +37,20 @@ midleton/
 └── CLAUDE.md
 ```
 
+## 仕様
+
+### i18n
+- 将来の多言語対応を考慮し、表示文字列はすべて i18n リソースから参照する
+- デフォルト言語は日本語（`ja`）
+- ライブラリは `paraglide-js`（`@inlang/paraglide-sveltekit`）を使用
+- メッセージファイルは `messages/` ディレクトリで管理
+
+### テーマ
+- ダークモード・ライトモード・システム（OS 設定に追従）の3択
+- CSS カスタムプロパティ（`--color-*` 等）でトークンを定義し、`data-theme` 属性で切り替える
+- ユーザー設定は `localStorage` に保存する
+- システムは `prefers-color-scheme` メディアクエリに追従する
+
 ## 開発ルール
 
 - UIコンポーネントは `src/lib/components/` に集約する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
