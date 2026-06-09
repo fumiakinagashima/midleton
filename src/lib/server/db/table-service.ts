@@ -67,6 +67,8 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 				key: 'status', label: 'ステータス', type: 'select', listable: true,
 				options: [{ label: '商談中', value: 'open' }, { label: '受注', value: 'won' }, { label: '失注', value: 'lost' }]
 			},
+			{ key: 'plannedStart', label: '開始予定日', type: 'date' },
+			{ key: 'plannedEnd', label: '終了予定日', type: 'date' },
 			{ key: 'notes', label: '備考', type: 'textarea' }
 		]
 	},
@@ -99,7 +101,7 @@ export const CORE_TABLE_INFO = CORE_TABLE_BASE;
 const CORE_COLUMN_KEYS: Record<string, string[]> = {
 	customers: ['name', 'contactName', 'email', 'phone', 'address', 'status', 'notes'],
 	contacts: ['customerId', 'name', 'email', 'phone', 'role', 'notes'],
-	deals: ['customerId', 'title', 'amount', 'status', 'notes'],
+	deals: ['customerId', 'title', 'amount', 'status', 'plannedStart', 'plannedEnd', 'notes'],
 	activities: ['entityType', 'entityId', 'type', 'content']
 };
 
@@ -226,7 +228,8 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 		return (await db.select().from(deals).orderBy(desc(deals.createdAt)).limit(limit))
 			.map(d => ({
 				id: d.id, customerId: d.customerId, title: d.title, amount: d.amount,
-				status: d.status, notes: d.notes,
+				status: d.status, plannedStart: d.plannedStart, plannedEnd: d.plannedEnd,
+				notes: d.notes,
 				...(JSON.parse(d.custom ?? '{}') as RecordRow),
 				createdAt: toTs(d.createdAt), updatedAt: toTs(d.updatedAt)
 			}));
@@ -280,7 +283,8 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		if (!d) return null;
 		return {
 			id: d.id, customerId: d.customerId, title: d.title, amount: d.amount,
-			status: d.status, notes: d.notes,
+			status: d.status, plannedStart: d.plannedStart, plannedEnd: d.plannedEnd,
+			notes: d.notes,
 			...(JSON.parse(d.custom ?? '{}') as RecordRow),
 			createdAt: toTs(d.createdAt), updatedAt: toTs(d.updatedAt)
 		};
@@ -334,6 +338,7 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 		await db.insert(deals).values({
 			id, customerId: String(data.customerId ?? ''), title: String(data.title ?? ''),
 			amount: n('amount'), status: (data.status as 'open' | 'won' | 'lost') ?? 'open',
+			plannedStart: s('plannedStart'), plannedEnd: s('plannedEnd'),
 			notes: s('notes'), custom: JSON.stringify(customData)
 		});
 		return (await getRecord(db, 'deals', id))!;
@@ -397,6 +402,8 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 			...(data.title != null ? { title: String(data.title) } : {}),
 			amount: n('amount'),
 			...(data.status != null ? { status: data.status as 'open' | 'won' | 'lost' } : {}),
+			...(data.plannedStart !== undefined ? { plannedStart: s('plannedStart') } : {}),
+			...(data.plannedEnd !== undefined ? { plannedEnd: s('plannedEnd') } : {}),
 			notes: s('notes'), custom: JSON.stringify(mergedCustom), updatedAt: new Date()
 		}).where(eq(deals.id, id));
 		return (await getRecord(db, 'deals', id))!;

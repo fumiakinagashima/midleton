@@ -48,6 +48,9 @@
 			<span>{info?.label ?? type}</span>
 		</div>
 		<div class="header-actions">
+			{#if type === 'deals'}
+				<a href="/database/{type}/gantt" class="btn-schema">ガントチャート</a>
+			{/if}
 			<a href="/database/{type}/schema" class="btn-schema">スキーマ編集</a>
 			<a href="/database/{type}/new" class="btn-primary">+ 新規作成</a>
 		</div>
