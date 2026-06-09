@@ -1,9 +1,10 @@
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { approvalRequests } from './schema';
 import type { Db } from '.';
 
 export type ApprovalStep = {
 	step: number;
+	accountId?: string;
 	approver: string;
 	email?: string;
 	role?: string;
@@ -12,39 +13,55 @@ export type ApprovalStep = {
 	acted_at: string | null;
 };
 
+export type Attachment = {
+	name: string;
+	mimeType: string;
+	size: number;
+	data: string; // base64
+};
+
+export type AttachmentMeta = Omit<Attachment, 'data'>;
+
 export type ApprovalRow = {
 	id: string;
 	title: string;
-	type: string;
-	entityType: string | null;
-	entityId: string | null;
 	status: 'pending' | 'approved' | 'rejected' | 'cancelled';
 	submittedBy: string;
-	data: Record<string, unknown>;
+	content: string;
 	route: ApprovalStep[];
+	attachments: Attachment[];
 	createdAt: Date;
 	updatedAt: Date;
 };
 
-function parseRoute(raw: string): ApprovalStep[] {
-	try { return JSON.parse(raw) ?? []; } catch { return []; }
+export type ApprovalListRow = Omit<ApprovalRow, 'attachments'> & {
+	attachments: AttachmentMeta[];
+};
+
+function parseJson<T>(raw: string, fallback: T): T {
+	try { return JSON.parse(raw) ?? fallback; } catch { return fallback; }
 }
-function parseData(raw: string): Record<string, unknown> {
-	try { return JSON.parse(raw) ?? {}; } catch { return {}; }
-}
+
 function toRow(r: typeof approvalRequests.$inferSelect): ApprovalRow {
+	const data = parseJson<Record<string, unknown>>(r.data, {});
 	return {
 		id: r.id,
 		title: r.title,
-		type: r.type,
-		entityType: r.entityType,
-		entityId: r.entityId,
 		status: r.status as ApprovalRow['status'],
 		submittedBy: r.submittedBy,
-		data: parseData(r.data),
-		route: parseRoute(r.route),
+		content: String(data.content ?? ''),
+		route: parseJson<ApprovalStep[]>(r.route, []),
+		attachments: parseJson<Attachment[]>(r.attachments, []),
 		createdAt: r.createdAt,
 		updatedAt: r.updatedAt
+	};
+}
+
+function toListRow(r: typeof approvalRequests.$inferSelect): ApprovalListRow {
+	const full = toRow(r);
+	return {
+		...full,
+		attachments: full.attachments.map(({ data: _data, ...meta }) => meta)
 	};
 }
 
@@ -57,8 +74,8 @@ function computeStatus(route: ApprovalStep[]): ApprovalRow['status'] {
 
 export async function listApprovals(
 	db: Db,
-	filters?: { status?: string[]; type?: string }
-): Promise<ApprovalRow[]> {
+	filters?: { status?: string[] }
+): Promise<ApprovalListRow[]> {
 	const rows = await db
 		.select()
 		.from(approvalRequests)
@@ -67,10 +84,9 @@ export async function listApprovals(
 	return rows
 		.filter(r => {
 			if (filters?.status?.length && !filters.status.includes(r.status)) return false;
-			if (filters?.type && r.type !== filters.type) return false;
 			return true;
 		})
-		.map(toRow);
+		.map(toListRow);
 }
 
 export async function getApproval(db: Db, id: string): Promise<ApprovalRow | null> {
@@ -83,12 +99,10 @@ export async function getApproval(db: Db, id: string): Promise<ApprovalRow | nul
 
 export type CreateApprovalInput = {
 	title: string;
-	type: string;
-	submittedBy: string;
-	entityType?: string;
-	entityId?: string;
-	data?: Record<string, unknown>;
-	route: Array<{ step: number; approver: string; email?: string; role?: string }>;
+	submittedBy?: string;
+	content?: string;
+	route: Array<{ step: number; accountId?: string; approver: string; email?: string; role?: string }>;
+	attachments?: Attachment[];
 };
 
 export async function createApproval(db: Db, input: CreateApprovalInput): Promise<ApprovalRow> {
@@ -96,6 +110,7 @@ export async function createApproval(db: Db, input: CreateApprovalInput): Promis
 	const now = new Date();
 	const route: ApprovalStep[] = input.route.map(s => ({
 		step: s.step,
+		accountId: s.accountId,
 		approver: s.approver,
 		email: s.email,
 		role: s.role,
@@ -107,12 +122,13 @@ export async function createApproval(db: Db, input: CreateApprovalInput): Promis
 	await db.insert(approvalRequests).values({
 		id,
 		title: input.title,
-		type: input.type,
-		submittedBy: input.submittedBy,
-		entityType: input.entityType ?? null,
-		entityId: input.entityId ?? null,
-		data: JSON.stringify(input.data ?? {}),
+		type: '申請',
+		submittedBy: input.submittedBy ?? '',
+		entityType: null,
+		entityId: null,
+		data: JSON.stringify({ content: input.content ?? '' }),
 		route: JSON.stringify(route),
+		attachments: JSON.stringify(input.attachments ?? []),
 		status: 'pending',
 		createdAt: now,
 		updatedAt: now
@@ -146,11 +162,7 @@ export async function updateApprovalStep(
 
 	await db
 		.update(approvalRequests)
-		.set({
-			route: JSON.stringify(route),
-			status: newStatus,
-			updatedAt: new Date()
-		})
+		.set({ route: JSON.stringify(route), status: newStatus, updatedAt: new Date() })
 		.where(eq(approvalRequests.id, id));
 
 	return (await getApproval(db, id))!;

@@ -1,44 +1,106 @@
 <script lang="ts">
-	type RouteEntry = { step: number; approver: string; email: string; role: string };
+	import { onMount } from 'svelte';
+	import type { Attachment } from '$lib/server/db/approval-service';
+	import type { AccountRow } from '$lib/server/db/account-service';
+
+	const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1MB
+
+	type RouteEntry = {
+		step: number;
+		accountId: string;   // '' = manual
+		approver: string;
+		email: string;
+		role: string;
+	};
 
 	let title = $state('');
-	let type = $state('');
-	let submittedBy = $state('');
-	let entityType = $state('');
-	let entityId = $state('');
-	let dataText = $state('{}');
-
+	let content = $state('');
 	let routeEntries = $state<RouteEntry[]>([
-		{ step: 1, approver: '', email: '', role: '' }
+		{ step: 1, accountId: '', approver: '', email: '', role: '' }
 	]);
+	let attachments = $state<Attachment[]>([]);
+	let accountOptions = $state<AccountRow[]>([]);
+
+	onMount(async () => {
+		const res = await fetch('/api/accounts');
+		if (res.ok) accountOptions = (await res.json() as { rows: AccountRow[] }).rows;
+	});
+
+	function selectAccount(entry: RouteEntry, id: string) {
+		entry.accountId = id;
+		if (id) {
+			const acc = accountOptions.find(a => a.id === id);
+			if (acc) {
+				entry.approver = acc.name;
+				entry.email = acc.email ?? '';
+				entry.role = acc.role ?? '';
+			}
+		} else {
+			entry.approver = '';
+			entry.email = '';
+			entry.role = '';
+		}
+		routeEntries = [...routeEntries]; // trigger reactivity
+	}
 
 	let saving = $state(false);
 	let error = $state('');
+	let fileError = $state('');
+
+	// TODO(auth): submittedBy をログインセッションの accountId から取得する（現状は localStorage で代替）
+	const submittedBy = typeof localStorage !== 'undefined'
+		? (localStorage.getItem('userName') ?? '')
+		: '';
 
 	function addStep() {
 		const maxStep = Math.max(...routeEntries.map(r => r.step), 0);
-		routeEntries = [...routeEntries, { step: maxStep + 1, approver: '', email: '', role: '' }];
+		routeEntries = [...routeEntries, { step: maxStep + 1, accountId: '', approver: '', email: '', role: '' }];
 	}
 
 	function removeStep(i: number) {
 		routeEntries = routeEntries.filter((_, idx) => idx !== i);
 	}
 
-	async function submit() {
-		if (!title.trim() || !type.trim() || !submittedBy.trim()) {
-			error = 'タイトル・種別・申請者は必須です。';
-			return;
+	async function handleFiles(e: Event) {
+		fileError = '';
+		const files = (e.target as HTMLInputElement).files;
+		if (!files) return;
+		for (const file of files) {
+			if (file.size > MAX_FILE_BYTES) {
+				fileError = `${file.name} は1MBを超えています。`;
+				continue;
+			}
+			const data = await toBase64(file);
+			attachments = [...attachments, { name: file.name, mimeType: file.type, size: file.size, data }];
 		}
-		if (routeEntries.some(r => !r.approver.trim())) {
-			error = '承認者名をすべて入力してください。';
-			return;
-		}
+		(e.target as HTMLInputElement).value = '';
+	}
 
-		let data: Record<string, unknown> = {};
-		try { data = JSON.parse(dataText || '{}'); } catch {
-			error = '申請内容のJSONが不正です。';
-			return;
-		}
+	function removeAttachment(i: number) {
+		attachments = attachments.filter((_, idx) => idx !== i);
+	}
+
+	function toBase64(file: File): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => {
+				const result = reader.result as string;
+				resolve(result.split(',')[1]);
+			};
+			reader.onerror = reject;
+			reader.readAsDataURL(file);
+		});
+	}
+
+	function fmtSize(bytes: number): string {
+		if (bytes < 1024) return `${bytes} B`;
+		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+	}
+
+	async function submit() {
+		if (!title.trim()) { error = 'タイトルは必須です。'; return; }
+		if (routeEntries.some(r => !r.approver.trim())) { error = '承認者名をすべて入力してください。'; return; }
 
 		saving = true;
 		error = '';
@@ -48,13 +110,12 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					title: title.trim(),
-					type: type.trim(),
-					submittedBy: submittedBy.trim(),
-					entityType: entityType.trim() || undefined,
-					entityId: entityId.trim() || undefined,
-					data,
+					submittedBy: submittedBy || undefined,
+					content: content.trim() || undefined,
+					attachments,
 					route: routeEntries.map(r => ({
 						step: r.step,
+						accountId: r.accountId || undefined,
 						approver: r.approver.trim(),
 						email: r.email.trim() || undefined,
 						role: r.role.trim() || undefined
@@ -86,75 +147,85 @@
 	</header>
 
 	<form class="form" onsubmit={(e) => { e.preventDefault(); submit(); }}>
-		<!-- Basic info -->
-		<section class="section">
-			<h2 class="section-title">基本情報</h2>
-			<div class="field-group">
-				<div class="field">
-					<label>タイトル <span class="req">*</span></label>
-					<input type="text" bind:value={title} placeholder="例: 値引き申請（ABC社）" />
-				</div>
-				<div class="field">
-					<label>種別 <span class="req">*</span></label>
-					<input type="text" bind:value={type} placeholder="例: 値引き申請、契約承認、経費精算" />
-				</div>
-				<div class="field">
-					<label>申請者 <span class="req">*</span></label>
-					<input type="text" bind:value={submittedBy} placeholder="例: 田中太郎" />
-				</div>
-			</div>
-		</section>
 
-		<!-- Entity link (optional) -->
-		<section class="section">
-			<h2 class="section-title">関連エンティティ（任意）</h2>
-			<div class="field-group two-col">
-				<div class="field">
-					<label>エンティティ種別</label>
-					<input type="text" bind:value={entityType} placeholder="例: deals, customers" />
-				</div>
-				<div class="field">
-					<label>エンティティID</label>
-					<input type="text" bind:value={entityId} placeholder="UUID" />
-				</div>
-			</div>
-		</section>
+		<!-- Title -->
+		<div class="field">
+			<label>タイトル <span class="req">*</span></label>
+			<input type="text" bind:value={title} placeholder="例: ABC社 特別値引き申請" autofocus />
+		</div>
 
-		<!-- Data -->
-		<section class="section">
-			<h2 class="section-title">申請内容（JSON）</h2>
-			<textarea class="json-input" bind:value={dataText} rows="4" placeholder='{"金額": 50000, "理由": "競合対策値引き"}'></textarea>
-		</section>
+		<!-- Content -->
+		<div class="field">
+			<label>申請内容</label>
+			<textarea class="content-input" bind:value={content} rows="5" placeholder="申請の背景・理由・詳細を記入してください。"></textarea>
+		</div>
+
+		<!-- Attachments -->
+		<div class="field">
+			<label>添付ファイル <span class="limit">（1ファイル最大1MB）</span></label>
+			<label class="file-drop">
+				<input type="file" multiple onchange={handleFiles} class="file-hidden" />
+				<span class="file-icon">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+						<polyline points="17 8 12 3 7 8"/>
+						<line x1="12" y1="3" x2="12" y2="15"/>
+					</svg>
+				</span>
+				<span>クリックまたはドラッグしてファイルを追加</span>
+			</label>
+			{#if fileError}
+				<p class="file-error">{fileError}</p>
+			{/if}
+			{#if attachments.length > 0}
+				<ul class="file-list">
+					{#each attachments as att, i}
+						<li class="file-item">
+							<span class="file-name">{att.name}</span>
+							<span class="file-size">{fmtSize(att.size)}</span>
+							<button type="button" class="file-remove" onclick={() => removeAttachment(i)}>✕</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
 
 		<!-- Route -->
-		<section class="section">
-			<div class="section-header">
-				<h2 class="section-title">承認ルート <span class="req">*</span></h2>
-				<button type="button" class="btn-add-step" onclick={addStep}>+ ステップ追加</button>
+		<div class="field">
+			<div class="field-header">
+				<label>承認ルート <span class="req">*</span></label>
+				<button type="button" class="btn-add-step" onclick={addStep}>+ 承認者追加</button>
 			</div>
 			<div class="route-list">
 				{#each routeEntries as entry, i}
 					<div class="route-entry">
 						<div class="step-num-wrap">
-							<label class="step-num-label">Step</label>
-							<input
-								type="number"
-								class="step-num-input"
-								bind:value={entry.step}
-								min="1"
-							/>
+							<span class="step-label">Step</span>
+							<input type="number" class="step-num-input" bind:value={entry.step} min="1" />
 						</div>
-						<div class="field">
-							<label>承認者名 <span class="req">*</span></label>
-							<input type="text" bind:value={entry.approver} placeholder="田中部長" />
-						</div>
-						<div class="field">
-							<label>役職</label>
-							<input type="text" bind:value={entry.role} placeholder="営業部長" />
-						</div>
-						<div class="field">
-							<label>メール</label>
-							<input type="email" bind:value={entry.email} placeholder="tanaka@example.com" />
+						<div class="sub-field sub-field-wide">
+							<label>承認者 <span class="req">*</span></label>
+							{#if accountOptions.length > 0}
+								<select
+									class="account-select"
+									value={entry.accountId}
+									onchange={(e) => selectAccount(entry, (e.target as HTMLSelectElement).value)}
+								>
+									<option value="">— 手動入力 —</option>
+									{#each accountOptions as acc}
+										<option value={acc.id}>{acc.name}{acc.role ? `（${acc.role}）` : ''}</option>
+									{/each}
+								</select>
+							{/if}
+							{#if !entry.accountId}
+								<input type="text" bind:value={entry.approver} placeholder="承認者名を入力" class="manual-input" />
+							{:else}
+								<div class="account-preview">
+									<span class="acc-name">{entry.approver}</span>
+									{#if entry.role}<span class="acc-meta">{entry.role}</span>{/if}
+									{#if entry.email}<span class="acc-meta">{entry.email}</span>{/if}
+								</div>
+							{/if}
 						</div>
 						{#if routeEntries.length > 1}
 							<button type="button" class="btn-remove" onclick={() => removeStep(i)}>✕</button>
@@ -162,11 +233,11 @@
 					</div>
 				{/each}
 			</div>
-			<p class="hint">同じStep番号にすると並列承認になります。</p>
-		</section>
+			<p class="hint">同じStep番号にすると並列承認（AND）になります。</p>
+		</div>
 
 		{#if error}
-			<p class="error">{error}</p>
+			<p class="error-msg">{error}</p>
 		{/if}
 
 		<div class="form-actions">
@@ -186,7 +257,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 20px;
-		max-width: 760px;
+		max-width: 720px;
 	}
 
 	.page-header { display: flex; align-items: center; }
@@ -202,29 +273,15 @@
 	.sep { color: var(--color-text-muted); }
 	.breadcrumb span:last-child { font-weight: 600; }
 
-	.form { display: flex; flex-direction: column; gap: 24px; }
+	.form { display: flex; flex-direction: column; gap: 20px; }
 
-	.section { display: flex; flex-direction: column; gap: 12px; }
+	.field { display: flex; flex-direction: column; gap: 6px; }
 
-	.section-header {
+	.field-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 	}
-
-	.section-title {
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--color-text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin: 0;
-	}
-
-	.field-group { display: flex; flex-direction: column; gap: 12px; }
-	.field-group.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-	.field { display: flex; flex-direction: column; gap: 4px; }
 
 	label {
 		font-size: 0.8125rem;
@@ -233,9 +290,10 @@
 	}
 
 	.req { color: var(--color-danger, #dc2626); }
+	.limit { font-weight: 400; opacity: 0.7; }
 
 	input[type="text"], input[type="email"], input[type="number"] {
-		padding: 8px 10px;
+		padding: 9px 11px;
 		border: 1px solid var(--color-border);
 		border-radius: 6px;
 		background: var(--color-background);
@@ -245,25 +303,81 @@
 	}
 	input:focus { outline: none; border-color: var(--color-primary); }
 
-	.json-input {
+	.content-input {
 		padding: 10px 12px;
 		border: 1px solid var(--color-border);
 		border-radius: 6px;
 		background: var(--color-background);
 		color: var(--color-text);
-		font-size: 0.875rem;
-		font-family: ui-monospace, monospace;
+		font-size: 0.9375rem;
+		font-family: inherit;
 		resize: vertical;
+		line-height: 1.6;
 	}
-	.json-input:focus { outline: none; border-color: var(--color-primary); }
+	.content-input:focus { outline: none; border-color: var(--color-primary); }
+
+	/* File attachment */
+	.file-drop {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8px;
+		padding: 24px;
+		border: 2px dashed var(--color-border);
+		border-radius: 8px;
+		cursor: pointer;
+		color: var(--color-text-muted);
+		font-size: 0.875rem;
+		transition: border-color 0.15s, background 0.15s;
+		font-weight: 400;
+	}
+	.file-drop:hover {
+		border-color: var(--color-primary);
+		background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+		color: var(--color-text);
+	}
+	.file-hidden { display: none; }
+
+	.file-error { font-size: 0.8125rem; color: var(--color-danger, #dc2626); margin: 0; }
+
+	.file-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.file-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 7px 10px;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		font-size: 0.875rem;
+	}
+	.file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.file-size { flex-shrink: 0; color: var(--color-text-muted); font-size: 0.8125rem; }
+	.file-remove {
+		background: none;
+		border: none;
+		color: var(--color-text-muted);
+		cursor: pointer;
+		padding: 0;
+		font-size: 0.875rem;
+		flex-shrink: 0;
+	}
+	.file-remove:hover { color: var(--color-danger, #dc2626); }
 
 	/* Route builder */
-	.route-list { display: flex; flex-direction: column; gap: 10px; }
+	.route-list { display: flex; flex-direction: column; gap: 8px; }
 
 	.route-entry {
 		display: flex;
 		align-items: flex-end;
-		gap: 10px;
+		gap: 8px;
 		padding: 12px 14px;
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
@@ -273,19 +387,14 @@
 	.step-num-wrap {
 		display: flex;
 		flex-direction: column;
+		align-items: center;
 		gap: 4px;
 		flex-shrink: 0;
 	}
-
-	.step-num-label {
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--color-text-muted);
-	}
-
+	.step-label { font-size: 0.75rem; font-weight: 500; color: var(--color-text-muted); }
 	.step-num-input {
-		width: 56px;
-		padding: 8px 8px;
+		width: 52px;
+		padding: 8px 6px;
 		border: 1px solid var(--color-border);
 		border-radius: 6px;
 		background: var(--color-background);
@@ -296,10 +405,47 @@
 	}
 	.step-num-input:focus { outline: none; border-color: var(--color-primary); }
 
-	.route-entry .field { flex: 1; }
+	.sub-field { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+	.sub-field-wide { flex: 2; }
+
+	.account-select {
+		padding: 8px 10px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: var(--color-background);
+		color: var(--color-text);
+		font-size: 0.9375rem;
+		font-family: inherit;
+		cursor: pointer;
+	}
+	.account-select:focus { outline: none; border-color: var(--color-primary); }
+
+	.manual-input {
+		padding: 8px 10px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: var(--color-background);
+		color: var(--color-text);
+		font-size: 0.9375rem;
+		font-family: inherit;
+	}
+	.manual-input:focus { outline: none; border-color: var(--color-primary); }
+
+	.account-preview {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 10px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: color-mix(in srgb, var(--color-primary) 5%, var(--color-background));
+		font-size: 0.875rem;
+	}
+	.acc-name { font-weight: 500; }
+	.acc-meta { color: var(--color-text-muted); font-size: 0.8125rem; }
 
 	.btn-add-step {
-		padding: 5px 12px;
+		padding: 4px 10px;
 		background: none;
 		border: 1px solid var(--color-border);
 		border-radius: 6px;
@@ -310,21 +456,19 @@
 	.btn-add-step:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 	.btn-remove {
-		padding: 6px 8px;
+		padding: 6px 6px;
 		background: none;
 		border: none;
 		color: var(--color-text-muted);
 		cursor: pointer;
 		font-size: 0.875rem;
 		flex-shrink: 0;
-		align-self: flex-end;
-		margin-bottom: 2px;
 	}
 	.btn-remove:hover { color: var(--color-danger, #dc2626); }
 
 	.hint { font-size: 0.8125rem; color: var(--color-text-muted); margin: 0; }
 
-	.error {
+	.error-msg {
 		padding: 10px 14px;
 		background: color-mix(in srgb, #dc2626 10%, transparent);
 		border: 1px solid #dc2626;
@@ -348,7 +492,6 @@
 		color: var(--color-text-muted);
 		font-size: 0.9375rem;
 		text-decoration: none;
-		cursor: pointer;
 	}
 	.btn-cancel:hover { border-color: var(--color-text-muted); color: var(--color-text); }
 

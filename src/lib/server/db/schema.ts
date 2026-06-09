@@ -152,6 +152,21 @@ export const integrations = sqliteTable('integrations', {
 		.default(sql`(unixepoch())`)
 });
 
+export const accounts = sqliteTable('accounts', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	email: text('email'),
+	role: text('role'),
+	permission: text('permission', { enum: ['general', 'admin'] }).notNull().default('general'),
+	passwordHash: text('password_hash'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export const approvalRequests = sqliteTable('approval_requests', {
 	id: text('id').primaryKey(),
 	title: text('title').notNull(),
@@ -164,6 +179,7 @@ export const approvalRequests = sqliteTable('approval_requests', {
 	submittedBy: text('submitted_by').notNull().default(''),
 	data: text('data').notNull().default('{}'),
 	route: text('route').notNull().default('[]'),
+	attachments: text('attachments').notNull().default('[]'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`),
@@ -184,6 +200,7 @@ export type EntityType = typeof entityTypes.$inferSelect;
 export type EntityField = typeof entityFields.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
 export type CoreCustomField = typeof coreCustomFields.$inferSelect;
+export type Account = typeof accounts.$inferSelect;
 export type Integration = typeof integrations.$inferSelect;
 export type NewIntegration = typeof integrations.$inferInsert;
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;

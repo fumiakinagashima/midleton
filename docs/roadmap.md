@@ -139,12 +139,29 @@
 - [ ] テンプレートを AI が選択できるように MCP ツールに追加
 
 
-## フェーズ5（追加）：案件ガントチャート
+## フェーズ4（追加）：ガントチャート・申請管理・アカウント
 
+### 案件ガントチャート
 - [x] `deals` テーブルに `planned_start` / `planned_end` カラム追加（migration 0004）
 - [x] `GanttChart.svelte` コンポーネント実装（4段階ズーム、ドラッグ移動・リサイズ、今日ライン、ステータス色分け）
+- [x] 空行クリック＆ドラッグでバー生成（期間未設定案件への日程追加）
 - [x] `/database/deals/gantt` ルート追加
-- [x] 案件リストページに「ガントチャート」ボタン追加
+- [x] チャットからガントチャート表示（`<ui type="gantt">` タグ対応）
+
+### 申請管理
+- [x] `approval_requests` テーブル（承認ルート・状況を JSON で一元管理、migration 0005）
+- [x] `attachments` カラム追加（base64、1MBまで、migration 0006）
+- [x] `/database/approvals` 一覧・詳細・新規作成 UI
+- [x] 承認ルートステッパー UI（承認・否決ボタン、コメント入力）
+- [x] MCP ツール（`list/get/create_approval`, `update_approval_step`, `cancel_approval`）
+- [x] 並列承認は AND ロジック（同 step 番号の全員が承認で通過）
+
+### アカウント管理
+- [x] `accounts` テーブル（名前・役職・メール・権限・password_hash、migration 0007-0008）
+- [x] 権限: `general | admin`
+- [x] `/database/accounts` インライン編集 UI
+- [x] 申請フォームの承認者選択をアカウント一覧から選べるように対応
+- [x] テスト用アカウント5件投入済み（パスワード: `password`、SHA-256ハッシュ保存）
 
 ## フェーズ5：定期実行・品質向上
 
@@ -158,9 +175,14 @@
 
 ### 品質・セキュリティ
 - [ ] 認証・認可（ログイン・セッション管理）
+  - `accounts` テーブル・`password_hash` カラムは実装済み（migration 0007-0008）
+  - 現状の `password_hash` は SHA-256（仮）→ 本実装時に bcrypt/argon2 に移行すること
+  - セッション管理は Cloudflare KV or D1 で実装予定
+  - `permission: general | admin` によるルートガード実装
+  - `submittedBy` を `accountId` FK に置き換えることも検討
 - [ ] レート制限（AI API の過剰コール防止）
 - [ ] エラーハンドリングの整備
-- [ ] Cloudflare R2 へのファイル添付対応
+- [ ] Cloudflare R2 へのファイル添付対応（現状は base64 で D1 に直接保存、1MB 上限）
 
 ### デモ準備
 - [ ] デモ用シードデータ作成

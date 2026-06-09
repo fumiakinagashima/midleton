@@ -69,7 +69,17 @@ midleton/
 定型的な CRUD や設定はノーAI の管理画面を用意し、APIコスト削減・操作性向上を両立する。
 
 - `/database` — データ管理（コアテーブル＋カスタムテーブルの CRUD、スキーマ定義）
+- `/database/approvals` — 申請管理（承認ルート・ステップ操作）
+- `/database/accounts` — アカウント管理（権限・パスワード）
 - `/settings` — アプリ設定・外部API連携管理
+
+## 認証（フェーズ5で実装予定）
+
+- `accounts` テーブルに `permission`（`general | admin`）・`password_hash` を実装済み
+- 現状の `password_hash` は SHA-256（仮）。本実装時は **bcrypt または argon2 に移行**すること
+- テスト用アカウント5件のパスワードはすべて `password`
+- セッション管理は Cloudflare KV または D1 で実装予定
+- 認証実装までは全ルートが未保護。フェーズ5で SvelteKit hooks（`handle`）でガードする
 
 ## Git ルール
 

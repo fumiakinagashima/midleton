@@ -517,11 +517,8 @@ export const tools: Tool[] = [
 			type: 'object',
 			properties: {
 				title: { type: 'string', description: '申請タイトル' },
-				type: { type: 'string', description: '申請種別（例: 値引き申請、契約承認）' },
-				submitted_by: { type: 'string', description: '申請者名' },
-				entity_type: { type: 'string', description: 'リンク先エンティティ種別（deals/customers等）' },
-				entity_id: { type: 'string', description: 'リンク先エンティティID' },
-				data: { type: 'object', description: '申請内容（自由なキー・バリュー）' },
+				submitted_by: { type: 'string', description: '申請者名（任意）' },
+				content: { type: 'string', description: '申請内容（テキスト）' },
 				route: {
 					type: 'array',
 					description: '承認ルート。step が同じ番号は並列承認',
@@ -537,7 +534,7 @@ export const tools: Tool[] = [
 					}
 				}
 			},
-			required: ['title', 'type', 'submitted_by', 'route']
+			required: ['title', 'route']
 		}
 	},
 	{

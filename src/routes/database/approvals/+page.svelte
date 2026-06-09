@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { ApprovalRow } from '$lib/server/db/approval-service';
+	import type { ApprovalListRow } from '$lib/server/db/approval-service';
+	import * as m from '$lib/paraglide/messages.js';
 
-	let rows = $state<ApprovalRow[]>([]);
+	let rows = $state<ApprovalListRow[]>([]);
 	let loading = $state(true);
 
 	const STATUS_LABELS: Record<string, string> = {
-		pending: '審査中', approved: '承認済', rejected: '否決', cancelled: '取消'
+		pending: m.approval_status_pending(), approved: m.approval_status_approved(),
+		rejected: m.approval_status_rejected(), cancelled: m.approval_status_cancelled()
 	};
 	const STATUS_COLORS: Record<string, string> = {
 		pending: '#ca8a04', approved: '#16a34a', rejected: '#dc2626', cancelled: '#6b7280'
@@ -14,7 +16,7 @@
 
 	onMount(async () => {
 		const res = await fetch('/api/approvals');
-		if (res.ok) rows = (await res.json() as { rows: ApprovalRow[] }).rows;
+		if (res.ok) rows = (await res.json() as { rows: ApprovalListRow[] }).rows;
 		loading = false;
 	});
 
@@ -58,7 +60,6 @@
 				<thead>
 					<tr>
 						<th>タイトル</th>
-						<th>種別</th>
 						<th>ステータス</th>
 						<th>現在の承認者</th>
 						<th>申請者</th>
@@ -70,7 +71,6 @@
 					{#each rows as row}
 						<tr onclick={() => location.href = `/database/approvals/${row.id}`} class="clickable-row">
 							<td class="title-cell">{row.title}</td>
-							<td><span class="type-badge">{row.type}</span></td>
 							<td>
 								<span class="status-badge" style="color:{STATUS_COLORS[row.status]};border-color:{STATUS_COLORS[row.status]}">
 									{STATUS_LABELS[row.status] ?? row.status}
