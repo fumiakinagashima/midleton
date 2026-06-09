@@ -6,6 +6,8 @@ import { chat } from '$lib/server/ai/client';
 import { mockChat } from '$lib/server/ai/mock';
 import { createDb } from '$lib/server/db';
 import { dispatchTool } from '$lib/server/mcp';
+import { checkRateLimit } from '$lib/server/rate-limit';
+import { errors } from '$lib/server/errors';
 import type { Message, MessageContent } from '$lib/types/chat';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
@@ -14,6 +16,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	if (!platform?.env?.DB) {
 		return json({ error: 'D1データベースが設定されていません。wrangler dev で起動してください。' }, { status: 500 });
 	}
+
+	const ip = request.headers.get('CF-Connecting-IP') ?? request.headers.get('X-Forwarded-For') ?? 'unknown';
+	const rl = await checkRateLimit(platform.env.KV, ip);
+	if (!rl.allowed) return errors.tooManyRequests(rl.retryAfter ?? 60);
 
 	if (!mockMode) {
 		const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
@@ -28,8 +34,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		tool?: string;
 		data?: Record<string, string>;
 		history?: Message[];
-		model?: string;
-		apiKey?: string;
 	};
 
 	// フォーム送信（tool + data）
@@ -63,7 +67,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return json({ contents: mockChat() });
 	}
 
-	const apiKey = body.apiKey || (platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '');
+	const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
+	const model = platform?.env?.AI_MODEL ?? env.AI_MODEL ?? undefined;
 	const history: MessageParam[] = (body.history ?? [])
 		.filter((m) => m.role === 'user' || m.role === 'assistant')
 		.flatMap((m): MessageParam[] => {
@@ -78,6 +83,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 	history.push({ role: 'user', content: userMessage });
 
-	const contents = await chat(db, apiKey, history, body.model);
+	const contents = await chat(db, apiKey, history, model);
 	return json({ contents });
 };

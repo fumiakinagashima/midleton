@@ -30,6 +30,15 @@ const toTs = (d: Date | null | undefined): number | null =>
 
 export const CORE_TABLE_NAMES = ['customers', 'contacts', 'deals', 'activities'];
 
+// /database/[type] ルートと衝突する予約済み名
+const RESERVED_NAMES = new Set([
+	...CORE_TABLE_NAMES,
+	'approvals', 'accounts',          // 固定ルート
+	'entity_types', 'entity_fields', 'entities', 'core_custom_fields',
+	'approval_requests', 'approval_attachments', 'integrations', // 物理テーブル名
+	'new', 'schema', 'gantt',         // サブルート名
+]);
+
 const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: FieldDef[] }> = {
 	customers: {
 		id: 'customers', label: '顧客', icon: 'building', isCore: true,
@@ -449,6 +458,14 @@ export type EntityTypeInput = {
 };
 
 export async function createEntityType(db: Db, input: EntityTypeInput): Promise<void> {
+	if (RESERVED_NAMES.has(input.name)) {
+		throw new Error(`テーブル名 "${input.name}" はシステムで予約されています。別の名前を使用してください。`);
+	}
+	const [existing] = await db.select({ name: entityTypes.name }).from(entityTypes).where(eq(entityTypes.name, input.name));
+	if (existing) {
+		throw new Error(`テーブル名 "${input.name}" はすでに使用されています。`);
+	}
+
 	const id = crypto.randomUUID();
 	await db.insert(entityTypes).values({ id, name: input.name, label: input.label, icon: input.icon });
 	for (let i = 0; i < input.fields.length; i++) {

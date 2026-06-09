@@ -44,6 +44,24 @@
 		authConfig: {}
 	});
 
+	// Intermediate variables for authConfig fields (avoids onchange type errors with Textbox)
+	let cfgHeaderName = $state('X-API-Key');
+	let cfgToken = $state('');
+	let cfgUsername = $state('');
+	let cfgPassword = $state('');
+
+	$effect(() => {
+		if (form.authType === 'api_key') {
+			form.authConfig = { headerName: cfgHeaderName, value: cfgToken };
+		} else if (form.authType === 'bearer') {
+			form.authConfig = { value: cfgToken };
+		} else if (form.authType === 'basic') {
+			form.authConfig = { username: cfgUsername, password: cfgPassword };
+		} else {
+			form.authConfig = {};
+		}
+	});
+
 	onMount(async () => {
 		await load();
 	});
@@ -56,6 +74,7 @@
 	function openAdd() {
 		editingId = null;
 		form = { name: '', description: '', baseUrl: '', authType: 'none', authConfig: {} };
+		cfgHeaderName = 'X-API-Key'; cfgToken = ''; cfgUsername = ''; cfgPassword = '';
 		showForm = true;
 	}
 
@@ -68,6 +87,10 @@
 			authType: item.authType,
 			authConfig: { ...item.authConfig }
 		};
+		cfgHeaderName = item.authConfig.headerName ?? 'X-API-Key';
+		cfgToken = item.authConfig.value ?? '';
+		cfgUsername = item.authConfig.username ?? '';
+		cfgPassword = item.authConfig.password ?? '';
 		showForm = true;
 	}
 
@@ -112,9 +135,6 @@
 		await load();
 	}
 
-	function setAuthConfig(key: string, value: string) {
-		form.authConfig = { ...form.authConfig, [key]: value };
-	}
 </script>
 
 <div class="page">
@@ -162,36 +182,13 @@
 				<Select label={m.integrations_auth_type()} bind:value={form.authType} options={AUTH_OPTIONS} />
 
 				{#if form.authType === 'api_key'}
-					<Textbox
-						label={m.integrations_header_name()}
-						value={form.authConfig.headerName ?? 'X-API-Key'}
-						onchange={(e) => setAuthConfig('headerName', (e.target as HTMLInputElement).value)}
-					/>
-					<Textbox
-						label={m.integrations_token()}
-						type="password"
-						value={form.authConfig.value ?? ''}
-						onchange={(e) => setAuthConfig('value', (e.target as HTMLInputElement).value)}
-					/>
+					<Textbox label={m.integrations_header_name()} bind:value={cfgHeaderName} />
+					<Textbox label={m.integrations_token()} type="password" bind:value={cfgToken} />
 				{:else if form.authType === 'bearer'}
-					<Textbox
-						label={m.integrations_token()}
-						type="password"
-						value={form.authConfig.value ?? ''}
-						onchange={(e) => setAuthConfig('value', (e.target as HTMLInputElement).value)}
-					/>
+					<Textbox label={m.integrations_token()} type="password" bind:value={cfgToken} />
 				{:else if form.authType === 'basic'}
-					<Textbox
-						label={m.integrations_username()}
-						value={form.authConfig.username ?? ''}
-						onchange={(e) => setAuthConfig('username', (e.target as HTMLInputElement).value)}
-					/>
-					<Textbox
-						label={m.integrations_password()}
-						type="password"
-						value={form.authConfig.password ?? ''}
-						onchange={(e) => setAuthConfig('password', (e.target as HTMLInputElement).value)}
-					/>
+					<Textbox label={m.integrations_username()} bind:value={cfgUsername} />
+					<Textbox label={m.integrations_password()} type="password" bind:value={cfgPassword} />
 				{/if}
 			</div>
 			<div class="form-actions">
@@ -220,7 +217,7 @@
 	h1 {
 		font-size: 1.25rem;
 		font-weight: 600;
-		margin-bottom: 0;
+		margin-bottom: 32px;
 	}
 
 	.subnav {

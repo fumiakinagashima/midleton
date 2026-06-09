@@ -95,8 +95,8 @@
 			<input type="text" bind:value={addRole} placeholder="役職" class="add-input" />
 			<input type="email" bind:value={addEmail} placeholder="メール" class="add-input" />
 			<select bind:value={addPermission} class="add-select">
-				<option value="general">general</option>
-				<option value="admin">admin</option>
+				<option value="general">一般</option>
+				<option value="admin">管理者</option>
 			</select>
 			<button class="btn-primary" onclick={addAccount} disabled={adding || !addName.trim()}>
 				{adding ? '...' : '登録'}
@@ -128,10 +128,10 @@
 								<td><input type="text" bind:value={editName} class="edit-input" /></td>
 								<td><input type="text" bind:value={editRole} placeholder="役職" class="edit-input" /></td>
 								<td><input type="email" bind:value={editEmail} placeholder="メール" class="edit-input" /></td>
-								<td>
-									<select bind:value={editPermission} class="edit-input">
-										<option value="general">general</option>
-										<option value="admin">admin</option>
+								<td style="white-space: nowrap; width: 1%;">
+									<select bind:value={editPermission} class="edit-input" style="width: auto;">
+										<option value="general">一般</option>
+										<option value="admin">管理者</option>
 									</select>
 								</td>
 								<td class="actions">
@@ -144,9 +144,9 @@
 								<td class="name-cell">{row.name}</td>
 								<td class="muted">{row.role ?? '—'}</td>
 								<td class="muted">{row.email ?? '—'}</td>
-								<td>
+								<td style="white-space: nowrap; width: 1%;">
 									<span class="perm-badge" class:perm-admin={row.permission === 'admin'}>
-										{row.permission}
+										{row.permission === 'admin' ? '管理者' : '一般'}
 									</span>
 								</td>
 								<td class="actions">
@@ -245,6 +245,7 @@
 		border: 1px solid var(--color-border);
 		color: var(--color-text-muted);
 		background: var(--color-surface);
+		white-space: nowrap;
 	}
 	.perm-badge.perm-admin {
 		border-color: var(--color-primary);

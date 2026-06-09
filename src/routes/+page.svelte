@@ -29,13 +29,6 @@
 		return () => window.removeEventListener('storage', handler);
 	});
 
-	function getAiSettings() {
-		return {
-			model: localStorage.getItem('aiModel') ?? undefined,
-			apiKey: localStorage.getItem('apiKey') || undefined
-		};
-	}
-
 	async function scrollToBottom(smooth = false) {
 		await tick();
 		if (!listEl) return;
@@ -76,7 +69,7 @@
 			const res = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ message: text, history: messages, ...getAiSettings() })
+				body: JSON.stringify({ message: text, history: messages })
 			});
 			const data = await res.json() as { contents: MessageContent[] };
 			addAssistantMessage(data.contents);

@@ -2,25 +2,19 @@
 	import '$lib/styles/app.scss';
 	import favicon from '$lib/assets/favicon.svg';
 	import * as m from '$lib/paraglide/messages.js';
-
-	type Theme = 'light' | 'dark' | 'system';
+	import Toast from '$lib/components/ui/Toast.svelte';
+	import { themeStore } from '$lib/stores/theme.svelte';
 
 	let { children } = $props();
 
-	let theme = $state<Theme>(
-		(typeof localStorage !== 'undefined'
-			? (localStorage.getItem('theme') as Theme)
-			: null) ?? 'system'
-	);
-
 	$effect(() => {
 		const root = document.documentElement;
-		if (theme === 'system') {
+		if (themeStore.value === 'system') {
 			root.removeAttribute('data-theme');
 		} else {
-			root.setAttribute('data-theme', theme);
+			root.setAttribute('data-theme', themeStore.value);
 		}
-		localStorage.setItem('theme', theme);
+		localStorage.setItem('theme', themeStore.value);
 	});
 
 	const historyGroups = [
@@ -63,29 +57,6 @@
 		</nav>
 
 		<div class="sidebar-footer">
-			<div class="theme-switcher">
-				<button class:active={theme === 'light'} onclick={() => (theme = 'light')} title={m.theme_light()}>
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="4"/>
-						<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-					</svg>
-					<span>{m.theme_light()}</span>
-				</button>
-				<button class:active={theme === 'system'} onclick={() => (theme = 'system')} title={m.theme_auto()}>
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<rect x="2" y="3" width="20" height="14" rx="2"/>
-						<path d="M8 21h8M12 17v4"/>
-					</svg>
-					<span>{m.theme_auto()}</span>
-				</button>
-				<button class:active={theme === 'dark'} onclick={() => (theme = 'dark')} title={m.theme_dark()}>
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-					</svg>
-					<span>{m.theme_dark()}</span>
-				</button>
-			</div>
-
 			<a href="/database" class="settings-row">
 				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<ellipse cx="12" cy="5" rx="9" ry="3"/>
@@ -137,6 +108,8 @@
 		{@render children()}
 	</main>
 </div>
+
+<Toast />
 
 <style>
 	.shell {
@@ -235,36 +208,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-	}
-
-	.theme-switcher {
-		display: flex;
-		border-radius: 8px;
-		overflow: hidden;
-		background: var(--sidebar-hover);
-		padding: 2px;
-		gap: 2px;
-	}
-
-	.theme-switcher button {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 4px;
-		padding: 5px 4px;
-		border: none;
-		border-radius: 6px;
-		background: transparent;
-		color: var(--sidebar-text-muted);
-		font-size: 0.75rem;
-		cursor: pointer;
-		transition: background 0.15s, color 0.15s;
-	}
-
-	.theme-switcher button.active {
-		background: var(--sidebar-active);
-		color: var(--sidebar-text);
 	}
 
 	.settings-row {

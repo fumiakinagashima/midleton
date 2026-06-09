@@ -65,7 +65,10 @@
 		return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 	}
 
-	function downloadHref(att: { mimeType: string; data: string }): string {
+	import type { Attachment } from '$lib/server/db/approval-service';
+
+	function downloadHref(att: Attachment): string {
+		if (att.key) return `/api/attachments/${att.key}?filename=${encodeURIComponent(att.name)}`;
 		return `data:${att.mimeType};base64,${att.data}`;
 	}
 </script>
