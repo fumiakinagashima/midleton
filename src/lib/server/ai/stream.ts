@@ -67,6 +67,8 @@ function parseUITag(tag: string): MessageContent | null {
 	const type = /type="([^"]+)"/.exec(attrStr)?.[1];
 	const title = /title="([^"]+)"/.exec(attrStr)?.[1];
 	const tool = /tool="([^"]+)"/.exec(attrStr)?.[1];
+	const chartType = /chartType="([^"]+)"/.exec(attrStr)?.[1] as 'bar' | 'line' | 'pie' | undefined;
+	const chartMode = /mode="([^"]+)"/.exec(attrStr)?.[1] as 'normal' | 'stacked' | 'grouped' | undefined;
 
 	try {
 		if (type === 'form' && tool) {
@@ -81,6 +83,19 @@ function parseUITag(tag: string): MessageContent | null {
 		} else if (type === 'gantt') {
 			const opts = body ? JSON.parse(body) : {};
 			return { type: 'gantt', title, filter: opts.filter };
+		} else if (type === 'chart') {
+			const parsed = JSON.parse(body);
+			const isSeries = Array.isArray(parsed) && parsed[0] && 'data' in parsed[0];
+			return {
+				type: 'chart',
+				chartType: chartType ?? 'bar',
+				title,
+				mode: chartMode,
+				...(isSeries ? { series: parsed } : { data: parsed })
+			};
+		} else if (type === 'kanban') {
+			const { columns, cards } = JSON.parse(body);
+			return { type: 'kanban', title, columns, cards };
 		}
 	} catch {
 		// malformed JSON in UI tag

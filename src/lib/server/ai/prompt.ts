@@ -114,6 +114,58 @@ deals テーブルの planned_start / planned_end をバーで表示する。
 {"filter":{"customerId":"顧客のID"}}
 </ui>
 
+## チャートの表示
+
+数値データを視覚化する場合は chart コンポーネントを使う。
+chartType 属性で種類を指定する（bar / line / pie）。
+body は JSON 配列 \`[{"label":"...","value":数値}, ...]\` を渡す。
+
+単一系列の棒グラフ（月別売上）:
+<ui type="chart" chartType="bar" title="月別売上">
+[{"label":"1月","value":1200000},{"label":"2月","value":980000},{"label":"3月","value":1540000}]
+</ui>
+
+複数系列の棒グラフ（グループ比較）:
+<ui type="chart" chartType="bar" mode="grouped" title="新規 vs 更新 売上比較">
+[{"name":"新規","data":[{"label":"1月","value":450},{"label":"2月","value":300}]},{"name":"更新","data":[{"label":"1月","value":750},{"label":"2月","value":550}]}]
+</ui>
+
+複数系列の積み上げ棒グラフ:
+<ui type="chart" chartType="bar" mode="stacked" title="売上構成">
+[{"name":"製品A","data":[{"label":"Q1","value":400},{"label":"Q2","value":500}]},{"name":"製品B","data":[{"label":"Q1","value":200},{"label":"Q2","value":300}]}]
+</ui>
+
+折れ線グラフ（複数系列）:
+<ui type="chart" chartType="line" title="実績 vs 目標">
+[{"name":"実績","data":[{"label":"Q1","value":405},{"label":"Q2","value":595}]},{"name":"目標","data":[{"label":"Q1","value":450},{"label":"Q2","value":550}]}]
+</ui>
+
+円グラフ例（割合）:
+<ui type="chart" chartType="pie" title="ステータス別構成">
+[{"label":"商談中","value":8},{"label":"受注","value":5},{"label":"失注","value":2}]
+</ui>
+
+## カンバンの表示
+
+案件・タスクのパイプライン・進捗をステージ別に視覚化する場合は kanban コンポーネントを使う。
+columns でステージ列を定義し、cards でカードを列に配置する。
+amount は任意（案件金額など）。
+
+<ui type="kanban" title="営業パイプライン">
+{
+  "columns": [
+    {"id":"prospect","label":"見込み"},
+    {"id":"proposal","label":"提案中"},
+    {"id":"negotiation","label":"交渉中"},
+    {"id":"won","label":"受注"}
+  ],
+  "cards": [
+    {"id":"1","title":"〇〇社 ERPシステム","subtitle":"田中様","amount":2000000,"columnId":"proposal"},
+    {"id":"2","title":"△△社 保守契約","subtitle":"鈴木様","amount":500000,"columnId":"negotiation"}
+  ]
+}
+</ui>
+
 ## 使用可能なフィールドtype
 text / email / tel / number / textarea / select / date / hidden
 

@@ -73,11 +73,15 @@
 		}
 	}
 
-	function handleFocusOut(e: FocusEvent) {
-		if (!containerEl?.contains(e.relatedTarget as Node)) {
-			open = false;
-			query = '';
-		}
+	function handleFocusOut() {
+		// relatedTarget is unreliable when DOM swaps (button → input on open).
+		// Check activeElement after focus settles instead.
+		setTimeout(() => {
+			if (!containerEl?.contains(document.activeElement)) {
+				open = false;
+				query = '';
+			}
+		}, 0);
 	}
 
 	function focusInput(node: HTMLElement) {

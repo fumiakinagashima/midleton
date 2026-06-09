@@ -68,7 +68,46 @@ export type GanttContent = {
 	};
 };
 
-export type MessageContent = TextContent | FormContent | TableContent | ActionContent | ValuesContent | GanttContent;
+export type ChartSeries = { name: string; data: { label: string; value: number }[] };
+
+export type ChartContent = {
+	type: 'chart';
+	chartType: 'bar' | 'line' | 'pie';
+	title?: string;
+	mode?: 'normal' | 'stacked' | 'grouped';
+	data?: { label: string; value: number }[];
+	series?: ChartSeries[];
+};
+
+export type KanbanColumn = {
+	id: string;
+	label: string;
+};
+
+export type KanbanCard = {
+	id: string;
+	title: string;
+	subtitle?: string;
+	amount?: number;
+	columnId: string;
+};
+
+export type KanbanContent = {
+	type: 'kanban';
+	title?: string;
+	columns: KanbanColumn[];
+	cards: KanbanCard[];
+};
+
+export type MessageContent =
+	| TextContent
+	| FormContent
+	| TableContent
+	| ActionContent
+	| ValuesContent
+	| GanttContent
+	| ChartContent
+	| KanbanContent;
 
 export type Message = {
 	id: string;

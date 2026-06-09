@@ -30,8 +30,9 @@ midleton/
 │   │       └── database/     # データ管理 REST API（tables, records CRUD）
 │   ├── lib/
 │   │   ├── components/
-│   │   │   ├── ui/       # アプリUIコンポーネント（デザインシステム: Textbox, Select, Table, DataGrid, BarChart 等）
-│   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values 等）
+│   │   │   ├── ui/       # アプリUIコンポーネント（デザインシステム: Textbox, Select, Table, DataGrid, BarChart, LineChart 等）
+│   │   │   │               BarChart / LineChart は単一・複数系列（grouped / stacked）に対応
+│   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values, Gantt, Chart, Kanban）
 │   │   │   └── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor）
 │   │   ├── server/       # サーバーサイドロジック
 │   │   │   ├── db/       # DrizzleORM スキーマ・クエリ（schema.ts, table-service.ts）
