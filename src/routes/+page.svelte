@@ -383,6 +383,7 @@
 		color: var(--color-text);
 		margin: 0 0 10px;
 		letter-spacing: -0.02em;
+		font-family: Georgia, 'Times New Roman', Times, serif;
 	}
 
 	.greeting p {
