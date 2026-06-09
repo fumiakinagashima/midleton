@@ -59,7 +59,16 @@ export type ValuesContent = {
 	items: ValueItem[];
 };
 
-export type MessageContent = TextContent | FormContent | TableContent | ActionContent | ValuesContent;
+export type GanttContent = {
+	type: 'gantt';
+	title?: string;
+	filter?: {
+		status?: string[];
+		customerId?: string;
+	};
+};
+
+export type MessageContent = TextContent | FormContent | TableContent | ActionContent | ValuesContent | GanttContent;
 
 export type Message = {
 	id: string;

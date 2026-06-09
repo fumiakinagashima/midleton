@@ -3,6 +3,7 @@
 	import Table from '$lib/components/chat/Table.svelte';
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
+	import Gantt from '$lib/components/chat/Gantt.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
 	import type { Message, MessageContent, ActionItem } from '$lib/types/chat';
 	import * as m from '$lib/paraglide/messages.js';
@@ -157,6 +158,8 @@
 						/>
 					{:else if content.type === 'values'}
 						<Values title={content.title} items={content.items} />
+					{:else if content.type === 'gantt'}
+						<Gantt title={content.title} filter={content.filter} />
 					{/if}
 				{/each}
 			</div>

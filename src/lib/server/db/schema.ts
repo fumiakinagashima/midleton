@@ -51,6 +51,8 @@ export const deals = sqliteTable('deals', {
 		.notNull()
 		.default('open'),
 	closedAt: integer('closed_at', { mode: 'timestamp' }),
+	plannedStart: text('planned_start'),
+	plannedEnd: text('planned_end'),
 	notes: text('notes'),
 	custom: text('custom').default('{}'),
 	createdAt: integer('created_at', { mode: 'timestamp' })

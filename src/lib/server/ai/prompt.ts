@@ -75,6 +75,26 @@ format の種類:
 
 value には DB から取得した生の値をそのまま渡す（unix タイムスタンプは秒単位の整数、金額は数値のまま）。
 
+## ガントチャートの表示
+
+案件の一覧・スケジュール・進捗確認を求められた場合は gantt コンポーネントを使う。
+deals テーブルの planned_start / planned_end をバーで表示する。
+
+全案件を表示する場合:
+<ui type="gantt" title="案件スケジュール">
+{}
+</ui>
+
+ステータスで絞り込む場合:
+<ui type="gantt" title="商談中の案件">
+{"filter":{"status":["open"]}}
+</ui>
+
+特定顧客の案件に絞り込む場合:
+<ui type="gantt" title="〇〇社 案件スケジュール">
+{"filter":{"customerId":"顧客のID"}}
+</ui>
+
 ## 使用可能なフィールドtype
 text / email / tel / number / textarea / select / date / hidden
 
