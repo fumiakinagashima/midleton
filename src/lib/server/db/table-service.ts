@@ -2,7 +2,7 @@ import { eq, desc, sql } from 'drizzle-orm';
 import type { Db } from './index';
 import {
 	customers, contacts, deals, activities,
-	entityTypes, entityFields, entities
+	entityTypes, entityFields, entities, coreCustomFields
 } from './schema';
 
 export type FieldDef = {
@@ -12,6 +12,7 @@ export type FieldDef = {
 	required?: boolean;
 	options?: { label: string; value: string }[];
 	listable?: boolean;
+	isCustom?: boolean;
 };
 
 export type TableInfo = {
@@ -27,7 +28,9 @@ export type RecordRow = Record<string, string | number | null>;
 const toTs = (d: Date | null | undefined): number | null =>
 	d ? Math.floor(d.getTime() / 1000) : null;
 
-export const CORE_TABLE_INFO: Record<string, TableInfo> = {
+export const CORE_TABLE_NAMES = ['customers', 'contacts', 'deals', 'activities'];
+
+const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: FieldDef[] }> = {
 	customers: {
 		id: 'customers', label: '顧客', icon: 'building', isCore: true,
 		fields: [
@@ -90,8 +93,61 @@ export const CORE_TABLE_INFO: Record<string, TableInfo> = {
 	}
 };
 
+// Keep for backwards compatibility with MCP tools
+export const CORE_TABLE_INFO = CORE_TABLE_BASE;
+
+const CORE_COLUMN_KEYS: Record<string, string[]> = {
+	customers: ['name', 'contactName', 'email', 'phone', 'address', 'status', 'notes'],
+	contacts: ['customerId', 'name', 'email', 'phone', 'role', 'notes'],
+	deals: ['customerId', 'title', 'amount', 'status', 'notes'],
+	activities: ['entityType', 'entityId', 'type', 'content']
+};
+
+const SYSTEM_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'entityTypeId']);
+
+function extractCustomData(type: string, data: Record<string, unknown>): Record<string, unknown> {
+	const coreKeys = new Set(CORE_COLUMN_KEYS[type] ?? []);
+	const result: Record<string, unknown> = {};
+	for (const [k, v] of Object.entries(data)) {
+		if (!coreKeys.has(k) && !SYSTEM_KEYS.has(k)) {
+			result[k] = v;
+		}
+	}
+	return result;
+}
+
+export async function getCoreCustomFields(db: Db, tableName: string): Promise<FieldDef[]> {
+	const fields = await db.select().from(coreCustomFields)
+		.where(eq(coreCustomFields.tableName, tableName))
+		.orderBy(coreCustomFields.sortOrder);
+	return fields.map(f => ({
+		key: f.key, label: f.label, type: f.type, required: f.required,
+		options: JSON.parse(f.options ?? '[]'), listable: true, isCustom: true
+	}));
+}
+
+export async function updateCoreCustomFields(db: Db, tableName: string, fields: EditableField[]): Promise<void> {
+	await db.delete(coreCustomFields).where(eq(coreCustomFields.tableName, tableName));
+	for (let i = 0; i < fields.length; i++) {
+		const f = fields[i];
+		await db.insert(coreCustomFields).values({
+			id: crypto.randomUUID(), tableName,
+			key: f.key, label: f.label, type: f.type,
+			required: f.required ?? false,
+			options: JSON.stringify(f.options ?? []),
+			sortOrder: i
+		});
+	}
+}
+
 export async function getTableInfo(db: Db, type: string): Promise<TableInfo | null> {
-	if (CORE_TABLE_INFO[type]) return CORE_TABLE_INFO[type];
+	if (CORE_TABLE_BASE[type]) {
+		const customFields = await getCoreCustomFields(db, type);
+		return {
+			...CORE_TABLE_BASE[type],
+			fields: [...CORE_TABLE_BASE[type].fields, ...customFields]
+		};
+	}
 
 	const [et] = await db.select().from(entityTypes).where(eq(entityTypes.name, type));
 	if (!et) return null;
@@ -118,10 +174,10 @@ export async function listAllTables(db: Db): Promise<(TableInfo & { count: numbe
 	]);
 
 	const coreTables = [
-		{ ...CORE_TABLE_INFO.customers, count: c1.count },
-		{ ...CORE_TABLE_INFO.contacts, count: c2.count },
-		{ ...CORE_TABLE_INFO.deals, count: c3.count },
-		{ ...CORE_TABLE_INFO.activities, count: c4.count }
+		{ ...CORE_TABLE_BASE.customers, count: c1.count },
+		{ ...CORE_TABLE_BASE.contacts, count: c2.count },
+		{ ...CORE_TABLE_BASE.deals, count: c3.count },
+		{ ...CORE_TABLE_BASE.activities, count: c4.count }
 	];
 
 	const customTypes = await db.select().from(entityTypes);
@@ -153,6 +209,7 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 			.map(c => ({
 				id: c.id, name: c.name, contactName: c.contactName, email: c.email,
 				phone: c.phone, address: c.address, status: c.status, notes: c.notes,
+				...(JSON.parse(c.custom ?? '{}') as RecordRow),
 				createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
 			}));
 	}
@@ -161,6 +218,7 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 			.map(c => ({
 				id: c.id, customerId: c.customerId, name: c.name, email: c.email,
 				phone: c.phone, role: c.role, notes: c.notes,
+				...(JSON.parse(c.custom ?? '{}') as RecordRow),
 				createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
 			}));
 	}
@@ -169,6 +227,7 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 			.map(d => ({
 				id: d.id, customerId: d.customerId, title: d.title, amount: d.amount,
 				status: d.status, notes: d.notes,
+				...(JSON.parse(d.custom ?? '{}') as RecordRow),
 				createdAt: toTs(d.createdAt), updatedAt: toTs(d.updatedAt)
 			}));
 	}
@@ -176,7 +235,9 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 		return (await db.select().from(activities).orderBy(desc(activities.createdAt)).limit(limit))
 			.map(a => ({
 				id: a.id, entityType: a.entityType, entityId: a.entityId,
-				type: a.type, content: a.content, createdAt: toTs(a.createdAt)
+				type: a.type, content: a.content,
+				...(JSON.parse(a.custom ?? '{}') as RecordRow),
+				createdAt: toTs(a.createdAt)
 			}));
 	}
 
@@ -200,6 +261,7 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		return {
 			id: c.id, name: c.name, contactName: c.contactName, email: c.email,
 			phone: c.phone, address: c.address, status: c.status, notes: c.notes,
+			...(JSON.parse(c.custom ?? '{}') as RecordRow),
 			createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
 		};
 	}
@@ -209,6 +271,7 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		return {
 			id: c.id, customerId: c.customerId, name: c.name, email: c.email,
 			phone: c.phone, role: c.role, notes: c.notes,
+			...(JSON.parse(c.custom ?? '{}') as RecordRow),
 			createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
 		};
 	}
@@ -218,6 +281,7 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		return {
 			id: d.id, customerId: d.customerId, title: d.title, amount: d.amount,
 			status: d.status, notes: d.notes,
+			...(JSON.parse(d.custom ?? '{}') as RecordRow),
 			createdAt: toTs(d.createdAt), updatedAt: toTs(d.updatedAt)
 		};
 	}
@@ -226,7 +290,9 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		if (!a) return null;
 		return {
 			id: a.id, entityType: a.entityType, entityId: a.entityId,
-			type: a.type, content: a.content, createdAt: toTs(a.createdAt)
+			type: a.type, content: a.content,
+			...(JSON.parse(a.custom ?? '{}') as RecordRow),
+			createdAt: toTs(a.createdAt)
 		};
 	}
 
@@ -245,36 +311,42 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 	const n = (k: string) => (data[k] != null && data[k] !== '' ? Number(data[k]) : null);
 
 	if (type === 'customers') {
+		const customData = extractCustomData('customers', data);
 		await db.insert(customers).values({
 			id, name: String(data.name ?? ''),
 			contactName: s('contactName'), email: s('email'), phone: s('phone'),
 			address: s('address'), status: (data.status as 'active' | 'inactive') ?? 'active',
-			notes: s('notes')
+			notes: s('notes'), custom: JSON.stringify(customData)
 		});
 		return (await getRecord(db, 'customers', id))!;
 	}
 	if (type === 'contacts') {
+		const customData = extractCustomData('contacts', data);
 		await db.insert(contacts).values({
 			id, customerId: String(data.customerId ?? ''), name: String(data.name ?? ''),
-			email: s('email'), phone: s('phone'), role: s('role'), notes: s('notes')
+			email: s('email'), phone: s('phone'), role: s('role'), notes: s('notes'),
+			custom: JSON.stringify(customData)
 		});
 		return (await getRecord(db, 'contacts', id))!;
 	}
 	if (type === 'deals') {
+		const customData = extractCustomData('deals', data);
 		await db.insert(deals).values({
 			id, customerId: String(data.customerId ?? ''), title: String(data.title ?? ''),
 			amount: n('amount'), status: (data.status as 'open' | 'won' | 'lost') ?? 'open',
-			notes: s('notes')
+			notes: s('notes'), custom: JSON.stringify(customData)
 		});
 		return (await getRecord(db, 'deals', id))!;
 	}
 	if (type === 'activities') {
+		const customData = extractCustomData('activities', data);
 		await db.insert(activities).values({
 			id,
 			entityType: (data.entityType as 'customer' | 'contact' | 'deal' | 'entity') ?? 'customer',
 			entityId: String(data.entityId ?? ''),
 			type: (data.type as 'note' | 'call' | 'email' | 'meeting') ?? 'note',
-			content: String(data.content ?? '')
+			content: String(data.content ?? ''),
+			custom: JSON.stringify(customData)
 		});
 		return (await getRecord(db, 'activities', id))!;
 	}
@@ -292,40 +364,53 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 	const n = (k: string) => (data[k] != null && data[k] !== '' ? Number(data[k]) : null);
 
 	if (type === 'customers') {
+		const [existing] = await db.select({ custom: customers.custom }).from(customers).where(eq(customers.id, id));
+		const existingCustom = JSON.parse(existing?.custom ?? '{}') as Record<string, unknown>;
+		const mergedCustom = { ...existingCustom, ...extractCustomData('customers', data) };
 		await db.update(customers).set({
 			...(data.name != null ? { name: String(data.name) } : {}),
 			contactName: s('contactName'), email: s('email'), phone: s('phone'),
 			address: s('address'),
 			...(data.status != null ? { status: data.status as 'active' | 'inactive' } : {}),
-			notes: s('notes'), updatedAt: new Date()
+			notes: s('notes'), custom: JSON.stringify(mergedCustom), updatedAt: new Date()
 		}).where(eq(customers.id, id));
 		return (await getRecord(db, 'customers', id))!;
 	}
 	if (type === 'contacts') {
+		const [existing] = await db.select({ custom: contacts.custom }).from(contacts).where(eq(contacts.id, id));
+		const existingCustom = JSON.parse(existing?.custom ?? '{}') as Record<string, unknown>;
+		const mergedCustom = { ...existingCustom, ...extractCustomData('contacts', data) };
 		await db.update(contacts).set({
 			...(data.customerId != null ? { customerId: String(data.customerId) } : {}),
 			...(data.name != null ? { name: String(data.name) } : {}),
 			email: s('email'), phone: s('phone'), role: s('role'), notes: s('notes'),
-			updatedAt: new Date()
+			custom: JSON.stringify(mergedCustom), updatedAt: new Date()
 		}).where(eq(contacts.id, id));
 		return (await getRecord(db, 'contacts', id))!;
 	}
 	if (type === 'deals') {
+		const [existing] = await db.select({ custom: deals.custom }).from(deals).where(eq(deals.id, id));
+		const existingCustom = JSON.parse(existing?.custom ?? '{}') as Record<string, unknown>;
+		const mergedCustom = { ...existingCustom, ...extractCustomData('deals', data) };
 		await db.update(deals).set({
 			...(data.customerId != null ? { customerId: String(data.customerId) } : {}),
 			...(data.title != null ? { title: String(data.title) } : {}),
 			amount: n('amount'),
 			...(data.status != null ? { status: data.status as 'open' | 'won' | 'lost' } : {}),
-			notes: s('notes'), updatedAt: new Date()
+			notes: s('notes'), custom: JSON.stringify(mergedCustom), updatedAt: new Date()
 		}).where(eq(deals.id, id));
 		return (await getRecord(db, 'deals', id))!;
 	}
 	if (type === 'activities') {
+		const [existing] = await db.select({ custom: activities.custom }).from(activities).where(eq(activities.id, id));
+		const existingCustom = JSON.parse(existing?.custom ?? '{}') as Record<string, unknown>;
+		const mergedCustom = { ...existingCustom, ...extractCustomData('activities', data) };
 		await db.update(activities).set({
 			...(data.entityType != null ? { entityType: data.entityType as 'customer' | 'contact' | 'deal' | 'entity' } : {}),
 			...(data.entityId != null ? { entityId: String(data.entityId) } : {}),
 			...(data.type != null ? { type: data.type as 'note' | 'call' | 'email' | 'meeting' } : {}),
-			...(data.content != null ? { content: String(data.content) } : {})
+			...(data.content != null ? { content: String(data.content) } : {}),
+			custom: JSON.stringify(mergedCustom)
 		}).where(eq(activities.id, id));
 		return (await getRecord(db, 'activities', id))!;
 	}
@@ -347,7 +432,7 @@ export async function deleteRecord(db: Db, type: string, id: string): Promise<vo
 
 // ── Entity type (custom table) management ──────────────────────────────────
 
-export type EditableField = Omit<FieldDef, 'listable'> & { _id: string };
+export type EditableField = Omit<FieldDef, 'listable' | 'isCustom'> & { _id: string };
 
 export type EntityTypeInput = {
 	name: string;

@@ -69,6 +69,7 @@ export const activities = sqliteTable('activities', {
 		.notNull()
 		.default('note'),
 	content: text('content').notNull(),
+	custom: text('custom').default('{}'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`)
@@ -116,6 +117,22 @@ export const entities = sqliteTable('entities', {
 		.default(sql`(unixepoch())`)
 });
 
+export const coreCustomFields = sqliteTable('core_custom_fields', {
+	id: text('id').primaryKey(),
+	tableName: text('table_name').notNull(),
+	key: text('key').notNull(),
+	label: text('label').notNull(),
+	type: text('type', { enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea'] })
+		.notNull()
+		.default('text'),
+	required: integer('required', { mode: 'boolean' }).notNull().default(false),
+	options: text('options').default('[]'),
+	sortOrder: integer('sort_order').notNull().default(0),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export const integrations = sqliteTable('integrations', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
@@ -144,5 +161,6 @@ export type NewActivity = typeof activities.$inferInsert;
 export type EntityType = typeof entityTypes.$inferSelect;
 export type EntityField = typeof entityFields.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
+export type CoreCustomField = typeof coreCustomFields.$inferSelect;
 export type Integration = typeof integrations.$inferSelect;
 export type NewIntegration = typeof integrations.$inferInsert;
