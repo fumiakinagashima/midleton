@@ -862,7 +862,7 @@ const listApprovalsSchema = z.object({
 
 async function handleListApprovals(db: Db, input: unknown) {
 	const p = listApprovalsSchema.parse(input ?? {});
-	return listApprovals(db, { status: p.status, type: p.type });
+	return listApprovals(db, { status: p.status });
 }
 
 const getApprovalSchema = z.object({ id: z.string() });
@@ -876,11 +876,8 @@ async function handleGetApproval(db: Db, input: unknown) {
 
 const createApprovalSchema = z.object({
 	title: z.string(),
-	type: z.string(),
-	submitted_by: z.string(),
-	entity_type: z.string().optional(),
-	entity_id: z.string().optional(),
-	data: z.record(z.string(), z.unknown()).optional(),
+	submitted_by: z.string().optional(),
+	content: z.string().optional(),
 	route: z.array(z.object({
 		step: z.number(),
 		approver: z.string(),
@@ -893,11 +890,8 @@ async function handleCreateApproval(db: Db, input: unknown) {
 	const p = createApprovalSchema.parse(input);
 	return createApproval(db, {
 		title: p.title,
-		type: p.type,
 		submittedBy: p.submitted_by,
-		entityType: p.entity_type,
-		entityId: p.entity_id,
-		data: p.data,
+		content: p.content,
 		route: p.route
 	});
 }

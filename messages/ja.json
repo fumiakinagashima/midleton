@@ -48,5 +48,9 @@
   "integrations_token": "トークン",
   "integrations_username": "ユーザー名",
   "integrations_password": "パスワード",
-  "integrations_delete_confirm": "この連携を削除しますか？"
+  "integrations_delete_confirm": "この連携を削除しますか？",
+  "approval_status_pending": "審査中",
+  "approval_status_approved": "承認済",
+  "approval_status_rejected": "否決",
+  "approval_status_cancelled": "取消"
 }
