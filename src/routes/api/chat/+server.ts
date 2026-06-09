@@ -2,13 +2,17 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { env } from '$env/dynamic/private';
-import { chat } from '$lib/server/ai/client';
+import { streamChat, type StreamEvent } from '$lib/server/ai/stream';
 import { mockChat } from '$lib/server/ai/mock';
 import { createDb } from '$lib/server/db';
 import { dispatchTool } from '$lib/server/mcp';
 import { checkRateLimit } from '$lib/server/rate-limit';
 import { errors } from '$lib/server/errors';
 import type { Message, MessageContent } from '$lib/types/chat';
+
+function sse(event: StreamEvent): string {
+	return `data: ${JSON.stringify(event)}\n\n`;
+}
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const mockMode = platform?.env?.MOCK_AI === 'true' || env.MOCK_AI === 'true';
@@ -36,7 +40,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		history?: Message[];
 	};
 
-	// フォーム送信（tool + data）
+	// フォーム送信（tool + data）はJSONで返す
 	if (body.tool && body.data) {
 		try {
 			const result = await dispatchTool(db, body.tool as never, body.data);
@@ -56,19 +60,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		}
 	}
 
-	// チャットメッセージ
+	// チャットメッセージはSSEストリームで返す
 	const userMessage = body.message?.trim() ?? '';
 	if (!userMessage) {
 		return json({ error: 'メッセージが空です。' }, { status: 400 });
 	}
 
-	if (mockMode) {
-		await new Promise((r) => setTimeout(r, 800));
-		return json({ contents: mockChat() });
-	}
-
-	const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
-	const model = platform?.env?.AI_MODEL ?? env.AI_MODEL ?? undefined;
 	const history: MessageParam[] = (body.history ?? [])
 		.filter((m) => m.role === 'user' || m.role === 'assistant')
 		.flatMap((m): MessageParam[] => {
@@ -80,9 +77,53 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			if (!text) return [];
 			return [{ role: m.role as 'user' | 'assistant', content: text }];
 		});
-
 	history.push({ role: 'user', content: userMessage });
 
-	const contents = await chat(db, apiKey, history, model);
-	return json({ contents });
+	// モックモード: 文字単位でストリームをシミュレート
+	if (mockMode) {
+		const stream = new ReadableStream({
+			async start(controller) {
+				const enqueue = (e: StreamEvent) => controller.enqueue(new TextEncoder().encode(sse(e)));
+				await new Promise((r) => setTimeout(r, 400));
+				const contents = mockChat();
+				for (const content of contents) {
+					if (content.type === 'text') {
+						for (const char of content.text) {
+							enqueue({ type: 'delta', text: char });
+							await new Promise((r) => setTimeout(r, 18));
+						}
+					} else {
+						enqueue({ type: 'ui', content });
+						await new Promise((r) => setTimeout(r, 80));
+					}
+				}
+				enqueue({ type: 'done' });
+				controller.close();
+			}
+		});
+		return new Response(stream, {
+			headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }
+		});
+	}
+
+	const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
+	const model = platform?.env?.AI_MODEL ?? env.AI_MODEL ?? undefined;
+
+	const stream = new ReadableStream({
+		async start(controller) {
+			const enqueue = (e: StreamEvent) => controller.enqueue(new TextEncoder().encode(sse(e)));
+			try {
+				await streamChat(db, apiKey, history, model, enqueue);
+				enqueue({ type: 'done' });
+			} catch (e) {
+				enqueue({ type: 'error', message: e instanceof Error ? e.message : String(e) });
+			} finally {
+				controller.close();
+			}
+		}
+	});
+
+	return new Response(stream, {
+		headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }
+	});
 };
