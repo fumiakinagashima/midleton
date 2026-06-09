@@ -10,41 +10,57 @@
 	let info = $state<TableInfo | null>(null);
 	let label = $state('');
 	let fields = $state<EditableField[]>([]);
+	let customFields = $state<EditableField[]>([]);
 	let loading = $state(true);
 	let submitting = $state(false);
 	let deleting = $state(false);
 	let error = $state('');
+
+	const builtinFields = $derived(info?.fields.filter(f => !f.isCustom) ?? []);
+
+	const FIELD_TYPE_LABELS: Record<string, string> = {
+		text: 'テキスト', number: '数値', select: '選択', date: '日付',
+		email: 'メール', tel: '電話番号', textarea: '長文テキスト'
+	};
 
 	onMount(async () => {
 		const res = await fetch(`/api/database/${type}/records`);
 		if (res.ok) {
 			const data = await res.json() as { info: TableInfo };
 			info = data.info;
-			if (data.info.isCore) { loading = false; return; }
-			label = data.info.label;
-			fields = data.info.fields.map(f => ({
-				_id: crypto.randomUUID(),
-				key: f.key,
-				label: f.label,
-				type: f.type,
-				required: f.required ?? false,
-				options: f.options ?? []
-			}));
+			if (data.info.isCore) {
+				customFields = data.info.fields
+					.filter(f => f.isCustom)
+					.map(f => ({
+						_id: crypto.randomUUID(),
+						key: f.key, label: f.label, type: f.type,
+						required: f.required ?? false, options: f.options ?? []
+					}));
+			} else {
+				label = data.info.label;
+				fields = data.info.fields.map(f => ({
+					_id: crypto.randomUUID(),
+					key: f.key, label: f.label, type: f.type,
+					required: f.required ?? false, options: f.options ?? []
+				}));
+			}
 		}
 		loading = false;
 	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		const invalidField = fields.find(f => !f.key.trim() || !f.label.trim());
+		const targetFields = info?.isCore ? customFields : fields;
+		const invalidField = targetFields.find(f => !f.key.trim() || !f.label.trim());
 		if (invalidField) { error = '全フィールドのキーと表示名を入力してください。'; return; }
 
 		submitting = true;
 		error = '';
+		const body = info?.isCore ? { fields: customFields } : { label, fields };
 		const res = await fetch(`/api/database/tables/${type}`, {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ label, fields })
+			body: JSON.stringify(body)
 		});
 		if (res.ok) {
 			goto(`/database/${type}`);
@@ -77,7 +93,37 @@
 	{#if loading}
 		<p class="status">読み込み中...</p>
 	{:else if info?.isCore}
-		<p class="status">コアテーブルのスキーマは変更できません。</p>
+		<form class="form" onsubmit={handleSubmit}>
+			<div class="form-section">
+				<h2 class="section-title">組み込みフィールド（変更不可）</h2>
+				<div class="builtin-list">
+					{#each builtinFields as field}
+						<div class="builtin-row">
+							<span class="builtin-key">{field.key}</span>
+							<span class="builtin-label">{field.label}</span>
+							<span class="builtin-type">{FIELD_TYPE_LABELS[field.type] ?? field.type}</span>
+							{#if field.required}<span class="builtin-req">必須</span>{/if}
+						</div>
+					{/each}
+				</div>
+			</div>
+
+			<div class="form-section">
+				<h2 class="section-title">カスタムフィールド</h2>
+				<FieldEditor bind:fields={customFields} />
+			</div>
+
+			{#if error}
+				<p class="error">{error}</p>
+			{/if}
+
+			<div class="form-footer">
+				<a href="/database/{type}" class="btn-cancel">キャンセル</a>
+				<button type="submit" class="btn-submit" disabled={submitting}>
+					{submitting ? '保存中...' : '変更を保存'}
+				</button>
+			</div>
+		</form>
 	{:else if info}
 		<form class="form" onsubmit={handleSubmit}>
 			<div class="form-section">
@@ -159,6 +205,47 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		margin: 0;
+	}
+
+	.builtin-list {
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.builtin-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 9px 12px;
+		border-bottom: 1px solid var(--color-border);
+		background: var(--color-surface);
+		font-size: 0.875rem;
+	}
+
+	.builtin-row:last-child { border-bottom: none; }
+
+	.builtin-key {
+		font-family: ui-monospace, monospace;
+		font-size: 0.8125rem;
+		color: var(--color-text-muted);
+		min-width: 140px;
+	}
+
+	.builtin-label { flex: 1; font-weight: 500; }
+
+	.builtin-type {
+		font-size: 0.8125rem;
+		color: var(--color-text-muted);
+		min-width: 90px;
+	}
+
+	.builtin-req {
+		font-size: 0.75rem;
+		color: var(--color-danger, #dc2626);
+		padding: 1px 6px;
+		border: 1px solid currentColor;
+		border-radius: 4px;
 	}
 
 	.field {

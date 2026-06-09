@@ -47,7 +47,10 @@
 			<span class="sep">/</span>
 			<span>{info?.label ?? type}</span>
 		</div>
-		<a href="/database/{type}/new" class="btn-primary">+ 新規作成</a>
+		<div class="header-actions">
+			<a href="/database/{type}/schema" class="btn-schema">スキーマ編集</a>
+			<a href="/database/{type}/new" class="btn-primary">+ 新規作成</a>
+		</div>
 	</header>
 
 	{#if loading}
@@ -114,6 +117,26 @@
 	.breadcrumb a:hover { text-decoration: underline; }
 	.sep { color: var(--color-text-muted); }
 	.breadcrumb span:last-child { font-weight: 600; }
+
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.btn-schema {
+		padding: 7px 14px;
+		background: none;
+		color: var(--color-text-muted);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		font-size: 0.875rem;
+		text-decoration: none;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+
+	.btn-schema:hover { color: var(--color-text); border-color: var(--color-text-muted); }
 
 	.btn-primary {
 		padding: 7px 14px;

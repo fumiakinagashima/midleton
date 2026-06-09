@@ -56,16 +56,11 @@
 			{:else}
 				<div class="grid">
 					{#each tables.filter(t => !t.isCore) as table}
-						<div class="card-wrap">
-							<a href="/database/{table.id}" class="card">
-								<span class="card-icon">{@html ICONS[table.icon] ?? ICONS.table}</span>
-								<span class="card-label">{table.label}</span>
-								<span class="card-count">{table.count} 件</span>
-							</a>
-							<div class="card-actions">
-								<a href="/database/{table.id}/schema" class="card-action">スキーマ編集</a>
-							</div>
-						</div>
+						<a href="/database/{table.id}" class="card">
+							<span class="card-icon">{@html ICONS[table.icon] ?? ICONS.table}</span>
+							<span class="card-label">{table.label}</span>
+							<span class="card-count">{table.count} 件</span>
+						</a>
 					{/each}
 				</div>
 			{/if}
@@ -187,27 +182,6 @@
 	}
 
 	.empty-custom p { font-size: 0.875rem; color: var(--color-text-muted); margin: 0; }
-
-	.card-wrap {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.card-actions {
-		display: flex;
-		gap: 8px;
-		padding: 4px 0;
-	}
-
-	.card-action {
-		font-size: 0.75rem;
-		color: var(--color-text-muted);
-		text-decoration: none;
-		padding: 2px 0;
-	}
-
-	.card-action:hover { color: var(--color-primary); text-decoration: underline; }
-
 
 	.loading {
 		color: var(--color-text-muted);
