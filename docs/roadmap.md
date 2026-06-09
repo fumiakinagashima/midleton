@@ -173,16 +173,31 @@
 - [ ] Cloudflare Queue への登録・実行
 - [ ] AI によるノード設定サポート
 
-### 品質・セキュリティ
+### インフラ・品質
 - [ ] 認証・認可（ログイン・セッション管理）
   - `accounts` テーブル・`password_hash` カラムは実装済み（migration 0007-0008）
   - 現状の `password_hash` は SHA-256（仮）→ 本実装時に bcrypt/argon2 に移行すること
   - セッション管理は Cloudflare KV or D1 で実装予定
   - `permission: general | admin` によるルートガード実装
   - `submittedBy` を `accountId` FK に置き換えることも検討
-- [ ] レート制限（AI API の過剰コール防止）
-- [ ] エラーハンドリングの整備
-- [ ] Cloudflare R2 へのファイル添付対応（現状は base64 で D1 に直接保存、1MB 上限）
+- [x] レート制限（AI API の過剰コール防止）
+  - Cloudflare KV ベースの固定ウィンドウ（60req/min/IP）
+  - KV 未設定時は制限なしにフォールバック
+  - `wrangler kv namespace create midleton` で KV 作成後、wrangler.toml に ID を設定する
+- [x] エラーハンドリングの整備
+  - `src/lib/server/errors.ts` に統一エラーレスポンスヘルパー
+  - Toast コンポーネント（成功・エラー・情報）
+- [x] Cloudflare R2 へのファイル添付対応
+  - `/api/attachments` POST/GET/DELETE エンドポイント
+  - 承認フォームからファイルを R2 にアップロード（最大10MB）
+  - 旧 base64 形式との後方互換を維持
+  - `wrangler r2 bucket create midleton` で R2 作成後、wrangler.toml を有効化する
+- [x] メール送信基盤
+  - `email_providers` テーブル（migration 0009）
+  - プロバイダー: Resend / AWS SES（SigV4）/ SMTP（cloudflare:sockets + STARTTLS）
+  - `/settings/email` 管理 UI（プロバイダー追加・有効化・テスト送信）
+  - MCP ツール `send_email`（Claude からメール送信）
+  - `/api/email/send` エンドポイント
 
 ### デモ準備
 - [ ] デモ用シードデータ作成

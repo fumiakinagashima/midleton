@@ -1,33 +1,34 @@
 <script lang="ts">
 	import Toggle from '$lib/components/ui/Toggle.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
-	import Textbox from '$lib/components/ui/Textbox.svelte';
 	import * as m from '$lib/paraglide/messages.js';
+	import { themeStore } from '$lib/stores/theme.svelte';
 
-	const ls = (key: string, def: string) =>
-		typeof localStorage !== 'undefined' ? (localStorage.getItem(key) ?? def) : def;
+	type Theme = 'light' | 'dark' | 'system';
 
-	const MODEL_OPTIONS = [
-		{ value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5（速い・安い）' },
-		{ value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6（バランス）' },
-		{ value: 'claude-opus-4-8', label: 'Claude Opus 4.8（高精度）' }
+	const THEME_OPTIONS: { value: Theme; label: string; icon: string }[] = [
+		{
+			value: 'light',
+			label: m.theme_light(),
+			icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`
+		},
+		{
+			value: 'dark',
+			label: m.theme_dark(),
+			icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`
+		},
+		{
+			value: 'system',
+			label: m.theme_auto(),
+			icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`
+		},
 	];
 
-	let enterToSend = $state(ls('enterToSend', 'true') !== 'false');
-	let model = $state(ls('aiModel', 'claude-haiku-4-5-20251001'));
-	let apiKey = $state(ls('apiKey', ''));
-	let savedApiKey = $state(false);
+	let enterToSend = $state(
+		typeof localStorage !== 'undefined' ? (localStorage.getItem('enterToSend') ?? 'true') !== 'false' : true
+	);
 	let currentPath = $state('');
 	$effect(() => { currentPath = location.pathname; });
-
 	$effect(() => { localStorage.setItem('enterToSend', String(enterToSend)); });
-	$effect(() => { localStorage.setItem('aiModel', model); });
-
-	function saveApiKey() {
-		localStorage.setItem('apiKey', apiKey);
-		savedApiKey = true;
-		setTimeout(() => (savedApiKey = false), 2000);
-	}
 </script>
 
 <div class="page">
@@ -39,6 +40,21 @@
 	</nav>
 
 	<section>
+		<h2>テーマ</h2>
+		<div class="theme-switcher">
+			{#each THEME_OPTIONS as opt}
+				<button
+					class:active={themeStore.value === opt.value}
+					onclick={() => (themeStore.value = opt.value)}
+				>
+					{@html opt.icon}
+					<span>{opt.label}</span>
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<section>
 		<h2>{m.settings_chat()}</h2>
 		<div class="row">
 			<div class="row-info">
@@ -47,27 +63,6 @@
 			</div>
 			<Toggle bind:checked={enterToSend} />
 		</div>
-	</section>
-
-	<section>
-		<h2>{m.settings_ai()}</h2>
-		<div class="field-row">
-			<Select label={m.settings_model()} bind:value={model} options={MODEL_OPTIONS} />
-		</div>
-		<div class="field-row api-key-row">
-			<div class="api-key-input">
-				<Textbox
-					label={m.settings_api_key()}
-					type="password"
-					bind:value={apiKey}
-					placeholder={m.settings_api_key_placeholder()}
-				/>
-			</div>
-			<button class="save-btn" class:saved={savedApiKey} onclick={saveApiKey}>
-				{savedApiKey ? m.settings_saved() : m.settings_save()}
-			</button>
-		</div>
-		<p class="hint">{m.settings_api_key_desc()}</p>
 	</section>
 </div>
 
@@ -98,6 +93,37 @@
 		border-bottom: 1px solid var(--color-border);
 	}
 
+	.theme-switcher {
+		display: flex;
+		gap: 8px;
+	}
+
+	.theme-switcher button {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 10px 20px;
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		background: var(--color-surface);
+		color: var(--color-text-muted);
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: border-color 0.15s, color 0.15s, background 0.15s;
+	}
+
+	.theme-switcher button:hover {
+		border-color: var(--color-primary);
+		color: var(--color-text);
+	}
+
+	.theme-switcher button.active {
+		border-color: var(--color-primary);
+		background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+		color: var(--color-primary);
+		font-weight: 500;
+	}
+
 	.row {
 		display: flex;
 		align-items: center;
@@ -119,45 +145,6 @@
 	.desc {
 		font-size: 0.8125rem;
 		color: var(--color-text-muted);
-	}
-
-	.field-row {
-		padding: 12px 0;
-	}
-
-	.api-key-row {
-		display: flex;
-		align-items: flex-end;
-		gap: 10px;
-	}
-
-	.api-key-input {
-		flex: 1;
-	}
-
-	.save-btn {
-		padding: 8px 16px;
-		background: var(--color-primary);
-		color: #fff;
-		border: none;
-		border-radius: 6px;
-		font-size: 0.875rem;
-		cursor: pointer;
-		white-space: nowrap;
-		transition: opacity 0.15s, background 0.2s;
-		flex-shrink: 0;
-	}
-
-	.save-btn:hover { opacity: 0.85; }
-
-	.save-btn.saved {
-		background: #10b981;
-	}
-
-	.hint {
-		font-size: 0.8125rem;
-		color: var(--color-text-muted);
-		margin-top: 4px;
 	}
 
 	.subnav {

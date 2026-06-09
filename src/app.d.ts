@@ -11,6 +11,22 @@ declare global {
 				DB: D1Database;
 				ANTHROPIC_API_KEY: string;
 				MOCK_AI: string;
+				AI_MODEL?: string;
+				KV?: KVNamespace;
+				R2?: R2Bucket;
+				// email (set EMAIL_PROVIDER to 'resend' | 'ses' | 'smtp')
+				EMAIL_PROVIDER?: string;
+				EMAIL_FROM?: string;
+				EMAIL_FROM_NAME?: string;
+				RESEND_API_KEY?: string;
+				SES_REGION?: string;
+				SES_ACCESS_KEY_ID?: string;
+				SES_SECRET_ACCESS_KEY?: string;
+				SMTP_HOST?: string;
+				SMTP_PORT?: string;
+				SMTP_SECURE?: string;
+				SMTP_USERNAME?: string;
+				SMTP_PASSWORD?: string;
 			};
 		}
 	}

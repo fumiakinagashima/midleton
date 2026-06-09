@@ -127,5 +127,4 @@ text / email / tel / number / textarea / select / date / hidden
   {"key":"amount","label":"金額","type":"number"},
   {"key":"status","label":"ステータス","type":"select","options":[{"label":"商談中","value":"open"},{"label":"受注","value":"won"},{"label":"失注","value":"lost"}]}
 ]
-</ui>
-`;
+</ui>`;

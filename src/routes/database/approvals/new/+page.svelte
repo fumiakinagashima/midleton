@@ -2,8 +2,9 @@
 	import { onMount } from 'svelte';
 	import type { Attachment } from '$lib/server/db/approval-service';
 	import type { AccountRow } from '$lib/server/db/account-service';
+	import { toast } from '$lib/stores/toast.svelte';
 
-	const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1MB
+	const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
 	type RouteEntry = {
 		step: number;
@@ -18,7 +19,8 @@
 	let routeEntries = $state<RouteEntry[]>([
 		{ step: 1, accountId: '', approver: '', email: '', role: '' }
 	]);
-	let attachments = $state<Attachment[]>([]);
+	// Files are uploaded to R2 on submit; this holds pending File objects before upload
+	let pendingFiles = $state<File[]>([]);
 	let accountOptions = $state<AccountRow[]>([]);
 
 	onMount(async () => {
@@ -61,41 +63,45 @@
 		routeEntries = routeEntries.filter((_, idx) => idx !== i);
 	}
 
-	async function handleFiles(e: Event) {
+	function handleFiles(e: Event) {
 		fileError = '';
-		const files = (e.target as HTMLInputElement).files;
-		if (!files) return;
-		for (const file of files) {
+		const input = e.target as HTMLInputElement;
+		if (!input.files) return;
+		for (const file of input.files) {
 			if (file.size > MAX_FILE_BYTES) {
-				fileError = `${file.name} は1MBを超えています。`;
+				fileError = `${file.name} は10MBを超えています。`;
 				continue;
 			}
-			const data = await toBase64(file);
-			attachments = [...attachments, { name: file.name, mimeType: file.type, size: file.size, data }];
+			if (!pendingFiles.find(f => f.name === file.name && f.size === file.size)) {
+				pendingFiles = [...pendingFiles, file];
+			}
 		}
-		(e.target as HTMLInputElement).value = '';
+		input.value = '';
 	}
 
-	function removeAttachment(i: number) {
-		attachments = attachments.filter((_, idx) => idx !== i);
-	}
-
-	function toBase64(file: File): Promise<string> {
-		return new Promise((resolve, reject) => {
-			const reader = new FileReader();
-			reader.onload = () => {
-				const result = reader.result as string;
-				resolve(result.split(',')[1]);
-			};
-			reader.onerror = reject;
-			reader.readAsDataURL(file);
-		});
+	function removeFile(i: number) {
+		pendingFiles = pendingFiles.filter((_, idx) => idx !== i);
 	}
 
 	function fmtSize(bytes: number): string {
 		if (bytes < 1024) return `${bytes} B`;
 		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
 		return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+	}
+
+	async function uploadFiles(): Promise<Attachment[]> {
+		const results: Attachment[] = [];
+		for (const file of pendingFiles) {
+			const form = new FormData();
+			form.append('file', file);
+			const res = await fetch('/api/attachments', { method: 'POST', body: form });
+			if (!res.ok) {
+				const e = await res.json() as { error: string };
+				throw new Error(`${file.name}: ${e.error}`);
+			}
+			results.push(await res.json() as Attachment);
+		}
+		return results;
 	}
 
 	async function submit() {
@@ -105,6 +111,16 @@
 		saving = true;
 		error = '';
 		try {
+			let attachments: Attachment[] = [];
+			if (pendingFiles.length > 0) {
+				try {
+					attachments = await uploadFiles();
+				} catch (e) {
+					error = `ファイルのアップロードに失敗しました: ${e instanceof Error ? e.message : String(e)}`;
+					return;
+				}
+			}
+
 			const res = await fetch('/api/approvals', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -128,6 +144,7 @@
 				return;
 			}
 			const row = await res.json() as { id: string };
+			toast.success('申請を作成しました');
 			location.href = `/database/approvals/${row.id}`;
 		} finally {
 			saving = false;
@@ -162,7 +179,7 @@
 
 		<!-- Attachments -->
 		<div class="field">
-			<label>添付ファイル <span class="limit">（1ファイル最大1MB）</span></label>
+			<label>添付ファイル <span class="limit">（1ファイル最大10MB）</span></label>
 			<label class="file-drop">
 				<input type="file" multiple onchange={handleFiles} class="file-hidden" />
 				<span class="file-icon">
@@ -177,13 +194,13 @@
 			{#if fileError}
 				<p class="file-error">{fileError}</p>
 			{/if}
-			{#if attachments.length > 0}
+			{#if pendingFiles.length > 0}
 				<ul class="file-list">
-					{#each attachments as att, i}
+					{#each pendingFiles as file, i}
 						<li class="file-item">
-							<span class="file-name">{att.name}</span>
-							<span class="file-size">{fmtSize(att.size)}</span>
-							<button type="button" class="file-remove" onclick={() => removeAttachment(i)}>✕</button>
+							<span class="file-name">{file.name}</span>
+							<span class="file-size">{fmtSize(file.size)}</span>
+							<button type="button" class="file-remove" onclick={() => removeFile(i)}>✕</button>
 						</li>
 					{/each}
 				</ul>

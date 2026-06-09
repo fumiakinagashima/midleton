@@ -17,7 +17,8 @@ export type Attachment = {
 	name: string;
 	mimeType: string;
 	size: number;
-	data: string; // base64
+	data?: string; // legacy: base64 inline (deprecated, use key instead)
+	key?: string;  // R2 object id (UUID)
 };
 
 export type AttachmentMeta = Omit<Attachment, 'data'>;
