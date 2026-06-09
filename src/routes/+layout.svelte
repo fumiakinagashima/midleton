@@ -84,6 +84,16 @@
 				アカウント
 			</a>
 
+			<a href="/bizcard" class="settings-row">
+				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<rect x="2" y="6" width="20" height="14" rx="2"/>
+					<path d="M2 10h20"/>
+					<circle cx="7" cy="8" r="0.5" fill="currentColor"/>
+					<circle cx="9" cy="8" r="0.5" fill="currentColor"/>
+				</svg>
+				名刺取り込み
+			</a>
+
 			<a href="/ui" class="settings-row">
 				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<rect x="3" y="3" width="7" height="7" rx="1"/>

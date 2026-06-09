@@ -22,10 +22,12 @@ midleton/
 │   │   ├── +layout.svelte    # サイドバー・テーマ切り替え
 │   │   ├── +page.svelte      # チャット画面（/）
 │   │   ├── ui/               # UIコンポーネントデモ（/ui）
+│   │   ├── bizcard/          # 名刺取り込み（/bizcard）
 │   │   ├── settings/         # 設定画面（/settings, /settings/integrations）
 │   │   ├── database/         # データ管理画面（/database, /database/[type], /database/[type]/[id] 等）
 │   │   └── api/
 │   │       ├── chat/         # チャット API エンドポイント
+│   │       ├── bizcard/      # 名刺画像 → Claude vision → JSON 抽出
 │   │       ├── integrations/ # 外部API連携 CRUD エンドポイント
 │   │       └── database/     # データ管理 REST API（tables, records CRUD）
 │   ├── lib/
