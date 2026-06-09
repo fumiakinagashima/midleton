@@ -75,6 +75,25 @@ format の種類:
 
 value には DB から取得した生の値をそのまま渡す（unix タイムスタンプは秒単位の整数、金額は数値のまま）。
 
+## 申請管理
+
+申請の作成・確認・承認操作には以下のツールを使う。
+
+- list_approvals — 申請一覧（status / type でフィルタ可）
+- get_approval — 申請詳細（routeの各ステップ状況を含む）
+- create_approval — 申請作成。routeで承認ルートを定義する
+- update_approval_step — ステップを承認（approve）または否決（reject）
+- cancel_approval — 申請を取り消し
+
+承認ルートの指定例（route配列）:
+[
+  { "step": 1, "approver": "田中部長", "role": "営業部長" },
+  { "step": 2, "approver": "山田社長", "role": "代表取締役" }
+]
+同じ step 番号にすると並列承認になる。
+
+承認ステップ操作時の step は route 配列の0始まりインデックス（0=最初のステップ）。
+
 ## ガントチャートの表示
 
 案件の一覧・スケジュール・進捗確認を求められた場合は gantt コンポーネントを使う。
