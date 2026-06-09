@@ -19,6 +19,8 @@
 	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
 	import NumberInput from '$lib/components/ui/NumberInput.svelte';
 	import DataGrid from '$lib/components/ui/DataGrid.svelte';
+	import Kanban from '$lib/components/chat/Kanban.svelte';
+	import Chart from '$lib/components/chat/Chart.svelte';
 
 	let text = $state('');
 	let memo = $state('');
@@ -124,6 +126,44 @@
 		{ label: 'アクティブ', value: 58 },
 		{ label: 'リード', value: 27 },
 		{ label: '非アクティブ', value: 15 }
+	];
+
+	const multiBarSeries = [
+		{ name: '新規', data: [
+			{ label: '1月', value: 45 }, { label: '2月', value: 30 }, { label: '3月', value: 80 },
+			{ label: '4月', value: 60 }, { label: '5月', value: 90 }, { label: '6月', value: 70 }
+		]},
+		{ name: '更新', data: [
+			{ label: '1月', value: 75 }, { label: '2月', value: 55 }, { label: '3月', value: 120 },
+			{ label: '4月', value: 100 }, { label: '5月', value: 150 }, { label: '6月', value: 125 }
+		]}
+	];
+
+	const multiLineSeries = [
+		{ name: '売上', data: [
+			{ label: 'Q1', value: 405 }, { label: 'Q2', value: 595 }, { label: 'Q3', value: 520 }, { label: 'Q4', value: 780 }
+		]},
+		{ name: '目標', data: [
+			{ label: 'Q1', value: 450 }, { label: 'Q2', value: 550 }, { label: 'Q3', value: 600 }, { label: 'Q4', value: 700 }
+		]},
+		{ name: '前年', data: [
+			{ label: 'Q1', value: 320 }, { label: 'Q2', value: 410 }, { label: 'Q3', value: 480 }, { label: 'Q4', value: 560 }
+		]}
+	];
+
+	const kanbanColumns = [
+		{ id: 'prospect', label: '見込み' },
+		{ id: 'proposal', label: '提案中' },
+		{ id: 'negotiation', label: '交渉中' },
+		{ id: 'won', label: '受注' }
+	];
+
+	const kanbanCards = [
+		{ id: '1', title: '株式会社アルコジー ERPシステム', subtitle: '田中様', amount: 2000000, columnId: 'proposal' },
+		{ id: '2', title: '合同会社テスト商事 保守契約', subtitle: '鈴木様', amount: 500000, columnId: 'negotiation' },
+		{ id: '3', title: 'サンプル株式会社 初期導入', subtitle: '佐藤様', amount: 800000, columnId: 'prospect' },
+		{ id: '4', title: '株式会社フューチャー 追加開発', subtitle: '山本様', amount: 1200000, columnId: 'won' },
+		{ id: '5', title: 'テック株式会社 コンサルティング', subtitle: '中村様', amount: 350000, columnId: 'proposal' }
 	];
 </script>
 
@@ -237,6 +277,34 @@
 		</div>
 		<div style="max-width: 420px; margin-top: 24px">
 			<PieChart title="顧客ステータス分布" data={pieData} />
+		</div>
+	</section>
+
+	<!-- 多系列グラフ -->
+	<section>
+		<h2>グラフ（多系列）</h2>
+		<div class="grid2">
+			<BarChart title="月別売上 グループ比較" series={multiBarSeries} mode="grouped" />
+			<BarChart title="月別売上 積み上げ" series={multiBarSeries} mode="stacked" />
+		</div>
+		<div style="margin-top: 24px">
+			<LineChart title="四半期推移 複数系列" series={multiLineSeries} />
+		</div>
+	</section>
+
+	<!-- カンバン -->
+	<section>
+		<h2>カンバン（AIチャット用）</h2>
+		<Kanban title="営業パイプライン" columns={kanbanColumns} cards={kanbanCards} />
+	</section>
+
+	<!-- チャート（チャット用ラッパー） -->
+	<section>
+		<h2>チャート（AIチャット用ラッパー）</h2>
+		<div class="stack">
+			<Chart chartType="bar" title="月別売上（万円）" data={barData} />
+			<Chart chartType="line" title="四半期推移（万円）" data={lineData} />
+			<Chart chartType="pie" title="顧客ステータス分布" data={pieData} />
 		</div>
 	</section>
 </div>
