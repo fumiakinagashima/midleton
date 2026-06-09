@@ -152,6 +152,26 @@ export const integrations = sqliteTable('integrations', {
 		.default(sql`(unixepoch())`)
 });
 
+export const approvalRequests = sqliteTable('approval_requests', {
+	id: text('id').primaryKey(),
+	title: text('title').notNull(),
+	type: text('type').notNull(),
+	entityType: text('entity_type'),
+	entityId: text('entity_id'),
+	status: text('status', { enum: ['pending', 'approved', 'rejected', 'cancelled'] })
+		.notNull()
+		.default('pending'),
+	submittedBy: text('submitted_by').notNull().default(''),
+	data: text('data').notNull().default('{}'),
+	route: text('route').notNull().default('[]'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
 export type Contact = typeof contacts.$inferSelect;
@@ -166,3 +186,5 @@ export type Entity = typeof entities.$inferSelect;
 export type CoreCustomField = typeof coreCustomFields.$inferSelect;
 export type Integration = typeof integrations.$inferSelect;
 export type NewIntegration = typeof integrations.$inferInsert;
+export type ApprovalRequest = typeof approvalRequests.$inferSelect;
+export type NewApprovalRequest = typeof approvalRequests.$inferInsert;

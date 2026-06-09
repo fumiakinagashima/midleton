@@ -11,6 +11,13 @@ import {
 	entities,
 	integrations
 } from '../db/schema';
+import {
+	listApprovals,
+	getApproval,
+	createApproval,
+	updateApprovalStep,
+	cancelApproval
+} from '../db/approval-service';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -846,6 +853,74 @@ async function handleUpdateEntity(db: Db, input: unknown) {
 	return { ...row, data: parseJson(row.data) };
 }
 
+// ── Approvals ─────────────────────────────────────────────────────────────
+
+const listApprovalsSchema = z.object({
+	status: z.array(z.string()).optional(),
+	type: z.string().optional()
+});
+
+async function handleListApprovals(db: Db, input: unknown) {
+	const p = listApprovalsSchema.parse(input ?? {});
+	return listApprovals(db, { status: p.status, type: p.type });
+}
+
+const getApprovalSchema = z.object({ id: z.string() });
+
+async function handleGetApproval(db: Db, input: unknown) {
+	const { id } = getApprovalSchema.parse(input);
+	const row = await getApproval(db, id);
+	if (!row) throw new Error(`申請が見つかりません: ${id}`);
+	return row;
+}
+
+const createApprovalSchema = z.object({
+	title: z.string(),
+	type: z.string(),
+	submitted_by: z.string(),
+	entity_type: z.string().optional(),
+	entity_id: z.string().optional(),
+	data: z.record(z.string(), z.unknown()).optional(),
+	route: z.array(z.object({
+		step: z.number(),
+		approver: z.string(),
+		email: z.string().optional(),
+		role: z.string().optional()
+	}))
+});
+
+async function handleCreateApproval(db: Db, input: unknown) {
+	const p = createApprovalSchema.parse(input);
+	return createApproval(db, {
+		title: p.title,
+		type: p.type,
+		submittedBy: p.submitted_by,
+		entityType: p.entity_type,
+		entityId: p.entity_id,
+		data: p.data,
+		route: p.route
+	});
+}
+
+const updateApprovalStepSchema = z.object({
+	id: z.string(),
+	step: z.number(),
+	action: z.enum(['approve', 'reject']),
+	comment: z.string().optional()
+});
+
+async function handleUpdateApprovalStep(db: Db, input: unknown) {
+	const p = updateApprovalStepSchema.parse(input);
+	return updateApprovalStep(db, p.id, p.step, p.action, p.comment);
+}
+
+const cancelApprovalSchema = z.object({ id: z.string() });
+
+async function handleCancelApproval(db: Db, input: unknown) {
+	const { id } = cancelApprovalSchema.parse(input);
+	return cancelApproval(db, id);
+}
+
 // ── Dispatch ───────────────────────────────────────────────────────────────
 
 export type ToolName =
@@ -877,7 +952,12 @@ export type ToolName =
 	| 'add_entity_field'
 	| 'get_entities'
 	| 'create_entity'
-	| 'update_entity';
+	| 'update_entity'
+	| 'list_approvals'
+	| 'get_approval'
+	| 'create_approval'
+	| 'update_approval_step'
+	| 'cancel_approval';
 
 export async function dispatchTool(db: Db, name: ToolName, input: unknown) {
 	switch (name) {
@@ -910,6 +990,11 @@ export async function dispatchTool(db: Db, name: ToolName, input: unknown) {
 		case 'get_entities':       return handleGetEntities(db, input);
 		case 'create_entity':      return handleCreateEntity(db, input);
 		case 'update_entity':      return handleUpdateEntity(db, input);
+		case 'list_approvals':     return handleListApprovals(db, input);
+		case 'get_approval':       return handleGetApproval(db, input);
+		case 'create_approval':    return handleCreateApproval(db, input);
+		case 'update_approval_step': return handleUpdateApprovalStep(db, input);
+		case 'cancel_approval':    return handleCancelApproval(db, input);
 		default:
 			throw new Error(`Unknown tool: ${name}`);
 	}

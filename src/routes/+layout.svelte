@@ -95,6 +95,14 @@
 				データ管理
 			</a>
 
+			<a href="/database/approvals" class="settings-row">
+				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M9 11l3 3L22 4"/>
+					<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+				</svg>
+				申請管理
+			</a>
+
 			<a href="/ui" class="settings-row">
 				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<rect x="3" y="3" width="7" height="7" rx="1"/>
