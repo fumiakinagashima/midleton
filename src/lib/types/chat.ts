@@ -25,6 +25,7 @@ export type FormContent = {
 	title?: string;
 	fields: FormField[];
 	tool: string;
+	completed?: boolean;
 };
 
 export type TableContent = {
@@ -109,6 +110,7 @@ export type LinkContent = {
 export type BizcardContent = {
 	type: 'bizcard';
 	title?: string;
+	completed?: boolean;
 };
 
 export type MessageContent =

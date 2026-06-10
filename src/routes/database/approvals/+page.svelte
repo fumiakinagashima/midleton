@@ -1,10 +1,15 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { untrack } from 'svelte';
 	import type { ApprovalListRow } from '$lib/server/db/approval-service';
+	import type { PageData } from './$types';
 	import * as m from '$lib/paraglide/messages.js';
 
-	let rows = $state<ApprovalListRow[]>([]);
-	let loading = $state(true);
+	let { data }: { data: PageData } = $props();
+
+	let rows = $state<ApprovalListRow[]>(untrack(() => data.rows));
+	$effect(() => {
+		rows = data.rows;
+	});
 
 	const STATUS_LABELS: Record<string, string> = {
 		pending: m.approval_status_pending(), approved: m.approval_status_approved(),
@@ -14,18 +19,12 @@
 		pending: '#ca8a04', approved: '#16a34a', rejected: '#dc2626', cancelled: '#6b7280'
 	};
 
-	onMount(async () => {
-		const res = await fetch('/api/approvals');
-		if (res.ok) rows = (await res.json() as { rows: ApprovalListRow[] }).rows;
-		loading = false;
-	});
-
 	function fmtDate(d: string | Date): string {
 		const dt = new Date(d);
 		return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
 	}
 
-	function currentApprover(row: ApprovalRow): string {
+	function currentApprover(row: ApprovalListRow): string {
 		const pending = row.route.find(s => s.status === 'pending');
 		return pending?.approver ?? '—';
 	}
@@ -47,9 +46,7 @@
 		<a href="/database/approvals/new" class="btn-primary">+ 新規申請</a>
 	</header>
 
-	{#if loading}
-		<p class="status">読み込み中...</p>
-	{:else if rows.length === 0}
+	{#if rows.length === 0}
 		<div class="empty">
 			<p>申請がありません。</p>
 			<a href="/database/approvals/new" class="btn-primary">最初の申請を作成</a>
@@ -162,15 +159,6 @@
 
 	.title-cell { font-weight: 500; }
 
-	.type-badge {
-		font-size: 0.75rem;
-		padding: 2px 8px;
-		border-radius: 20px;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		color: var(--color-text-muted);
-	}
-
 	.status-badge {
 		font-size: 0.75rem;
 		padding: 2px 8px;
@@ -198,7 +186,6 @@
 	}
 	.action-del:hover { text-decoration: underline; }
 
-	.status { color: var(--color-text-muted); font-size: 0.875rem; }
 	.empty {
 		display: flex;
 		flex-direction: column;

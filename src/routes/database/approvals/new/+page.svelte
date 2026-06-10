@@ -1,8 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { Attachment } from '$lib/server/db/approval-service';
-	import type { AccountRow } from '$lib/server/db/account-service';
+	import type { PageData } from './$types';
 	import { toast } from '$lib/stores/toast.svelte';
+
+	let { data }: { data: PageData } = $props();
+
+	const accountOptions = $derived(data.accountOptions);
 
 	const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -21,12 +24,6 @@
 	]);
 	// Files are uploaded to R2 on submit; this holds pending File objects before upload
 	let pendingFiles = $state<File[]>([]);
-	let accountOptions = $state<AccountRow[]>([]);
-
-	onMount(async () => {
-		const res = await fetch('/api/accounts');
-		if (res.ok) accountOptions = (await res.json() as { rows: AccountRow[] }).rows;
-	});
 
 	function selectAccount(entry: RouteEntry, id: string) {
 		entry.accountId = id;

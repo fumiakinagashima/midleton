@@ -1,17 +1,31 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { untrack } from 'svelte';
 	import FieldEditor from '$lib/components/database/FieldEditor.svelte';
-	import type { TableInfo, EditableField, CustomFieldType } from '$lib/server/db/table-service';
+	import type { EditableField, CustomFieldType, FieldDef } from '$lib/server/db/table-service';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	const type = $derived($page.params.type);
+	const info = $derived(data.info);
 
-	let info = $state<TableInfo | null>(null);
-	let label = $state('');
-	let fields = $state<EditableField[]>([]);
-	let customFields = $state<EditableField[]>([]);
-	let loading = $state(true);
+	function toEditableFields(fieldDefs: FieldDef[]): EditableField[] {
+		return fieldDefs.map(f => ({
+			_id: crypto.randomUUID(),
+			key: f.key, label: f.label, type: f.type as CustomFieldType,
+			required: f.required ?? false, options: f.options ?? []
+		}));
+	}
+
+	const initialInfo = untrack(() => data.info);
+	let label = $state(initialInfo?.isCore ? '' : (initialInfo?.label ?? ''));
+	let fields = $state<EditableField[]>(initialInfo && !initialInfo.isCore ? toEditableFields(initialInfo.fields) : []);
+	let customFields = $state<EditableField[]>(
+		initialInfo?.isCore ? toEditableFields(initialInfo.fields.filter(f => f.isCustom)) : []
+	);
+
 	let submitting = $state(false);
 	let deleting = $state(false);
 	let error = $state('');
@@ -22,31 +36,6 @@
 		text: 'テキスト', number: '数値', select: '選択', date: '日付',
 		email: 'メール', tel: '電話番号', textarea: '長文テキスト'
 	};
-
-	onMount(async () => {
-		const res = await fetch(`/api/database/${type}/records`);
-		if (res.ok) {
-			const data = await res.json() as { info: TableInfo };
-			info = data.info;
-			if (data.info.isCore) {
-				customFields = data.info.fields
-					.filter(f => f.isCustom)
-					.map(f => ({
-						_id: crypto.randomUUID(),
-						key: f.key, label: f.label, type: f.type as CustomFieldType,
-						required: f.required ?? false, options: f.options ?? []
-					}));
-			} else {
-				label = data.info.label;
-				fields = data.info.fields.map(f => ({
-					_id: crypto.randomUUID(),
-					key: f.key, label: f.label, type: f.type as CustomFieldType,
-					required: f.required ?? false, options: f.options ?? []
-				}));
-			}
-		}
-		loading = false;
-	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
@@ -90,9 +79,7 @@
 		</div>
 	</header>
 
-	{#if loading}
-		<p class="status">読み込み中...</p>
-	{:else if info?.isCore}
+	{#if info?.isCore}
 		<form class="form" onsubmit={handleSubmit}>
 			<div class="form-section">
 				<h2 class="section-title">組み込みフィールド（変更不可）</h2>
@@ -321,6 +308,4 @@
 
 	.btn-delete:hover { background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent); }
 	.btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
-
-	.status { color: var(--color-text-muted); font-size: 0.875rem; }
 </style>
