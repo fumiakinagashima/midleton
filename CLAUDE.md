@@ -34,8 +34,9 @@ midleton/
 │   │   ├── components/
 │   │   │   ├── ui/       # アプリUIコンポーネント（デザインシステム: Textbox, Select, Table, DataGrid, BarChart, LineChart 等）
 │   │   │   │               BarChart / LineChart は単一・複数系列（grouped / stacked）に対応
-│   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values, Gantt, Chart, Kanban）
-│   │   │   └── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor）
+│   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values, Gantt, Chart, Kanban, Link, Bizcard）
+│   │   │   ├── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor）
+│   │   │   └── bizcard/  # 名刺スキャン専用コンポーネント（CameraScanner, cardDetector）
 │   │   ├── server/       # サーバーサイドロジック
 │   │   │   ├── db/       # DrizzleORM スキーマ・クエリ（schema.ts, table-service.ts）
 │   │   │   ├── mcp/      # MCPサーバー・ツール定義

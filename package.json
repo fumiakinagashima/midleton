@@ -30,6 +30,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
     "@inlang/paraglide-sveltekit": "^0.16.1",
+    "@techstark/opencv-js": "^4.12.0-release.1",
     "drizzle-orm": "^0.45.2",
     "marked": "^18.0.5",
     "zod": "^4.4.3"
