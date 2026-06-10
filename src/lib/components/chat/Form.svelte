@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import type { FormField } from '$lib/types/chat';
 	import * as m from '$lib/paraglide/messages.js';
 
@@ -15,6 +16,24 @@
 		untrack(() => Object.fromEntries(fields.map((f) => [f.key, f.value ?? ''])))
 	);
 
+	let recordOptions = $state<Record<string, { value: string; label: string }[]>>({});
+
+	onMount(async () => {
+		const refTables = [...new Set(
+			fields.filter((f) => f.type === 'recordSelect' && f.refTable).map((f) => f.refTable!)
+		)];
+		for (const refTable of refTables) {
+			const res = await fetch(`/api/database/${refTable}/records`);
+			if (res.ok) {
+				const data = (await res.json()) as { rows: Record<string, unknown>[] };
+				recordOptions[refTable] = data.rows.map((r) => ({
+					value: String(r.id),
+					label: String(r.name ?? r.id)
+				}));
+			}
+		}
+	});
+
 	function handleSubmit(e: Event) {
 		e.preventDefault();
 		onsubmit(values);
@@ -29,6 +48,13 @@
 	{#each fields as field}
 		{#if field.type === 'hidden'}
 			<input type="hidden" id={field.key} bind:value={values[field.key]} />
+		{:else if field.type === 'recordSelect'}
+			<SearchSelect
+				label={field.label}
+				required={field.required}
+				bind:value={values[field.key]}
+				options={recordOptions[field.refTable ?? ''] ?? []}
+			/>
 		{:else}
 		<div class="field">
 			<label for={field.key}>

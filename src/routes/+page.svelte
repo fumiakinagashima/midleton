@@ -229,12 +229,6 @@
 		await sendMessage(action.label);
 	}
 
-	async function handleBizcardMessage(text: string) {
-		if (loading) return;
-		if (!hasStarted) hasStarted = true;
-		await sendMessage(text);
-	}
-
 	async function handleFormSubmit(tool: string, data: Record<string, string>) {
 		hideRegistrationUI();
 		loading = true;
@@ -325,7 +319,7 @@
 										<Link label={extra.label} href={extra.href} description={extra.description} />
 									{:else if extra.type === 'bizcard'}
 										{#if !extra.completed}
-											<Bizcard title={extra.title} onSubmitForm={handleFormSubmit} onSendMessage={handleBizcardMessage} />
+											<Bizcard title={extra.title} onSubmitForm={handleFormSubmit} />
 										{/if}
 									{/if}
 								{/if}

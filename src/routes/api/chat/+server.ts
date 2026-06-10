@@ -80,6 +80,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				return json({ contents });
 			}
 
+			if (body.tool === 'create_contact') {
+				const contact = result as Record<string, unknown>;
+				const contents: MessageContent[] = [
+					{ type: 'text', text: '担当者を登録しました。' },
+					{ type: 'values', title: '担当者情報', items: valueItems(contact, CONTACT_VALUE_FIELDS) }
+				];
+				return json({ contents });
+			}
+
 			const contents: MessageContent[] = [
 				{ type: 'text', text: `登録が完了しました。` },
 				{

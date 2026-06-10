@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'email' | 'tel' | 'number' | 'textarea' | 'select' | 'date' | 'hidden';
+export type FieldType = 'text' | 'email' | 'tel' | 'number' | 'textarea' | 'select' | 'date' | 'hidden' | 'recordSelect';
 
 export type FormField = {
 	key: string;
@@ -8,6 +8,7 @@ export type FormField = {
 	placeholder?: string;
 	value?: string;
 	options?: { label: string; value: string }[];
+	refTable?: string;
 };
 
 export type TableColumn = {

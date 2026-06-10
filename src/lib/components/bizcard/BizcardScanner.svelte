@@ -238,7 +238,7 @@
 		<div class="results-wrap">
 			<div class="result-header">
 				<span class="result-badge">{results.length}件 抽出完了</span>
-				<button class="reset-btn" onclick={reset}>{mode === 'camera' ? '別の名刺をスキャン' : '別の画像を読み込む'}</button>
+				<button class="reset-btn" onclick={reset}>{mode === 'camera' ? '再スキャンする' : '別の画像を読み込む'}</button>
 			</div>
 
 			<div class="result-cards">
@@ -265,10 +265,10 @@
 						<div class="actions">
 							{#if onRegister}
 								<button type="button" class="action-btn primary" onclick={() => onRegister(r, 'both')}>
-									顧客・担当者を登録
+									顧客登録する
 								</button>
 								<button type="button" class="action-btn secondary" onclick={() => onRegister(r, 'existing')}>
-									既存の顧客に担当者を追加
+									顧客を選択する
 								</button>
 							{:else}
 								<a href={registerUrl(r)} class="action-btn primary">顧客として登録</a>

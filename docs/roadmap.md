@@ -134,6 +134,7 @@
 - [x] スキーマ編集の動線を `/database/[type]` に統一（概要ページのリンク削除）
 - [x] `recordSelect` フィールドタイプ追加（リレーション先テーブルを `SearchSelect` で検索選択、フォーム・詳細ページでラベル解決）
 - [x] `contacts.customerId` を `recordSelect` 化（顧客名で検索選択）
+- [x] レコード一覧ページの `recordSelect` フィールドもラベル解決（`/database/contacts` の「顧客」列をIDから顧客名表示に変更）
 - [x] レコード詳細ページ：IDをカード先頭に表示
 - [x] `customers` テーブル: `contactName` を廃止し `postalCode` / `website` を追加（migration 0011）
 - [x] `contacts` テーブル: `department`（部署）を追加（migration 0011）

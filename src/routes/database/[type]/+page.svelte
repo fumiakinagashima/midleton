@@ -15,11 +15,15 @@
 	});
 
 	const listCols = $derived(info?.fields.filter(f => f.listable) ?? []);
+	const refLabels = $derived(data.refLabels);
 
 	function displayValue(row: RecordRow, key: string): string {
 		const info_field = info?.fields.find(f => f.key === key);
 		const val = row[key];
 		if (val == null || val === '') return '—';
+		if (info_field?.type === 'recordSelect') {
+			return refLabels?.[key]?.[String(val)] ?? String(val);
+		}
 		if (info_field?.type === 'select') {
 			return info_field.options?.find(o => o.value === String(val))?.label ?? String(val);
 		}
