@@ -63,6 +63,7 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 		id: 'contacts', label: '担当者', icon: 'user', isCore: true,
 		fields: [
 			{ key: 'name', label: '氏名', type: 'text', required: true, listable: true },
+			{ key: 'nameKana', label: '氏名（カナ）', type: 'text' },
 			{ key: 'customerId', label: '顧客', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
 			{ key: 'email', label: 'メール', type: 'email', listable: true },
 			{ key: 'phone', label: '電話番号', type: 'tel' },
@@ -114,7 +115,7 @@ export const CORE_TABLE_INFO = CORE_TABLE_BASE;
 
 const CORE_COLUMN_KEYS: Record<string, string[]> = {
 	customers: ['name', 'email', 'phone', 'postalCode', 'address', 'website', 'status', 'notes'],
-	contacts: ['customerId', 'name', 'email', 'phone', 'role', 'department', 'notes'],
+	contacts: ['customerId', 'name', 'nameKana', 'email', 'phone', 'role', 'department', 'notes'],
 	deals: ['customerId', 'title', 'amount', 'status', 'plannedStart', 'plannedEnd', 'notes'],
 	activities: ['entityType', 'entityId', 'type', 'content']
 };
@@ -233,7 +234,7 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 	if (type === 'contacts') {
 		return (await db.select().from(contacts).orderBy(desc(contacts.createdAt)).limit(limit))
 			.map(c => ({
-				id: c.id, customerId: c.customerId, name: c.name, email: c.email,
+				id: c.id, customerId: c.customerId, name: c.name, nameKana: c.nameKana, email: c.email,
 				phone: c.phone, role: c.role, department: c.department, notes: c.notes,
 				...(JSON.parse(c.custom ?? '{}') as RecordRow),
 				createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
@@ -288,7 +289,7 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		const [c] = await db.select().from(contacts).where(eq(contacts.id, id));
 		if (!c) return null;
 		return {
-			id: c.id, customerId: c.customerId, name: c.name, email: c.email,
+			id: c.id, customerId: c.customerId, name: c.name, nameKana: c.nameKana, email: c.email,
 			phone: c.phone, role: c.role, department: c.department, notes: c.notes,
 			...(JSON.parse(c.custom ?? '{}') as RecordRow),
 			createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
@@ -345,6 +346,7 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 		const customData = extractCustomData('contacts', data);
 		await db.insert(contacts).values({
 			id, customerId: String(data.customerId ?? ''), name: String(data.name ?? ''),
+			nameKana: s('nameKana'),
 			email: s('email'), phone: s('phone'), role: s('role'), department: s('department'),
 			notes: s('notes'), custom: JSON.stringify(customData)
 		});
@@ -405,6 +407,7 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 		await db.update(contacts).set({
 			...(data.customerId != null ? { customerId: String(data.customerId) } : {}),
 			...(data.name != null ? { name: String(data.name) } : {}),
+			nameKana: s('nameKana'),
 			email: s('email'), phone: s('phone'), role: s('role'), department: s('department'),
 			notes: s('notes'), custom: JSON.stringify(mergedCustom), updatedAt: new Date()
 		}).where(eq(contacts.id, id));

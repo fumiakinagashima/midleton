@@ -542,6 +542,7 @@ const getContactsSchema = z.object({
 const createContactSchema = z.object({
 	customer_id: z.string(),
 	name: z.string().min(1),
+	name_kana: z.string().optional(),
 	email: z.string().optional(),
 	phone: z.string().optional(),
 	role: z.string().optional(),
@@ -553,6 +554,7 @@ const createContactSchema = z.object({
 const updateContactSchema = z.object({
 	id: z.string(),
 	name: z.string().optional(),
+	name_kana: z.string().optional(),
 	email: z.string().optional(),
 	phone: z.string().optional(),
 	role: z.string().optional(),
@@ -579,6 +581,7 @@ async function handleCreateContact(db: Db, input: unknown) {
 		id,
 		customerId: data.customer_id,
 		name: data.name,
+		nameKana: data.name_kana,
 		email: data.email,
 		phone: data.phone,
 		role: data.role,
@@ -599,6 +602,7 @@ async function handleUpdateContact(db: Db, input: unknown) {
 		.update(contacts)
 		.set({
 			...(data.name !== undefined && { name: data.name }),
+			...(data.name_kana !== undefined && { nameKana: data.name_kana }),
 			...(data.email !== undefined && { email: data.email }),
 			...(data.phone !== undefined && { phone: data.phone }),
 			...(data.role !== undefined && { role: data.role }),

@@ -28,6 +28,7 @@ export const contacts = sqliteTable('contacts', {
 		.notNull()
 		.references(() => customers.id),
 	name: text('name').notNull(),
+	nameKana: text('name_kana'),
 	email: text('email'),
 	phone: text('phone'),
 	role: text('role'),

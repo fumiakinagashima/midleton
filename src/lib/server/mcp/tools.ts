@@ -274,6 +274,7 @@ export const tools: Tool[] = [
 			properties: {
 				customer_id: { type: 'string', description: '紐付ける顧客のID（必須）' },
 				name: { type: 'string', description: '担当者名（必須）' },
+				name_kana: { type: 'string', description: '担当者名のフリガナ（カナ）' },
 				email: { type: 'string', description: 'メールアドレス' },
 				phone: { type: 'string', description: '電話番号' },
 				role: { type: 'string', description: '役職' },
@@ -292,6 +293,7 @@ export const tools: Tool[] = [
 			properties: {
 				id: { type: 'string', description: '担当者ID（必須）' },
 				name: { type: 'string', description: '担当者名' },
+				name_kana: { type: 'string', description: '担当者名のフリガナ（カナ）' },
 				email: { type: 'string', description: 'メールアドレス' },
 				phone: { type: 'string', description: '電話番号' },
 				role: { type: 'string', description: '役職' },
