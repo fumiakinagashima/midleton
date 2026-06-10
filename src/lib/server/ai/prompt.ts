@@ -30,9 +30,11 @@ export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステム�
 <ui type="form" title="顧客情報登録" tool="create_customer">
 [
   {"key":"name","label":"会社名","type":"text","required":true},
-  {"key":"contact_name","label":"担当者名","type":"text"},
   {"key":"email","label":"メールアドレス","type":"email"},
   {"key":"phone","label":"電話番号","type":"tel"},
+  {"key":"postal_code","label":"郵便番号","type":"text"},
+  {"key":"address","label":"住所","type":"text"},
+  {"key":"website","label":"ホームページ","type":"text"},
   {"key":"status","label":"ステータス","type":"select","options":[{"label":"アクティブ","value":"active"},{"label":"非アクティブ","value":"inactive"}]},
   {"key":"notes","label":"備考","type":"textarea"}
 ]
@@ -40,7 +42,7 @@ export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステム�
 
 テーブルの指定例:
 <ui type="table">
-{"columns":[{"key":"name","label":"会社名"},{"key":"contact_name","label":"担当者"},{"key":"email","label":"メール"},{"key":"status","label":"ステータス"}],"rows":[...取得したデータ...]}
+{"columns":[{"key":"name","label":"会社名"},{"key":"email","label":"メール"},{"key":"status","label":"ステータス"}],"rows":[...取得したデータ...]}
 </ui>
 
 アクション選択の指定例（ユーザーに次の操作を選んでもらう場合）:

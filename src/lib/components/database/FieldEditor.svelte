@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FieldDef, EditableField } from '$lib/server/db/table-service';
+	import type { CustomFieldType, EditableField } from '$lib/server/db/table-service';
 
 	type LocalField = EditableField & { _id: string };
 
@@ -9,7 +9,7 @@
 
 	let { fields = $bindable([]) }: Props = $props();
 
-	const FIELD_TYPES: { value: FieldDef['type']; label: string }[] = [
+	const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
 		{ value: 'text', label: 'テキスト' },
 		{ value: 'number', label: '数値' },
 		{ value: 'select', label: '選択' },
@@ -75,7 +75,7 @@
 						/>
 						<select
 							value={field.type}
-							onchange={(e) => updateField(field._id, { type: (e.target as HTMLSelectElement).value as FieldDef['type'] })}
+							onchange={(e) => updateField(field._id, { type: (e.target as HTMLSelectElement).value as CustomFieldType })}
 						>
 							{#each FIELD_TYPES as t}
 								<option value={t.value}>{t.label}</option>

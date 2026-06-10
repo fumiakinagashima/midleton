@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import type { FieldDef } from '$lib/server/db/table-service';
+	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 
 	type Props = {
 		fields: FieldDef[];
@@ -15,6 +16,24 @@
 		untrack(() => Object.fromEntries(fields.map(f => [f.key, initialValues[f.key] ?? ''])))
 	);
 
+	let recordOptions = $state<Record<string, { value: string; label: string }[]>>({});
+
+	onMount(async () => {
+		const refTables = [...new Set(
+			fields.filter(f => f.type === 'recordSelect' && f.refTable).map(f => f.refTable!)
+		)];
+		for (const refTable of refTables) {
+			const res = await fetch(`/api/database/${refTable}/records`);
+			if (res.ok) {
+				const data = (await res.json()) as { rows: Record<string, unknown>[] };
+				recordOptions[refTable] = data.rows.map(r => ({
+					value: String(r.id),
+					label: String(r.name ?? r.id)
+				}));
+			}
+		}
+	});
+
 	function handleSubmit(e: Event) {
 		e.preventDefault();
 		onsubmit({ ...values });
@@ -24,31 +43,40 @@
 <form class="form" onsubmit={handleSubmit}>
 	{#each fields as field}
 		<div class="field">
-			<label for={field.key}>
-				{field.label}
-				{#if field.required}<span class="req">*</span>{/if}
-			</label>
-
-			{#if field.type === 'textarea'}
-				<textarea
-					id={field.key}
+			{#if field.type === 'recordSelect'}
+				<SearchSelect
+					label={field.label}
 					required={field.required}
 					bind:value={values[field.key]}
-				></textarea>
-			{:else if field.type === 'select'}
-				<select id={field.key} required={field.required} bind:value={values[field.key]}>
-					<option value="">選択してください</option>
-					{#each field.options ?? [] as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-			{:else}
-				<input
-					id={field.key}
-					type={field.type}
-					required={field.required}
-					bind:value={values[field.key]}
+					options={recordOptions[field.refTable ?? ''] ?? []}
 				/>
+			{:else}
+				<label for={field.key}>
+					{field.label}
+					{#if field.required}<span class="req">*</span>{/if}
+				</label>
+
+				{#if field.type === 'textarea'}
+					<textarea
+						id={field.key}
+						required={field.required}
+						bind:value={values[field.key]}
+					></textarea>
+				{:else if field.type === 'select'}
+					<select id={field.key} required={field.required} bind:value={values[field.key]}>
+						<option value="">選択してください</option>
+						{#each field.options ?? [] as opt}
+							<option value={opt.value}>{opt.label}</option>
+						{/each}
+					</select>
+				{:else}
+					<input
+						id={field.key}
+						type={field.type}
+						required={field.required}
+						bind:value={values[field.key]}
+					/>
+				{/if}
 			{/if}
 		</div>
 	{/each}

@@ -9,9 +9,11 @@ const MOCK_RESPONSES: MessageContent[][] = [
 			tool: 'create_customer',
 			fields: [
 				{ key: 'name', label: '会社名', type: 'text', required: true, placeholder: '株式会社サンプル' },
-				{ key: 'contact_name', label: '担当者名', type: 'text', placeholder: '山田 太郎' },
 				{ key: 'email', label: 'メールアドレス', type: 'email', placeholder: 'taro@example.com' },
 				{ key: 'phone', label: '電話番号', type: 'tel', placeholder: '03-0000-0000' },
+				{ key: 'postal_code', label: '郵便番号', type: 'text', placeholder: '100-0001' },
+				{ key: 'address', label: '住所', type: 'text', placeholder: '東京都千代田区...' },
+				{ key: 'website', label: 'ホームページ', type: 'text', placeholder: 'https://example.com' },
 				{
 					key: 'status',
 					label: 'ステータス',
@@ -32,14 +34,13 @@ const MOCK_RESPONSES: MessageContent[][] = [
 			type: 'table',
 			columns: [
 				{ key: 'name', label: '会社名' },
-				{ key: 'contact_name', label: '担当者' },
 				{ key: 'email', label: 'メール' },
 				{ key: 'status', label: 'ステータス' }
 			],
 			rows: [
-				{ name: '株式会社アルコジー', contact_name: '山田 太郎', email: 'taro@alcogy.com', status: 'active' },
-				{ name: '合同会社テスト商事', contact_name: '鈴木 花子', email: 'hanako@test.co.jp', status: 'lead' },
-				{ name: 'サンプル株式会社', contact_name: '佐藤 次郎', email: 'jiro@sample.jp', status: 'inactive' }
+				{ name: '株式会社アルコジー', email: 'taro@alcogy.com', status: 'active' },
+				{ name: '合同会社テスト商事', email: 'hanako@test.co.jp', status: 'lead' },
+				{ name: 'サンプル株式会社', email: 'jiro@sample.jp', status: 'inactive' }
 			]
 		}
 	],

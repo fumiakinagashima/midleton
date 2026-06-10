@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import FieldEditor from '$lib/components/database/FieldEditor.svelte';
-	import type { TableInfo, EditableField } from '$lib/server/db/table-service';
+	import type { TableInfo, EditableField, CustomFieldType } from '$lib/server/db/table-service';
 
 	const type = $derived($page.params.type);
 
@@ -33,14 +33,14 @@
 					.filter(f => f.isCustom)
 					.map(f => ({
 						_id: crypto.randomUUID(),
-						key: f.key, label: f.label, type: f.type,
+						key: f.key, label: f.label, type: f.type as CustomFieldType,
 						required: f.required ?? false, options: f.options ?? []
 					}));
 			} else {
 				label = data.info.label;
 				fields = data.info.fields.map(f => ({
 					_id: crypto.randomUUID(),
-					key: f.key, label: f.label, type: f.type,
+					key: f.key, label: f.label, type: f.type as CustomFieldType,
 					required: f.required ?? false, options: f.options ?? []
 				}));
 			}
