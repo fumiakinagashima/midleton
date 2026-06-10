@@ -6,8 +6,10 @@
 	import Gantt from '$lib/components/chat/Gantt.svelte';
 	import Chart from '$lib/components/chat/Chart.svelte';
 	import Kanban from '$lib/components/chat/Kanban.svelte';
+	import Link from '$lib/components/chat/Link.svelte';
+	import Bizcard from '$lib/components/chat/Bizcard.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent } from '$lib/types/chat';
+	import type { Message, MessageContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick } from 'svelte';
@@ -290,7 +292,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent}
+									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -299,6 +301,10 @@
 										<Chart chartType={extra.chartType} title={extra.title} data={extra.data} />
 									{:else if extra.type === 'kanban'}
 										<Kanban title={extra.title} columns={extra.columns} cards={extra.cards} />
+									{:else if extra.type === 'link'}
+										<Link label={extra.label} href={extra.href} description={extra.description} />
+									{:else if extra.type === 'bizcard'}
+										<Bizcard title={extra.title} />
 									{/if}
 								{/if}
 							{/each}

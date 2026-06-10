@@ -12,6 +12,17 @@
 	let submitting = $state(false);
 	let error = $state('');
 
+	const initialValues = $derived.by(() => {
+		if (!info) return {};
+		const params = $page.url.searchParams;
+		const values: Record<string, string> = {};
+		for (const field of info.fields) {
+			const v = params.get(field.key);
+			if (v !== null) values[field.key] = v;
+		}
+		return values;
+	});
+
 	onMount(async () => {
 		const res = await fetch(`/api/database/${type}/records`);
 		if (res.ok) {
@@ -57,7 +68,7 @@
 		{#if error}
 			<p class="error">{error}</p>
 		{/if}
-		<RecordForm fields={info.fields} onsubmit={handleSubmit} {submitting} />
+		<RecordForm fields={info.fields} {initialValues} onsubmit={handleSubmit} {submitting} />
 	{/if}
 </div>
 

@@ -99,6 +99,18 @@ export type KanbanContent = {
 	cards: KanbanCard[];
 };
 
+export type LinkContent = {
+	type: 'link';
+	label: string;
+	href: string;
+	description?: string;
+};
+
+export type BizcardContent = {
+	type: 'bizcard';
+	title?: string;
+};
+
 export type MessageContent =
 	| TextContent
 	| FormContent
@@ -107,7 +119,9 @@ export type MessageContent =
 	| ValuesContent
 	| GanttContent
 	| ChartContent
-	| KanbanContent;
+	| KanbanContent
+	| LinkContent
+	| BizcardContent;
 
 export type Message = {
 	id: string;

@@ -54,6 +54,13 @@ const MOCK_RESPONSES: MessageContent[][] = [
 				{ id: 'report', label: 'レポートを見る', description: '月次の売上レポートを表示します' }
 			]
 		}
+	],
+	[
+		{ type: 'text', text: '名刺を読み取ります。カメラで撮影するか、画像をアップロードしてください。' },
+		{
+			type: 'bizcard',
+			title: '名刺を読み取ってください'
+		}
 	]
 ];
 
