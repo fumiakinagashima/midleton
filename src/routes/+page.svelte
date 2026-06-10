@@ -380,7 +380,7 @@
 	.greeting h1 {
 		font-size: 2rem;
 		font-weight: 700;
-		color: var(--color-text);
+		color: var(--color-primary);
 		margin: 0 0 10px;
 		letter-spacing: -0.02em;
 		font-family: Georgia, 'Times New Roman', Times, serif;
