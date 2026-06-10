@@ -151,13 +151,12 @@
 		const p = new URLSearchParams();
 		if (r.company) p.set('name', r.company);
 		else if (r.name) p.set('name', r.name);
-		if (r.name)    p.set('contactName', r.name);
 		if (r.email)   p.set('email', r.email);
 		if (r.phone)   p.set('phone', r.phone);
 		if (r.address) p.set('address', r.address);
+		if (r.website) p.set('website', r.website);
 		const notes: string[] = [];
-		if (r.title)   notes.push(`役職: ${r.title}`);
-		if (r.website) notes.push(`Web: ${r.website}`);
+		if (r.name) notes.push(`担当者: ${r.name}${r.title ? `（${r.title}）` : ''}`);
 		if (notes.length) p.set('notes', notes.join('\n'));
 		return `/database/customers/new?${p.toString()}`;
 	}

@@ -4,10 +4,11 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 export const customers = sqliteTable('customers', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
-	contactName: text('contact_name'),
 	email: text('email'),
 	phone: text('phone'),
 	address: text('address'),
+	postalCode: text('postal_code'),
+	website: text('website'),
 	status: text('status', { enum: ['active', 'inactive'] })
 		.notNull()
 		.default('active'),
@@ -30,6 +31,7 @@ export const contacts = sqliteTable('contacts', {
 	email: text('email'),
 	phone: text('phone'),
 	role: text('role'),
+	department: text('department'),
 	notes: text('notes'),
 	custom: text('custom').default('{}'),
 	createdAt: integer('created_at', { mode: 'timestamp' })

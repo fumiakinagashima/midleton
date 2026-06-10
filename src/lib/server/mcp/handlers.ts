@@ -436,10 +436,11 @@ const getCustomerSchema = z.object({ id: z.string() });
 
 const createCustomerSchema = z.object({
 	name: z.string().min(1),
-	contact_name: z.string().optional(),
 	email: z.string().optional(),
 	phone: z.string().optional(),
+	postal_code: z.string().optional(),
 	address: z.string().optional(),
+	website: z.string().optional(),
 	notes: z.string().optional(),
 	custom: z.record(z.string(), z.unknown()).optional()
 });
@@ -447,10 +448,11 @@ const createCustomerSchema = z.object({
 const updateCustomerSchema = z.object({
 	id: z.string(),
 	name: z.string().optional(),
-	contact_name: z.string().optional(),
 	email: z.string().optional(),
 	phone: z.string().optional(),
+	postal_code: z.string().optional(),
 	address: z.string().optional(),
+	website: z.string().optional(),
 	status: z.enum(['active', 'inactive']).optional(),
 	notes: z.string().optional(),
 	custom: z.record(z.string(), z.unknown()).optional()
@@ -487,10 +489,11 @@ async function handleCreateCustomer(db: Db, input: unknown) {
 	await db.insert(customers).values({
 		id,
 		name: data.name,
-		contactName: data.contact_name,
 		email: data.email,
 		phone: data.phone,
+		postalCode: data.postal_code,
 		address: data.address,
+		website: data.website,
 		notes: data.notes,
 		custom: JSON.stringify(data.custom ?? {})
 	});
@@ -507,10 +510,11 @@ async function handleUpdateCustomer(db: Db, input: unknown) {
 		.update(customers)
 		.set({
 			...(data.name !== undefined && { name: data.name }),
-			...(data.contact_name !== undefined && { contactName: data.contact_name }),
 			...(data.email !== undefined && { email: data.email }),
 			...(data.phone !== undefined && { phone: data.phone }),
+			...(data.postal_code !== undefined && { postalCode: data.postal_code }),
 			...(data.address !== undefined && { address: data.address }),
+			...(data.website !== undefined && { website: data.website }),
 			...(data.status !== undefined && { status: data.status }),
 			...(data.notes !== undefined && { notes: data.notes }),
 			...(data.custom !== undefined && { custom: mergeCustom(existing.custom, data.custom) }),
@@ -541,6 +545,7 @@ const createContactSchema = z.object({
 	email: z.string().optional(),
 	phone: z.string().optional(),
 	role: z.string().optional(),
+	department: z.string().optional(),
 	notes: z.string().optional(),
 	custom: z.record(z.string(), z.unknown()).optional()
 });
@@ -551,6 +556,7 @@ const updateContactSchema = z.object({
 	email: z.string().optional(),
 	phone: z.string().optional(),
 	role: z.string().optional(),
+	department: z.string().optional(),
 	notes: z.string().optional(),
 	custom: z.record(z.string(), z.unknown()).optional()
 });
@@ -576,6 +582,7 @@ async function handleCreateContact(db: Db, input: unknown) {
 		email: data.email,
 		phone: data.phone,
 		role: data.role,
+		department: data.department,
 		notes: data.notes,
 		custom: JSON.stringify(data.custom ?? {})
 	});
@@ -595,6 +602,7 @@ async function handleUpdateContact(db: Db, input: unknown) {
 			...(data.email !== undefined && { email: data.email }),
 			...(data.phone !== undefined && { phone: data.phone }),
 			...(data.role !== undefined && { role: data.role }),
+			...(data.department !== undefined && { department: data.department }),
 			...(data.notes !== undefined && { notes: data.notes }),
 			...(data.custom !== undefined && { custom: mergeCustom(existing.custom, data.custom) }),
 			updatedAt: now()

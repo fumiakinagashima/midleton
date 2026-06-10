@@ -210,10 +210,11 @@ export const tools: Tool[] = [
 			type: 'object',
 			properties: {
 				name: { type: 'string', description: '会社名（必須）' },
-				contact_name: { type: 'string', description: '担当者名' },
 				email: { type: 'string', description: 'メールアドレス' },
 				phone: { type: 'string', description: '電話番号' },
+				postal_code: { type: 'string', description: '郵便番号' },
 				address: { type: 'string', description: '住所' },
+				website: { type: 'string', description: 'ホームページURL' },
 				notes: { type: 'string', description: '備考' },
 				custom: { type: 'object', description: 'カスタムフィールド（任意のキー/値）' }
 			},
@@ -228,10 +229,11 @@ export const tools: Tool[] = [
 			properties: {
 				id: { type: 'string', description: '顧客ID（必須）' },
 				name: { type: 'string', description: '会社名' },
-				contact_name: { type: 'string', description: '担当者名' },
 				email: { type: 'string', description: 'メールアドレス' },
 				phone: { type: 'string', description: '電話番号' },
+				postal_code: { type: 'string', description: '郵便番号' },
 				address: { type: 'string', description: '住所' },
+				website: { type: 'string', description: 'ホームページURL' },
 				status: { type: 'string', enum: ['active', 'inactive'], description: 'ステータス' },
 				notes: { type: 'string', description: '備考' },
 				custom: { type: 'object', description: 'カスタムフィールド（既存データとマージされる）' }
@@ -275,6 +277,7 @@ export const tools: Tool[] = [
 				email: { type: 'string', description: 'メールアドレス' },
 				phone: { type: 'string', description: '電話番号' },
 				role: { type: 'string', description: '役職' },
+				department: { type: 'string', description: '部署' },
 				notes: { type: 'string', description: '備考' },
 				custom: { type: 'object', description: 'カスタムフィールド' }
 			},
@@ -292,6 +295,7 @@ export const tools: Tool[] = [
 				email: { type: 'string', description: 'メールアドレス' },
 				phone: { type: 'string', description: '電話番号' },
 				role: { type: 'string', description: '役職' },
+				department: { type: 'string', description: '部署' },
 				notes: { type: 'string', description: '備考' },
 				custom: { type: 'object', description: 'カスタムフィールド（既存データとマージ）' }
 			},

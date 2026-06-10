@@ -5,14 +5,17 @@ import {
 	entityTypes, entityFields, entities, coreCustomFields
 } from './schema';
 
+export type CustomFieldType = 'text' | 'number' | 'select' | 'date' | 'email' | 'tel' | 'textarea';
+
 export type FieldDef = {
 	key: string;
 	label: string;
-	type: 'text' | 'number' | 'select' | 'date' | 'email' | 'tel' | 'textarea';
+	type: CustomFieldType | 'recordSelect';
 	required?: boolean;
 	options?: { label: string; value: string }[];
 	listable?: boolean;
 	isCustom?: boolean;
+	refTable?: string;
 };
 
 export type TableInfo = {
@@ -44,10 +47,11 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 		id: 'customers', label: '顧客', icon: 'building', isCore: true,
 		fields: [
 			{ key: 'name', label: '会社名', type: 'text', required: true, listable: true },
-			{ key: 'contactName', label: '担当者名', type: 'text', listable: true },
 			{ key: 'email', label: 'メール', type: 'email', listable: true },
 			{ key: 'phone', label: '電話番号', type: 'tel' },
+			{ key: 'postalCode', label: '郵便番号', type: 'text' },
 			{ key: 'address', label: '住所', type: 'text' },
+			{ key: 'website', label: 'ホームページ', type: 'text' },
 			{
 				key: 'status', label: 'ステータス', type: 'select', listable: true,
 				options: [{ label: 'アクティブ', value: 'active' }, { label: '非アクティブ', value: 'inactive' }]
@@ -59,10 +63,11 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 		id: 'contacts', label: '担当者', icon: 'user', isCore: true,
 		fields: [
 			{ key: 'name', label: '氏名', type: 'text', required: true, listable: true },
-			{ key: 'customerId', label: '顧客ID', type: 'text', required: true, listable: true },
+			{ key: 'customerId', label: '顧客', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
 			{ key: 'email', label: 'メール', type: 'email', listable: true },
 			{ key: 'phone', label: '電話番号', type: 'tel' },
 			{ key: 'role', label: '役職', type: 'text', listable: true },
+			{ key: 'department', label: '部署', type: 'text' },
 			{ key: 'notes', label: '備考', type: 'textarea' }
 		]
 	},
@@ -108,8 +113,8 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 export const CORE_TABLE_INFO = CORE_TABLE_BASE;
 
 const CORE_COLUMN_KEYS: Record<string, string[]> = {
-	customers: ['name', 'contactName', 'email', 'phone', 'address', 'status', 'notes'],
-	contacts: ['customerId', 'name', 'email', 'phone', 'role', 'notes'],
+	customers: ['name', 'email', 'phone', 'postalCode', 'address', 'website', 'status', 'notes'],
+	contacts: ['customerId', 'name', 'email', 'phone', 'role', 'department', 'notes'],
 	deals: ['customerId', 'title', 'amount', 'status', 'plannedStart', 'plannedEnd', 'notes'],
 	activities: ['entityType', 'entityId', 'type', 'content']
 };
@@ -218,8 +223,9 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 	if (type === 'customers') {
 		return (await db.select().from(customers).orderBy(desc(customers.createdAt)).limit(limit))
 			.map(c => ({
-				id: c.id, name: c.name, contactName: c.contactName, email: c.email,
-				phone: c.phone, address: c.address, status: c.status, notes: c.notes,
+				id: c.id, name: c.name, email: c.email, phone: c.phone,
+				postalCode: c.postalCode, address: c.address, website: c.website,
+				status: c.status, notes: c.notes,
 				...(JSON.parse(c.custom ?? '{}') as RecordRow),
 				createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
 			}));
@@ -228,7 +234,7 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 		return (await db.select().from(contacts).orderBy(desc(contacts.createdAt)).limit(limit))
 			.map(c => ({
 				id: c.id, customerId: c.customerId, name: c.name, email: c.email,
-				phone: c.phone, role: c.role, notes: c.notes,
+				phone: c.phone, role: c.role, department: c.department, notes: c.notes,
 				...(JSON.parse(c.custom ?? '{}') as RecordRow),
 				createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
 			}));
@@ -271,8 +277,9 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		const [c] = await db.select().from(customers).where(eq(customers.id, id));
 		if (!c) return null;
 		return {
-			id: c.id, name: c.name, contactName: c.contactName, email: c.email,
-			phone: c.phone, address: c.address, status: c.status, notes: c.notes,
+			id: c.id, name: c.name, email: c.email, phone: c.phone,
+			postalCode: c.postalCode, address: c.address, website: c.website,
+			status: c.status, notes: c.notes,
 			...(JSON.parse(c.custom ?? '{}') as RecordRow),
 			createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
 		};
@@ -282,7 +289,7 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		if (!c) return null;
 		return {
 			id: c.id, customerId: c.customerId, name: c.name, email: c.email,
-			phone: c.phone, role: c.role, notes: c.notes,
+			phone: c.phone, role: c.role, department: c.department, notes: c.notes,
 			...(JSON.parse(c.custom ?? '{}') as RecordRow),
 			createdAt: toTs(c.createdAt), updatedAt: toTs(c.updatedAt)
 		};
@@ -327,8 +334,9 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 		const customData = extractCustomData('customers', data);
 		await db.insert(customers).values({
 			id, name: String(data.name ?? ''),
-			contactName: s('contactName'), email: s('email'), phone: s('phone'),
-			address: s('address'), status: (data.status as 'active' | 'inactive') ?? 'active',
+			email: s('email'), phone: s('phone'),
+			postalCode: s('postalCode'), address: s('address'), website: s('website'),
+			status: (data.status as 'active' | 'inactive') ?? 'active',
 			notes: s('notes'), custom: JSON.stringify(customData)
 		});
 		return (await getRecord(db, 'customers', id))!;
@@ -337,8 +345,8 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 		const customData = extractCustomData('contacts', data);
 		await db.insert(contacts).values({
 			id, customerId: String(data.customerId ?? ''), name: String(data.name ?? ''),
-			email: s('email'), phone: s('phone'), role: s('role'), notes: s('notes'),
-			custom: JSON.stringify(customData)
+			email: s('email'), phone: s('phone'), role: s('role'), department: s('department'),
+			notes: s('notes'), custom: JSON.stringify(customData)
 		});
 		return (await getRecord(db, 'contacts', id))!;
 	}
@@ -383,8 +391,8 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 		const mergedCustom = { ...existingCustom, ...extractCustomData('customers', data) };
 		await db.update(customers).set({
 			...(data.name != null ? { name: String(data.name) } : {}),
-			contactName: s('contactName'), email: s('email'), phone: s('phone'),
-			address: s('address'),
+			email: s('email'), phone: s('phone'),
+			postalCode: s('postalCode'), address: s('address'), website: s('website'),
 			...(data.status != null ? { status: data.status as 'active' | 'inactive' } : {}),
 			notes: s('notes'), custom: JSON.stringify(mergedCustom), updatedAt: new Date()
 		}).where(eq(customers.id, id));
@@ -397,8 +405,8 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 		await db.update(contacts).set({
 			...(data.customerId != null ? { customerId: String(data.customerId) } : {}),
 			...(data.name != null ? { name: String(data.name) } : {}),
-			email: s('email'), phone: s('phone'), role: s('role'), notes: s('notes'),
-			custom: JSON.stringify(mergedCustom), updatedAt: new Date()
+			email: s('email'), phone: s('phone'), role: s('role'), department: s('department'),
+			notes: s('notes'), custom: JSON.stringify(mergedCustom), updatedAt: new Date()
 		}).where(eq(contacts.id, id));
 		return (await getRecord(db, 'contacts', id))!;
 	}
@@ -448,7 +456,7 @@ export async function deleteRecord(db: Db, type: string, id: string): Promise<vo
 
 // ── Entity type (custom table) management ──────────────────────────────────
 
-export type EditableField = Omit<FieldDef, 'listable' | 'isCustom'> & { _id: string };
+export type EditableField = Omit<FieldDef, 'listable' | 'isCustom' | 'type'> & { _id: string; type: CustomFieldType };
 
 export type EntityTypeInput = {
 	name: string;
