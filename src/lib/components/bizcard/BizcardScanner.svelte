@@ -5,6 +5,12 @@
 	type State = 'idle' | 'loading' | 'done' | 'error';
 	type Mode = 'file' | 'camera';
 
+	type Props = {
+		onRegister?: (result: BizcardResult, mode: 'both' | 'existing') => void;
+	};
+
+	let { onRegister }: Props = $props();
+
 	const cameraSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
 	let state = $state<State>('idle');
@@ -257,7 +263,16 @@
 							{/each}
 						</div>
 						<div class="actions">
-							<a href={registerUrl(r)} class="action-btn primary">顧客として登録</a>
+							{#if onRegister}
+								<button type="button" class="action-btn primary" onclick={() => onRegister(r, 'both')}>
+									顧客・担当者を登録
+								</button>
+								<button type="button" class="action-btn secondary" onclick={() => onRegister(r, 'existing')}>
+									既存の顧客に担当者を追加
+								</button>
+							{:else}
+								<a href={registerUrl(r)} class="action-btn primary">顧客として登録</a>
+							{/if}
 						</div>
 					</div>
 				{/each}
@@ -533,6 +548,7 @@
 
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 10px;
 	}
 
@@ -543,12 +559,20 @@
 		font-size: 0.875rem;
 		font-weight: 500;
 		text-decoration: none;
+		border: none;
+		cursor: pointer;
 		transition: opacity 0.15s;
 	}
 
 	.action-btn.primary {
 		background: var(--color-primary);
 		color: #fff;
+	}
+
+	.action-btn.secondary {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		color: var(--color-text);
 	}
 
 	.action-btn:hover { opacity: 0.88; }

@@ -1,17 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { TableInfo } from '$lib/server/db/table-service';
+	import type { PageData } from './$types';
 
-	type TableWithCount = TableInfo & { count: number };
-
-	let tables = $state<TableWithCount[]>([]);
-	let loading = $state(true);
-
-	onMount(async () => {
-		const res = await fetch('/api/database/tables');
-		tables = await res.json() as TableWithCount[];
-		loading = false;
-	});
+	let { data }: { data: PageData } = $props();
+	const tables = $derived(data.tables);
 
 	const ICONS: Record<string, string> = {
 		building: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21h18M4 21V7l8-4 8 4v14M9 21v-5h6v5M9 9h1M14 9h1M9 13h1M14 13h1"/></svg>`,
@@ -27,13 +18,32 @@
 		<h1>データ管理</h1>
 	</header>
 
-	{#if loading}
-		<p class="loading">読み込み中...</p>
-	{:else}
-		<section>
-			<h2 class="section-title">コアテーブル</h2>
+	<section>
+		<h2 class="section-title">コアテーブル</h2>
+		<div class="grid">
+			{#each tables.filter(t => t.isCore) as table}
+				<a href="/database/{table.id}" class="card">
+					<span class="card-icon">{@html ICONS[table.icon] ?? ICONS.table}</span>
+					<span class="card-label">{table.label}</span>
+					<span class="card-count">{table.count} 件</span>
+				</a>
+			{/each}
+		</div>
+	</section>
+
+	<section>
+		<div class="section-header">
+			<h2 class="section-title">カスタムテーブル</h2>
+			<a href="/database/new-table" class="btn-new">+ 新規テーブル作成</a>
+		</div>
+		{#if tables.filter(t => !t.isCore).length === 0}
+			<div class="empty-custom">
+				<p>カスタムテーブルはまだありません。</p>
+				<a href="/database/new-table" class="btn-new">最初のテーブルを作成</a>
+			</div>
+		{:else}
 			<div class="grid">
-				{#each tables.filter(t => t.isCore) as table}
+				{#each tables.filter(t => !t.isCore) as table}
 					<a href="/database/{table.id}" class="card">
 						<span class="card-icon">{@html ICONS[table.icon] ?? ICONS.table}</span>
 						<span class="card-label">{table.label}</span>
@@ -41,31 +51,8 @@
 					</a>
 				{/each}
 			</div>
-		</section>
-
-		<section>
-			<div class="section-header">
-				<h2 class="section-title">カスタムテーブル</h2>
-				<a href="/database/new-table" class="btn-new">+ 新規テーブル作成</a>
-			</div>
-			{#if tables.filter(t => !t.isCore).length === 0}
-				<div class="empty-custom">
-					<p>カスタムテーブルはまだありません。</p>
-					<a href="/database/new-table" class="btn-new">最初のテーブルを作成</a>
-				</div>
-			{:else}
-				<div class="grid">
-					{#each tables.filter(t => !t.isCore) as table}
-						<a href="/database/{table.id}" class="card">
-							<span class="card-icon">{@html ICONS[table.icon] ?? ICONS.table}</span>
-							<span class="card-label">{table.label}</span>
-							<span class="card-count">{table.count} 件</span>
-						</a>
-					{/each}
-				</div>
-			{/if}
-		</section>
-	{/if}
+		{/if}
+	</section>
 </div>
 
 <style>
@@ -182,9 +169,4 @@
 	}
 
 	.empty-custom p { font-size: 0.875rem; color: var(--color-text-muted); margin: 0; }
-
-	.loading {
-		color: var(--color-text-muted);
-		font-size: 0.875rem;
-	}
 </style>

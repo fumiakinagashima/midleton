@@ -1,24 +1,20 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
-	import type { TableInfo, RecordRow } from '$lib/server/db/table-service';
+	import { untrack } from 'svelte';
+	import type { PageData } from './$types';
+	import type { RecordRow } from '$lib/server/db/table-service';
+
+	let { data }: { data: PageData } = $props();
 
 	const type = $derived($page.params.type);
+	const info = $derived(data.info);
 
-	let info = $state<TableInfo | null>(null);
-	let rows = $state<RecordRow[]>([]);
-	let loading = $state(true);
+	let rows = $state<RecordRow[]>(untrack(() => data.rows));
+	$effect(() => {
+		rows = data.rows;
+	});
 
 	const listCols = $derived(info?.fields.filter(f => f.listable) ?? []);
-
-	onMount(async () => {
-		const res = await fetch(`/api/database/${type}/records`);
-		if (!res.ok) { loading = false; return; }
-		const data = await res.json() as { info: TableInfo; rows: RecordRow[] };
-		info = data.info;
-		rows = data.rows;
-		loading = false;
-	});
 
 	function displayValue(row: RecordRow, key: string): string {
 		const info_field = info?.fields.find(f => f.key === key);
@@ -56,9 +52,7 @@
 		</div>
 	</header>
 
-	{#if loading}
-		<p class="status">読み込み中...</p>
-	{:else if rows.length === 0}
+	{#if rows.length === 0}
 		<div class="empty">
 			<p>レコードがありません。</p>
 			<a href="/database/{type}/new" class="btn-primary">最初のレコードを作成</a>
@@ -216,8 +210,6 @@
 	}
 
 	.action-del:hover { text-decoration: underline; }
-
-	.status { color: var(--color-text-muted); font-size: 0.875rem; }
 
 	.empty {
 		display: flex;

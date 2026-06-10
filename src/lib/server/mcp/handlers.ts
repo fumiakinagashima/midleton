@@ -460,6 +460,20 @@ const updateCustomerSchema = z.object({
 
 const deleteCustomerSchema = z.object({ id: z.string() });
 
+const createCustomerWithContactSchema = z.object({
+	name: z.string().min(1),
+	email: z.string().optional(),
+	phone: z.string().optional(),
+	address: z.string().optional(),
+	website: z.string().optional(),
+	notes: z.string().optional(),
+	contact_name: z.string().min(1),
+	contact_name_kana: z.string().optional(),
+	contact_role: z.string().optional(),
+	contact_department: z.string().optional(),
+	custom: z.record(z.string(), z.unknown()).optional()
+});
+
 async function handleGetCustomers(db: Db, input: unknown) {
 	const { name, status, limit } = getCustomersSchema.parse(input);
 	const result = await db
@@ -530,6 +544,42 @@ async function handleDeleteCustomer(db: Db, input: unknown) {
 	const { id } = deleteCustomerSchema.parse(input);
 	await db.delete(customers).where(eq(customers.id, id));
 	return { deleted: true, id };
+}
+
+async function handleCreateCustomerWithContact(db: Db, input: unknown) {
+	const data = createCustomerWithContactSchema.parse(input);
+
+	const customerId = crypto.randomUUID();
+	await db.insert(customers).values({
+		id: customerId,
+		name: data.name,
+		email: data.email,
+		phone: data.phone,
+		address: data.address,
+		website: data.website,
+		notes: data.notes,
+		custom: JSON.stringify(data.custom ?? {})
+	});
+
+	const contactId = crypto.randomUUID();
+	await db.insert(contacts).values({
+		id: contactId,
+		customerId,
+		name: data.contact_name,
+		nameKana: data.contact_name_kana,
+		email: data.email,
+		phone: data.phone,
+		role: data.contact_role,
+		department: data.contact_department,
+		custom: JSON.stringify({})
+	});
+
+	const [customer] = await db.select().from(customers).where(eq(customers.id, customerId));
+	const [contact] = await db.select().from(contacts).where(eq(contacts.id, contactId));
+	return {
+		customer: { ...customer, custom: parseJson(customer.custom) },
+		contact: { ...contact, custom: parseJson(contact.custom) }
+	};
 }
 
 // ── Contacts ───────────────────────────────────────────────────────────────
@@ -944,6 +994,7 @@ export type ToolName =
 	| 'create_customer'
 	| 'update_customer'
 	| 'delete_customer'
+	| 'create_customer_with_contact'
 	| 'get_contacts'
 	| 'create_contact'
 	| 'update_contact'
@@ -981,6 +1032,7 @@ export async function dispatchTool(db: Db, name: ToolName, input: unknown) {
 		case 'create_customer':    return handleCreateCustomer(db, input);
 		case 'update_customer':    return handleUpdateCustomer(db, input);
 		case 'delete_customer':    return handleDeleteCustomer(db, input);
+		case 'create_customer_with_contact': return handleCreateCustomerWithContact(db, input);
 		case 'get_contacts':       return handleGetContacts(db, input);
 		case 'create_contact':     return handleCreateContact(db, input);
 		case 'update_contact':     return handleUpdateContact(db, input);

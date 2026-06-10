@@ -1,9 +1,14 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { untrack } from 'svelte';
 	import type { AccountRow } from '$lib/server/db/account-service';
+	import type { PageData } from './$types';
 
-	let rows = $state<AccountRow[]>([]);
-	let loading = $state(true);
+	let { data }: { data: PageData } = $props();
+
+	let rows = $state<AccountRow[]>(untrack(() => data.rows));
+	$effect(() => {
+		rows = data.rows;
+	});
 
 	// Add form
 	let addName = $state('');
@@ -20,16 +25,6 @@
 	let editRole = $state('');
 	let editPermission = $state<'general' | 'admin'>('general');
 	let saving = $state(false);
-
-	onMount(async () => {
-		await load();
-		loading = false;
-	});
-
-	async function load() {
-		const res = await fetch('/api/accounts');
-		if (res.ok) rows = (await res.json() as { rows: AccountRow[] }).rows;
-	}
 
 	async function addAccount() {
 		if (!addName.trim()) return;
@@ -105,9 +100,7 @@
 		</div>
 	{/if}
 
-	{#if loading}
-		<p class="status">読み込み中...</p>
-	{:else if rows.length === 0}
+	{#if rows.length === 0}
 		<p class="status">アカウントが登録されていません。</p>
 	{:else}
 		<div class="table-wrap">

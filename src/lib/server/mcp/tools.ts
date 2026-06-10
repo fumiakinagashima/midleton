@@ -252,6 +252,28 @@ export const tools: Tool[] = [
 			required: ['id']
 		}
 	},
+	{
+		name: 'create_customer_with_contact',
+		description:
+			'新しい顧客（会社）と、その担当者を同時に登録する。名刺情報などから会社と担当者をまとめて新規登録する場合に使う。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				name: { type: 'string', description: '会社名（必須）' },
+				email: { type: 'string', description: 'メールアドレス（会社・担当者で共通）' },
+				phone: { type: 'string', description: '電話番号（会社・担当者で共通）' },
+				address: { type: 'string', description: '住所' },
+				website: { type: 'string', description: 'ホームページURL' },
+				notes: { type: 'string', description: '備考' },
+				contact_name: { type: 'string', description: '担当者氏名（必須）' },
+				contact_name_kana: { type: 'string', description: '担当者名のフリガナ（カナ）' },
+				contact_role: { type: 'string', description: '担当者の役職' },
+				contact_department: { type: 'string', description: '担当者の部署' },
+				custom: { type: 'object', description: 'カスタムフィールド（顧客側、任意のキー/値）' }
+			},
+			required: ['name', 'contact_name']
+		}
+	},
 
 	// ── Contacts ───────────────────────────────────────────────────────────
 	{

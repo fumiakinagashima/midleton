@@ -126,7 +126,18 @@
 		streamingUIContents = [];
 	}
 
+	function hideRegistrationUI() {
+		for (const msg of messages) {
+			for (const content of msg.contents) {
+				if (content.type === 'form' || content.type === 'bizcard') {
+					content.completed = true;
+				}
+			}
+		}
+	}
+
 	async function sendMessage(text: string) {
+		hideRegistrationUI();
 		addUserMessage(text);
 		loading = true;
 		streamingText = '';
@@ -218,7 +229,14 @@
 		await sendMessage(action.label);
 	}
 
+	async function handleBizcardMessage(text: string) {
+		if (loading) return;
+		if (!hasStarted) hasStarted = true;
+		await sendMessage(text);
+	}
+
 	async function handleFormSubmit(tool: string, data: Record<string, string>) {
+		hideRegistrationUI();
 		loading = true;
 		try {
 			const res = await fetch('/api/chat', {
@@ -278,11 +296,13 @@
 								{#if content.type === 'text'}
 									<div class="assistant-text">{@html renderMarkdown(content.text)}</div>
 								{:else if content.type === 'form'}
-									<Form
-										title={content.title}
-										fields={content.fields}
-										onsubmit={(data) => handleFormSubmit(content.tool, data)}
-									/>
+									{#if !content.completed}
+										<Form
+											title={content.title}
+											fields={content.fields}
+											onsubmit={(data) => handleFormSubmit(content.tool, data)}
+										/>
+									{/if}
 								{:else if content.type === 'table'}
 									<Table columns={content.columns} rows={content.rows} />
 								{:else if content.type === 'actions'}
@@ -304,7 +324,9 @@
 									{:else if extra.type === 'link'}
 										<Link label={extra.label} href={extra.href} description={extra.description} />
 									{:else if extra.type === 'bizcard'}
-										<Bizcard title={extra.title} />
+										{#if !extra.completed}
+											<Bizcard title={extra.title} onSubmitForm={handleFormSubmit} onSendMessage={handleBizcardMessage} />
+										{/if}
 									{/if}
 								{/if}
 							{/each}

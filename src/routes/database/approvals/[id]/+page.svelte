@@ -1,13 +1,16 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { untrack } from 'svelte';
 	import type { ApprovalRow } from '$lib/server/db/approval-service';
+	import type { PageData } from './$types';
 	import * as m from '$lib/paraglide/messages.js';
 
-	const id = $derived($page.params.id);
+	let { data }: { data: PageData } = $props();
 
-	let row = $state<ApprovalRow | null>(null);
-	let loading = $state(true);
+	let row = $state<ApprovalRow | null>(untrack(() => data.row));
+	$effect(() => {
+		row = data.row;
+	});
+
 	let actionLoading = $state(false);
 	let comments = $state<Record<number, string>>({});
 
@@ -21,12 +24,6 @@
 	const STEP_ICONS: Record<string, string> = {
 		pending: '○', approved: '✓', rejected: '✗'
 	};
-
-	onMount(async () => {
-		const res = await fetch(`/api/approvals/${id}`);
-		if (res.ok) row = await res.json() as ApprovalRow;
-		loading = false;
-	});
 
 	async function act(stepIndex: number, action: 'approve_step' | 'reject_step') {
 		if (!row || actionLoading) return;
@@ -74,9 +71,7 @@
 </script>
 
 <div class="page">
-	{#if loading}
-		<p class="status">読み込み中...</p>
-	{:else if !row}
+	{#if !row}
 		<p class="status">申請が見つかりません。</p>
 	{:else}
 		<header class="page-header">

@@ -1,44 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
-	import type { TableInfo, RecordRow } from '$lib/server/db/table-service';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	const type = $derived($page.params.type);
 	const id = $derived($page.params.id);
+	const info = $derived(data.info);
+	const record = $derived(data.record);
+	const refLabels = $derived(data.refLabels);
 
-	let info = $state<TableInfo | null>(null);
-	let record = $state<RecordRow | null>(null);
-	let loading = $state(true);
 	let deleting = $state(false);
-	let refLabels = $state<Record<string, string>>({});
-
-	onMount(async () => {
-		const [infoRes, recRes] = await Promise.all([
-			fetch(`/api/database/${type}/records`),
-			fetch(`/api/database/${type}/records/${id}`)
-		]);
-		if (infoRes.ok) {
-			const data = await infoRes.json() as { info: TableInfo };
-			info = data.info;
-		}
-		if (recRes.ok) {
-			record = await recRes.json() as RecordRow;
-		}
-		loading = false;
-
-		if (info && record) {
-			for (const field of info.fields) {
-				if (field.type !== 'recordSelect' || !field.refTable) continue;
-				const refId = record[field.key];
-				if (!refId) continue;
-				const res = await fetch(`/api/database/${field.refTable}/records/${refId}`);
-				if (res.ok) {
-					const refRecord = await res.json() as RecordRow;
-					refLabels[field.key] = String(refRecord.name ?? refRecord.id);
-				}
-			}
-		}
-	});
 
 	function formatValue(val: string | number | null, fieldType: string): string {
 		if (val == null || val === '') return '—';
@@ -83,9 +55,7 @@
 		</div>
 	</header>
 
-	{#if loading}
-		<p class="status">読み込み中...</p>
-	{:else if record && info}
+	{#if record && info}
 		<div class="detail-card">
 			<dl>
 				<div class="row meta">
@@ -216,6 +186,4 @@
 	.row.meta dt, .row.meta dd { font-size: 0.8125rem; color: var(--color-text-muted); }
 	.mono { font-family: ui-monospace, monospace; font-size: 0.75rem !important; }
 	.sub { color: var(--color-text-muted); }
-
-	.status { color: var(--color-text-muted); font-size: 0.875rem; }
 </style>

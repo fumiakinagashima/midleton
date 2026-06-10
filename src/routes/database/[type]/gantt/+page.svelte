@@ -1,57 +1,18 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { untrack } from 'svelte';
 	import GanttChart from '$lib/components/database/GanttChart.svelte';
-	import type { RecordRow } from '$lib/server/db/table-service';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	const type = $derived($page.params.type);
+	const tableLabel = $derived(data.tableLabel);
+	const customers = $derived(data.customers);
 
-	type Deal = {
-		id: string;
-		title: string;
-		customerId: string;
-		status: string;
-		amount: number | null;
-		plannedStart: string | null;
-		plannedEnd: string | null;
-	};
-
-	type Customer = { id: string; name: string };
-
-	let deals = $state<Deal[]>([]);
-	let customers = $state<Customer[]>([]);
-	let loading = $state(true);
-	let tableLabel = $state('案件');
-
-	onMount(async () => {
-		if (type !== 'deals') { goto(`/database/${type}`); return; }
-
-		const [dealRes, custRes] = await Promise.all([
-			fetch('/api/database/deals/records'),
-			fetch('/api/database/customers/records')
-		]);
-
-		if (dealRes.ok) {
-			const data = await dealRes.json() as { info: { label: string }; rows: RecordRow[] };
-			tableLabel = data.info.label;
-			deals = data.rows.map(r => ({
-				id: String(r.id),
-				title: String(r.title ?? ''),
-				customerId: String(r.customerId ?? ''),
-				status: String(r.status ?? 'open'),
-				amount: r.amount != null ? Number(r.amount) : null,
-				plannedStart: r.plannedStart ? String(r.plannedStart) : null,
-				plannedEnd: r.plannedEnd ? String(r.plannedEnd) : null
-			}));
-		}
-
-		if (custRes.ok) {
-			const data = await custRes.json() as { rows: RecordRow[] };
-			customers = data.rows.map(r => ({ id: String(r.id), name: String(r.name ?? '') }));
-		}
-
-		loading = false;
+	let deals = $state(untrack(() => data.deals));
+	$effect(() => {
+		deals = data.deals;
 	});
 
 	async function handleDateChange(id: string, plannedStart: string, plannedEnd: string) {
@@ -80,9 +41,7 @@
 		<a href="/database/{type}" class="btn-list">リスト表示</a>
 	</header>
 
-	{#if loading}
-		<p class="status">読み込み中...</p>
-	{:else if deals.length === 0}
+	{#if deals.length === 0}
 		<div class="empty">
 			<p>案件データがありません。</p>
 			<a href="/database/deals/new" class="btn-primary">案件を作成</a>
@@ -138,8 +97,6 @@
 		display: flex;
 		flex-direction: column;
 	}
-
-	.status { padding: 24px; color: var(--color-text-muted); font-size: 0.875rem; }
 
 	.empty {
 		display: flex;
