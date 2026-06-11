@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglide } from '@inlang/paraglide-sveltekit/vite';
 import { defineConfig } from 'vite';
@@ -9,5 +10,9 @@ export default defineConfig({
 	],
 	optimizeDeps: {
 		exclude: ['@techstark/opencv-js']
+	},
+	test: {
+		environment: 'node',
+		include: ['src/**/*.{test,spec}.{js,ts}']
 	}
 });
