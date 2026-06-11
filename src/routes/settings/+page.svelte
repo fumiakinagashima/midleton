@@ -37,6 +37,7 @@
 	<nav class="subnav">
 		<a href="/settings" class:active={currentPath === '/settings'}>一般</a>
 		<a href="/settings/integrations" class:active={currentPath === '/settings/integrations'}>{m.integrations()}</a>
+		<a href="/settings/quick-actions" class:active={currentPath === '/settings/quick-actions'}>{m.quick_actions()}</a>
 	</nav>
 
 	<section>
@@ -68,6 +69,8 @@
 
 <style>
 	.page {
+		height: 100%;
+		overflow-y: auto;
 		padding: 40px 48px;
 		max-width: 640px;
 	}
