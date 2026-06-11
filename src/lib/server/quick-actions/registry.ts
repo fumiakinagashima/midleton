@@ -83,6 +83,29 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 		}
 	},
 
+	deals_kanban: {
+		tool: 'search_deals',
+		input: { limit: 50 },
+		format: (result) => {
+			const rows = result as Record<string, unknown>[];
+			if (rows.length === 0) return [{ type: 'text', text: '案件が登録されていません。' }];
+			return [
+				{
+					type: 'kanban',
+					title: '案件パイプライン',
+					columns: Object.entries(DEAL_STATUS_LABEL).map(([id, label]) => ({ id, label })),
+					cards: rows.map((r) => ({
+						id: r.id as string,
+						title: r.title as string,
+						subtitle: r.customerName as string | undefined,
+						amount: (r.amount as number | null) ?? undefined,
+						columnId: r.status as string
+					}))
+				}
+			];
+		}
+	},
+
 	get_contacts: {
 		tool: 'get_contacts',
 		input: { limit: 10 },

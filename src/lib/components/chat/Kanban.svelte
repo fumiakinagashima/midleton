@@ -5,7 +5,7 @@
 		title?: string;
 		columns: KanbanColumn[];
 		cards: KanbanCard[];
-		onchange?: (cards: KanbanCard[]) => void;
+		onchange?: (cardId: string, columnId: string) => boolean | Promise<boolean>;
 	};
 
 	let { title, columns, cards: initialCards, onchange }: Props = $props();
@@ -47,14 +47,20 @@
 		if (dragOverColId === colId) dragOverColId = null;
 	}
 
-	function handleDrop(e: DragEvent, colId: string) {
+	async function handleDrop(e: DragEvent, colId: string) {
 		e.preventDefault();
 		dragOverColId = null;
-		if (!draggingId || draggingId === null) return;
+		if (!draggingId) return;
 		const id = draggingId;
-		cards = cards.map((c) => (c.id === id ? { ...c, columnId: colId } : c));
 		draggingId = null;
-		onchange?.(cards);
+		const card = cards.find((c) => c.id === id);
+		if (!card || card.columnId === colId) return;
+		const prevColumnId = card.columnId;
+		cards = cards.map((c) => (c.id === id ? { ...c, columnId: colId } : c));
+		const ok = await onchange?.(id, colId);
+		if (ok === false) {
+			cards = cards.map((c) => (c.id === id ? { ...c, columnId: prevColumnId } : c));
+		}
 	}
 
 	function handleDragEnd() {

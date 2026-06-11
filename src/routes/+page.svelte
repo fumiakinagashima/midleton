@@ -14,6 +14,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick } from 'svelte';
 	import { marked } from 'marked';
+	import { toast } from '$lib/stores/toast.svelte';
 	import {
 		quickActionCatalog,
 		DEFAULT_QUICK_ACTION_IDS,
@@ -161,6 +162,7 @@
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
 		contents.push(...streamingUIContents);
 		if (contents.length === 0) contents.push({ type: 'text', text: m.chat_error() });
+		hidePreviousDealKanban(contents);
 		messages = [
 			...messages,
 			{ id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() }
@@ -176,6 +178,44 @@
 					content.completed = true;
 				}
 			}
+		}
+	}
+
+	// 案件のステータス（進行中/受注/失注）をそのまま列にしたカンバン。ドラッグ&ドロップで status を更新できる。
+	const DEAL_KANBAN_STATUS_IDS = ['open', 'won', 'lost'];
+
+	function isDealStatusKanban(content: KanbanContent): boolean {
+		const ids = content.columns.map((c) => c.id);
+		return DEAL_KANBAN_STATUS_IDS.length === ids.length && DEAL_KANBAN_STATUS_IDS.every((id) => ids.includes(id));
+	}
+
+	function hidePreviousDealKanban(newContents: MessageContent[]) {
+		const hasNewDealKanban = newContents.some((c) => c.type === 'kanban' && isDealStatusKanban(c));
+		if (!hasNewDealKanban) return;
+		for (const msg of messages) {
+			for (const content of msg.contents) {
+				if (content.type === 'kanban' && isDealStatusKanban(content)) {
+					content.completed = true;
+				}
+			}
+		}
+	}
+
+	async function handleDealKanbanChange(cardId: string, status: string): Promise<boolean> {
+		try {
+			const res = await fetch(`/api/deals/${cardId}/status`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ status })
+			});
+			if (!res.ok) {
+				toast.error('ステータスの更新に失敗しました');
+				return false;
+			}
+			return true;
+		} catch {
+			toast.error('ステータスの更新に失敗しました');
+			return false;
 		}
 	}
 
@@ -316,6 +356,7 @@
 				body: JSON.stringify({ id: action.id })
 			});
 			const result = (await res.json()) as { contents: MessageContent[] };
+			hidePreviousDealKanban(result.contents);
 			messages = [
 				...messages,
 				{ id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() }
@@ -391,7 +432,14 @@
 									{:else if extra.type === 'chart'}
 										<Chart chartType={extra.chartType} title={extra.title} data={extra.data} />
 									{:else if extra.type === 'kanban'}
-										<Kanban title={extra.title} columns={extra.columns} cards={extra.cards} />
+										{#if !extra.completed}
+											<Kanban
+												title={extra.title}
+												columns={extra.columns}
+												cards={extra.cards}
+												onchange={isDealStatusKanban(extra) ? handleDealKanbanChange : undefined}
+											/>
+										{/if}
 									{:else if extra.type === 'link'}
 										<Link label={extra.label} href={extra.href} description={extra.description} />
 									{:else if extra.type === 'bizcard'}
