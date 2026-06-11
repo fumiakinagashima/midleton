@@ -113,6 +113,7 @@ midleton/
 - DBスキーマ変更は必ず Drizzle マイグレーションを通す。直接 D1 を操作しない。将来のインフラ移行を考慮し、D1 固有 API への直接依存を避ける（DrizzleORM 経由を徹底）。
 - MCP ツールは `src/lib/server/mcp/` に定義し、Zod でスキーマを検証する。Zod スキーマの命名は camelCase + `Schema` サフィックス（例: `createCustomerInputSchema`）。
 - 秘匿情報（API キー等）は Cloudflare の環境変数または KV に保存する。コードに埋め込まない。
+- MCP ツールが Cloudflare の環境変数・シークレット（`platform.env`）を必要とする場合は、`dispatchTool` の任意引数 `env` 経由で渡す（例: `send_email`）。
 - AIへのシステムプロンプトは `src/lib/server/ai/` で一元管理する。
 
 ## ロードマップ

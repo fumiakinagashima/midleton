@@ -199,12 +199,11 @@
   - 承認フォームからファイルを R2 にアップロード（最大10MB）
   - 旧 base64 形式との後方互換を維持
   - `wrangler r2 bucket create midleton` で R2 作成後、wrangler.toml を有効化する
-- [x] メール送信基盤
-  - `email_providers` テーブル（migration 0009）
-  - プロバイダー: Resend / AWS SES（SigV4）/ SMTP（cloudflare:sockets + STARTTLS）
-  - `/settings/email` 管理 UI（プロバイダー追加・有効化・テスト送信）
-  - MCP ツール `send_email`（Claude からメール送信）
-  - `/api/email/send` エンドポイント
+- [ ] メール送信基盤
+  - [x] プロバイダー実装: Resend / AWS SES（SigV4）/ SMTP（cloudflare:sockets + STARTTLS）。設定は環境変数（`EMAIL_PROVIDER` 等、Cloudflare Secrets / `.dev.vars`）経由
+  - [x] `/api/email/send` エンドポイント
+  - [x] MCP ツール `send_email`（フェーズ7で追加。Claude が下書きフォーム経由で送信）
+  - [ ] `email_providers` テーブル・`/settings/email` 管理 UI（未実装。現状は環境変数ベースの設定）
 - [x] `/database` 配下全ページを `+page.server.ts` のSSR `load` 関数化し、ハイドレーション時の再フェッチによる画面ちらつきを解消
 - [ ] `/settings/integrations` など他の `onMount` フェッチ画面も同様にSSR `load` 化（チャットAI（`/`）以外は原則SSR、という方針に統一）
 
@@ -284,3 +283,20 @@
 ### ⑥ ヘルプ・利用状況のAI連携
 - [ ] ヘルプ（使い方・機能説明）をAIから呼び出せるようにする（MCPツール化）
 - [ ] 利用状況（API利用状況・システム利用統計等）をAIから呼び出せるようにする（MCPツール化）
+
+
+## フェーズ7：AI活用フェーズ（プロアクティブAI）
+
+**目標：チャットでのCRUD中心の操作（UI置き換え）から、AIによる分析・提案・文章生成・レビューへ拡張する**
+
+### AIメール下書き → 送信
+- [x] `send_email` MCPツール追加（`to` / `subject` / `body` / `customer_id`、既存のメール送信基盤を呼び出し）
+- [x] フォーム送信ボタンのラベルをツールごとに指定可能に（`submitLabel`、メールフォームは「送信」表示）
+- [x] 送信成功時、`customer_id` 指定があれば活動履歴に「メール」種別で自動記録（`recordActivity`）
+- [x] システムプロンプトにメール下書き作成フローを追加（顧客特定 → 下書き作成 → フォーム確認 → 送信）
+
+### 今後の候補（未着手）
+- [ ] フォローアップ提案（案件・活動履歴から次のアクションをAIが提案）
+- [ ] 申請内容のAIレビュー（承認前に内容の問題点・確認事項をAIが指摘）
+- [ ] 議事録/メモ → 活動記録の自動生成（自由記述から activities への構造化登録）
+- [ ] 顧客ヘルススコア表示（活動頻度・案件状況等からAIがスコアリング）

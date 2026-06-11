@@ -7,10 +7,11 @@
 	type Props = {
 		title?: string;
 		fields: FormField[];
+		submitLabel?: string;
 		onsubmit: (data: Record<string, string>) => void;
 	};
 
-	let { title, fields, onsubmit }: Props = $props();
+	let { title, fields, submitLabel, onsubmit }: Props = $props();
 
 	let values = $state<Record<string, string>>(
 		untrack(() => Object.fromEntries(fields.map((f) => [f.key, f.value ?? ''])))
@@ -89,7 +90,7 @@
 		{/if}
 	{/each}
 
-	<button type="submit">{m.form_submit()}</button>
+	<button type="submit">{submitLabel ?? m.form_submit()}</button>
 </form>
 
 <style>

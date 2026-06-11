@@ -391,6 +391,21 @@ export const tools: Tool[] = [
 			required: ['customer_id', 'content']
 		}
 	},
+	{
+		name: 'send_email',
+		description:
+			'指定した宛先にメールを送信する。送信成功時、customer_id を指定すると活動履歴に「メール」記録が自動追加される。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				to: { type: 'string', description: '送信先メールアドレス' },
+				subject: { type: 'string', description: '件名' },
+				body: { type: 'string', description: '本文（プレーンテキスト）' },
+				customer_id: { type: 'string', description: '関連する顧客ID（指定すると活動履歴に記録される）' }
+			},
+			required: ['to', 'subject', 'body']
+		}
+	},
 
 	// ── User-defined entity types ──────────────────────────────────────────
 	{

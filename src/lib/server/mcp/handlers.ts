@@ -18,7 +18,8 @@ import {
 	updateApprovalStep,
 	cancelApproval
 } from '../db/approval-service';
-import { createDealRegisteredActivity } from '../db/table-service';
+import { createDealRegisteredActivity, recordActivity } from '../db/table-service';
+import { sendEmail, getEmailSetupFromEnv, type EmailEnv } from '../email';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -780,6 +781,32 @@ async function handleCreateActivity(db: Db, input: unknown) {
 	return row;
 }
 
+const sendEmailSchema = z.object({
+	to: z.string().email(),
+	subject: z.string().min(1),
+	body: z.string().min(1),
+	customer_id: z.string().optional()
+});
+
+async function handleSendEmail(db: Db, input: unknown, env?: EmailEnv) {
+	const data = sendEmailSchema.parse(input);
+	const setup = getEmailSetupFromEnv(env ?? {});
+	if (!setup) {
+		throw new Error('メール送信が設定されていません（EMAIL_PROVIDER / EMAIL_FROM などの環境変数を設定してください）');
+	}
+	await sendEmail(setup.providerConfig, {
+		from: setup.from,
+		fromName: setup.fromName,
+		to: data.to,
+		subject: data.subject,
+		text: data.body
+	});
+	if (data.customer_id) {
+		await recordActivity(db, data.customer_id, 'email', `メール「${data.subject}」を送信しました`);
+	}
+	return { to: data.to, subject: data.subject };
+}
+
 // ── User-defined entity types ──────────────────────────────────────────────
 
 const createEntityTypeSchema = z.object({
@@ -988,6 +1015,7 @@ export type ToolName =
 	| 'update_deal'
 	| 'get_activities'
 	| 'create_activity'
+	| 'send_email'
 	| 'list_entity_types'
 	| 'get_entity_fields'
 	| 'create_entity_type'
@@ -1001,7 +1029,7 @@ export type ToolName =
 	| 'update_approval_step'
 	| 'cancel_approval';
 
-export async function dispatchTool(db: Db, name: ToolName, input: unknown) {
+export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?: EmailEnv) {
 	switch (name) {
 		case 'list_integrations':   return handleListIntegrations(db);
 		case 'call_external_api':   return handleCallExternalApi(db, input);
@@ -1026,6 +1054,7 @@ export async function dispatchTool(db: Db, name: ToolName, input: unknown) {
 		case 'update_deal':        return handleUpdateDeal(db, input);
 		case 'get_activities':     return handleGetActivities(db, input);
 		case 'create_activity':    return handleCreateActivity(db, input);
+		case 'send_email':         return handleSendEmail(db, input, env);
 		case 'list_entity_types':  return handleListEntityTypes(db);
 		case 'get_entity_fields':  return handleGetEntityFields(db, input);
 		case 'create_entity_type': return handleCreateEntityType(db, input);

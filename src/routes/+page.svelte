@@ -412,6 +412,7 @@
 										<Form
 											title={content.title}
 											fields={content.fields}
+											submitLabel={content.submitLabel}
 											onsubmit={(data) => handleFormSubmit(content.tool, data)}
 										/>
 									{/if}

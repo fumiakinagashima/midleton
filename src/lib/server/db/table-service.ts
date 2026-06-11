@@ -320,13 +320,17 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 	};
 }
 
+export async function recordActivity(
+	db: Db,
+	customerId: string,
+	type: 'note' | 'call' | 'email' | 'meeting' | 'deal_created',
+	content: string
+): Promise<void> {
+	await db.insert(activities).values({ id: crypto.randomUUID(), customerId, type, content });
+}
+
 export async function createDealRegisteredActivity(db: Db, customerId: string, dealTitle: string): Promise<void> {
-	await db.insert(activities).values({
-		id: crypto.randomUUID(),
-		customerId,
-		type: 'deal_created',
-		content: `案件「${dealTitle}」を登録しました`
-	});
+	await recordActivity(db, customerId, 'deal_created', `案件「${dealTitle}」を登録しました`);
 }
 
 export async function createRecord(db: Db, type: string, data: Record<string, unknown>): Promise<RecordRow> {

@@ -26,6 +26,7 @@ export type FormContent = {
 	title?: string;
 	fields: FormField[];
 	tool: string;
+	submitLabel?: string;
 	completed?: boolean;
 };
 
