@@ -4,6 +4,7 @@
 export type QuickActionId =
 	| 'get_customers'
 	| 'search_deals'
+	| 'deals_kanban'
 	| 'get_contacts'
 	| 'list_approvals'
 	| 'list_entity_types'
@@ -23,6 +24,7 @@ export type QuickActionDef = {
 export const quickActionCatalog: QuickActionDef[] = [
 	{ id: 'get_customers', label: '顧客一覧', description: '最新の顧客一覧を表示します', icon: '👥' },
 	{ id: 'search_deals', label: '案件一覧', description: '最新の案件一覧を表示します', icon: '💼' },
+	{ id: 'deals_kanban', label: '案件カンバン', description: '案件をステータス別のカンバンで表示します', icon: '🗃️' },
 	{ id: 'get_contacts', label: '担当者一覧', description: '最新の担当者一覧を表示します', icon: '🧑' },
 	{ id: 'list_approvals', label: '申請一覧', description: '申請の一覧を表示します', icon: '📋' },
 	{ id: 'list_entity_types', label: 'カスタムテーブル一覧', description: '作成済みのカスタムテーブルを表示します', icon: '🗂️' },

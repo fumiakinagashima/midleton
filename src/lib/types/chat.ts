@@ -99,6 +99,7 @@ export type KanbanContent = {
 	title?: string;
 	columns: KanbanColumn[];
 	cards: KanbanCard[];
+	completed?: boolean;
 };
 
 export type LinkContent = {
