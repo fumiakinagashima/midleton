@@ -12,6 +12,7 @@ SvelteKit + Claude AI + MCP サーバー構成。ユーザーはチャットで�
 - **インフラ**: Cloudflare (Wrangler, D1, R2, KV, Queue)
 - **AI**: Claude API (Anthropic)
 - **プロトコル**: MCP (Model Context Protocol)
+- **テスト**: Vitest（ユニット, `bun run test:unit`）, Playwright（E2E, `bun run test:e2e`、`e2e/` 配下）
 
 ## ディレクトリ構成
 
