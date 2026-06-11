@@ -68,12 +68,15 @@ export const deals = sqliteTable('deals', {
 
 export const activities = sqliteTable('activities', {
 	id: text('id').primaryKey(),
-	entityType: text('entity_type', { enum: ['customer', 'contact', 'deal', 'entity'] }).notNull(),
-	entityId: text('entity_id').notNull(),
-	type: text('type', { enum: ['note', 'call', 'email', 'meeting'] })
+	customerId: text('customer_id')
+		.notNull()
+		.references(() => customers.id),
+	type: text('type', { enum: ['note', 'call', 'email', 'meeting', 'deal_created'] })
 		.notNull()
 		.default('note'),
 	content: text('content').notNull(),
+	// TODO(auth): ログイン実装後、登録者の accountId を設定する（approvalRequests.submittedBy と同様の暫定パターン）
+	createdBy: text('created_by').notNull().default(''),
 	custom: text('custom').default('{}'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()

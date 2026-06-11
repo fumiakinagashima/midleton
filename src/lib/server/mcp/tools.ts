@@ -51,7 +51,7 @@ export const tools: Tool[] = [
 				deal_until: { type: 'string', description: '案件の対象期間・終了日（ISO 8601）' },
 				has_activity_type: {
 					type: 'string',
-					enum: ['note', 'call', 'email', 'meeting'],
+					enum: ['note', 'call', 'email', 'meeting', 'deal_created'],
 					description: '指定種別の活動を持つ顧客に絞り込む'
 				},
 				activity_since: { type: 'string', description: '活動の対象期間・開始日（ISO 8601）' },
@@ -87,20 +87,12 @@ export const tools: Tool[] = [
 	{
 		name: 'search_activities',
 		description:
-			'活動履歴を複合条件で検索する。ユーザー定義テーブルの活動は entity_type_id で絞り込める。content のキーワード検索も可能。',
+			'活動履歴を複合条件で検索する。customer_id で顧客に絞り込める。content のキーワード検索も可能。',
 		input_schema: {
 			type: 'object',
 			properties: {
-				entity_type: {
-					type: 'string',
-					enum: ['customer', 'contact', 'deal', 'entity'],
-					description: 'エンティティの種別'
-				},
-				entity_type_id: {
-					type: 'string',
-					description: 'ユーザー定義テーブルのID（entity_type が entity のとき、そのテーブルの活動に絞り込む）'
-				},
-				type: { type: 'string', enum: ['note', 'call', 'email', 'meeting'] },
+				customer_id: { type: 'string', description: '顧客のIDで絞り込む' },
+				type: { type: 'string', enum: ['note', 'call', 'email', 'meeting', 'deal_created'] },
 				content: { type: 'string', description: '活動内容のキーワード（部分一致）' },
 				since: { type: 'string', description: '開始日（ISO 8601）' },
 				until: { type: 'string', description: '終了日（ISO 8601）' },
@@ -145,16 +137,11 @@ export const tools: Tool[] = [
 	{
 		name: 'summarize_activities',
 		description:
-			'活動履歴を種別（note/call/email/meeting）ごとに件数集計する。「今月の商談数は？」「電話した件数は？」などに使う。期間・対象エンティティで絞り込み可能。',
+			'活動履歴を種別（note/call/email/meeting/deal_created）ごとに件数集計する。「今月の商談数は？」「電話した件数は？」などに使う。期間・顧客で絞り込み可能。',
 		input_schema: {
 			type: 'object',
 			properties: {
-				entity_id: { type: 'string', description: '特定のエンティティに絞り込む' },
-				entity_type: {
-					type: 'string',
-					enum: ['customer', 'contact', 'deal', 'entity'],
-					description: 'エンティティの種別'
-				},
+				customer_id: { type: 'string', description: '特定の顧客に絞り込む' },
 				since: { type: 'string', description: '集計開始日（ISO 8601 形式）' },
 				until: { type: 'string', description: '集計終了日（ISO 8601 形式）' }
 			},
@@ -377,19 +364,14 @@ export const tools: Tool[] = [
 	// ── Activities ─────────────────────────────────────────────────────────
 	{
 		name: 'get_activities',
-		description: '活動履歴を取得する。対象エンティティのIDと種別を指定する。',
+		description: '指定した顧客の活動履歴を取得する。',
 		input_schema: {
 			type: 'object',
 			properties: {
-				entity_id: { type: 'string', description: '対象のID' },
-				entity_type: {
-					type: 'string',
-					enum: ['customer', 'contact', 'deal', 'entity'],
-					description: '対象の種別'
-				},
+				customer_id: { type: 'string', description: '顧客のID' },
 				limit: { type: 'number', description: '取得件数の上限（デフォルト: 20）' }
 			},
-			required: ['entity_id', 'entity_type']
+			required: ['customer_id']
 		}
 	},
 	{
@@ -398,20 +380,15 @@ export const tools: Tool[] = [
 		input_schema: {
 			type: 'object',
 			properties: {
-				entity_id: { type: 'string', description: '記録先のID（顧客・担当者・案件・カスタムエンティティ）' },
-				entity_type: {
-					type: 'string',
-					enum: ['customer', 'contact', 'deal', 'entity'],
-					description: '記録先の種別'
-				},
+				customer_id: { type: 'string', description: '記録先の顧客ID' },
 				type: {
 					type: 'string',
-					enum: ['note', 'call', 'email', 'meeting'],
-					description: '活動の種別（note: メモ / call: 通話 / email: メール / meeting: 面談）'
+					enum: ['note', 'call', 'email', 'meeting', 'deal_created'],
+					description: '活動の種別（note: メモ / call: 通話 / email: メール / meeting: 面談 / deal_created: 案件登録）'
 				},
 				content: { type: 'string', description: '活動内容（必須）' }
 			},
-			required: ['entity_id', 'entity_type', 'content']
+			required: ['customer_id', 'content']
 		}
 	},
 

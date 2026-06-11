@@ -90,19 +90,13 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 	activities: {
 		id: 'activities', label: '活動履歴', icon: 'clipboard', isCore: true,
 		fields: [
-			{
-				key: 'entityType', label: '対象種別', type: 'select', required: true, listable: true,
-				options: [
-					{ label: '顧客', value: 'customer' }, { label: '担当者', value: 'contact' },
-					{ label: '案件', value: 'deal' }, { label: 'エンティティ', value: 'entity' }
-				]
-			},
-			{ key: 'entityId', label: '対象ID', type: 'text', required: true },
+			{ key: 'customerId', label: '顧客', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
 			{
 				key: 'type', label: '種類', type: 'select', required: true, listable: true,
 				options: [
 					{ label: 'メモ', value: 'note' }, { label: '電話', value: 'call' },
-					{ label: 'メール', value: 'email' }, { label: '面談', value: 'meeting' }
+					{ label: 'メール', value: 'email' }, { label: '面談', value: 'meeting' },
+					{ label: '案件登録', value: 'deal_created' }
 				]
 			},
 			{ key: 'content', label: '内容', type: 'textarea', required: true, listable: true }
@@ -117,7 +111,7 @@ const CORE_COLUMN_KEYS: Record<string, string[]> = {
 	customers: ['name', 'email', 'phone', 'postalCode', 'address', 'website', 'status', 'notes'],
 	contacts: ['customerId', 'name', 'nameKana', 'email', 'phone', 'role', 'department', 'notes'],
 	deals: ['customerId', 'title', 'amount', 'status', 'plannedStart', 'plannedEnd', 'notes'],
-	activities: ['entityType', 'entityId', 'type', 'content']
+	activities: ['customerId', 'type', 'content']
 };
 
 const SYSTEM_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'entityTypeId']);
@@ -253,7 +247,7 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 	if (type === 'activities') {
 		return (await db.select().from(activities).orderBy(desc(activities.createdAt)).limit(limit))
 			.map(a => ({
-				id: a.id, entityType: a.entityType, entityId: a.entityId,
+				id: a.id, customerId: a.customerId,
 				type: a.type, content: a.content,
 				...(JSON.parse(a.custom ?? '{}') as RecordRow),
 				createdAt: toTs(a.createdAt)
@@ -310,7 +304,7 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		const [a] = await db.select().from(activities).where(eq(activities.id, id));
 		if (!a) return null;
 		return {
-			id: a.id, entityType: a.entityType, entityId: a.entityId,
+			id: a.id, customerId: a.customerId,
 			type: a.type, content: a.content,
 			...(JSON.parse(a.custom ?? '{}') as RecordRow),
 			createdAt: toTs(a.createdAt)
@@ -324,6 +318,15 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		...(JSON.parse(e.data ?? '{}') as RecordRow),
 		createdAt: toTs(e.createdAt), updatedAt: toTs(e.updatedAt)
 	};
+}
+
+export async function createDealRegisteredActivity(db: Db, customerId: string, dealTitle: string): Promise<void> {
+	await db.insert(activities).values({
+		id: crypto.randomUUID(),
+		customerId,
+		type: 'deal_created',
+		content: `案件「${dealTitle}」を登録しました`
+	});
 }
 
 export async function createRecord(db: Db, type: string, data: Record<string, unknown>): Promise<RecordRow> {
@@ -360,15 +363,15 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 			plannedStart: s('plannedStart'), plannedEnd: s('plannedEnd'),
 			notes: s('notes'), custom: JSON.stringify(customData)
 		});
+		await createDealRegisteredActivity(db, String(data.customerId ?? ''), String(data.title ?? ''));
 		return (await getRecord(db, 'deals', id))!;
 	}
 	if (type === 'activities') {
 		const customData = extractCustomData('activities', data);
 		await db.insert(activities).values({
 			id,
-			entityType: (data.entityType as 'customer' | 'contact' | 'deal' | 'entity') ?? 'customer',
-			entityId: String(data.entityId ?? ''),
-			type: (data.type as 'note' | 'call' | 'email' | 'meeting') ?? 'note',
+			customerId: String(data.customerId ?? ''),
+			type: (data.type as 'note' | 'call' | 'email' | 'meeting' | 'deal_created') ?? 'note',
 			content: String(data.content ?? ''),
 			custom: JSON.stringify(customData)
 		});
@@ -433,9 +436,8 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 		const existingCustom = JSON.parse(existing?.custom ?? '{}') as Record<string, unknown>;
 		const mergedCustom = { ...existingCustom, ...extractCustomData('activities', data) };
 		await db.update(activities).set({
-			...(data.entityType != null ? { entityType: data.entityType as 'customer' | 'contact' | 'deal' | 'entity' } : {}),
-			...(data.entityId != null ? { entityId: String(data.entityId) } : {}),
-			...(data.type != null ? { type: data.type as 'note' | 'call' | 'email' | 'meeting' } : {}),
+			...(data.customerId != null ? { customerId: String(data.customerId) } : {}),
+			...(data.type != null ? { type: data.type as 'note' | 'call' | 'email' | 'meeting' | 'deal_created' } : {}),
 			...(data.content != null ? { content: String(data.content) } : {}),
 			custom: JSON.stringify(mergedCustom)
 		}).where(eq(activities.id, id));

@@ -5,7 +5,13 @@ import type { QuickActionId } from '$lib/quick-actions/catalog';
 
 const DEAL_STATUS_LABEL: Record<string, string> = { open: '進行中', won: '受注', lost: '失注' };
 const CUSTOMER_STATUS_LABEL: Record<string, string> = { active: 'アクティブ', inactive: '非アクティブ' };
-const ACTIVITY_TYPE_LABEL: Record<string, string> = { note: 'メモ', call: '通話', email: 'メール', meeting: '面談' };
+const ACTIVITY_TYPE_LABEL: Record<string, string> = {
+	note: 'メモ',
+	call: '通話',
+	email: 'メール',
+	meeting: '面談',
+	deal_created: '案件登録'
+};
 const APPROVAL_STATUS_LABEL: Record<string, string> = {
 	pending: '審査中',
 	approved: '承認済',

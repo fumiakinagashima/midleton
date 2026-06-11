@@ -18,6 +18,7 @@ import {
 	updateApprovalStep,
 	cancelApproval
 } from '../db/approval-service';
+import { createDealRegisteredActivity } from '../db/table-service';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ const searchCustomersSchema = z.object({
 	has_deal_status: z.enum(['open', 'won', 'lost']).optional(),
 	deal_since: z.string().optional(),
 	deal_until: z.string().optional(),
-	has_activity_type: z.enum(['note', 'call', 'email', 'meeting']).optional(),
+	has_activity_type: z.enum(['note', 'call', 'email', 'meeting', 'deal_created']).optional(),
 	activity_since: z.string().optional(),
 	activity_until: z.string().optional(),
 	limit: z.number().int().positive().default(50)
@@ -148,9 +149,8 @@ async function handleSearchCustomers(db: Db, input: unknown) {
 		: null;
 
 	const actSub = p.has_activity_type
-		? db.selectDistinct({ id: activities.entityId }).from(activities).where(
+		? db.selectDistinct({ id: activities.customerId }).from(activities).where(
 				and(
-					eq(activities.entityType, 'customer'),
 					eq(activities.type, p.has_activity_type),
 					p.activity_since ? gte(activities.createdAt, toDate(p.activity_since)) : undefined,
 					p.activity_until ? lte(activities.createdAt, toDate(p.activity_until)) : undefined
@@ -223,9 +223,8 @@ async function handleSearchDeals(db: Db, input: unknown) {
 }
 
 const searchActivitiesSchema = z.object({
-	entity_type: z.enum(['customer', 'contact', 'deal', 'entity']).optional(),
-	entity_type_id: z.string().optional(),
-	type: z.enum(['note', 'call', 'email', 'meeting']).optional(),
+	customer_id: z.string().optional(),
+	type: z.enum(['note', 'call', 'email', 'meeting', 'deal_created']).optional(),
 	content: z.string().optional(),
 	since: z.string().optional(),
 	until: z.string().optional(),
@@ -235,20 +234,12 @@ const searchActivitiesSchema = z.object({
 async function handleSearchActivities(db: Db, input: unknown) {
 	const p = searchActivitiesSchema.parse(input);
 
-	const entitySub = p.entity_type_id
-		? db.selectDistinct({ id: entities.id }).from(entities).where(
-				eq(entities.entityTypeId, p.entity_type_id)
-			)
-		: null;
-
 	const rows = await db
 		.select()
 		.from(activities)
 		.where(
 			and(
-				p.entity_type ? eq(activities.entityType, p.entity_type) : undefined,
-				entitySub ? eq(activities.entityType, 'entity') : undefined,
-				entitySub ? inArray(activities.entityId, entitySub) : undefined,
+				p.customer_id ? eq(activities.customerId, p.customer_id) : undefined,
 				p.type ? eq(activities.type, p.type) : undefined,
 				p.content ? like(activities.content, `%${p.content}%`) : undefined,
 				p.since ? gte(activities.createdAt, toDate(p.since)) : undefined,
@@ -342,14 +333,13 @@ async function handleSummarizeCustomers(db: Db, input: unknown) {
 }
 
 const summarizeActivitiesSchema = z.object({
-	entity_id: z.string().optional(),
-	entity_type: z.enum(['customer', 'contact', 'deal', 'entity']).optional(),
+	customer_id: z.string().optional(),
 	since: z.string().optional(),
 	until: z.string().optional()
 });
 
 async function handleSummarizeActivities(db: Db, input: unknown) {
-	const { entity_id, entity_type, since, until } = summarizeActivitiesSchema.parse(input);
+	const { customer_id, since, until } = summarizeActivitiesSchema.parse(input);
 
 	const rows = await db
 		.select({
@@ -359,8 +349,7 @@ async function handleSummarizeActivities(db: Db, input: unknown) {
 		.from(activities)
 		.where(
 			and(
-				entity_id ? eq(activities.entityId, entity_id) : undefined,
-				entity_type ? eq(activities.entityType, entity_type) : undefined,
+				customer_id ? eq(activities.customerId, customer_id) : undefined,
 				since ? gte(activities.createdAt, toDate(since)) : undefined,
 				until ? lte(activities.createdAt, toDate(until)) : undefined
 			)
@@ -410,7 +399,7 @@ async function handleGetCustomerDetail(db: Db, input: unknown) {
 		db
 			.select()
 			.from(activities)
-			.where(and(eq(activities.entityId, customer.id), eq(activities.entityType, 'customer')))
+			.where(eq(activities.customerId, customer.id))
 			.orderBy(desc(activities.createdAt))
 			.limit(activities_limit)
 	]);
@@ -721,6 +710,7 @@ async function handleCreateDeal(db: Db, input: unknown) {
 		notes: data.notes,
 		custom: JSON.stringify(data.custom ?? {})
 	});
+	await createDealRegisteredActivity(db, data.customer_id, data.title);
 	const [row] = await db.select().from(deals).where(eq(deals.id, id));
 	return { ...row, custom: parseJson(row.custom) };
 }
@@ -757,26 +747,22 @@ async function handleUpdateDeal(db: Db, input: unknown) {
 // ── Activities ─────────────────────────────────────────────────────────────
 
 const getActivitiesSchema = z.object({
-	entity_id: z.string(),
-	entity_type: z.enum(['customer', 'contact', 'deal', 'entity']),
+	customer_id: z.string(),
 	limit: z.number().int().positive().default(20)
 });
 
 const createActivitySchema = z.object({
-	entity_id: z.string(),
-	entity_type: z.enum(['customer', 'contact', 'deal', 'entity']),
-	type: z.enum(['note', 'call', 'email', 'meeting']).default('note'),
+	customer_id: z.string(),
+	type: z.enum(['note', 'call', 'email', 'meeting', 'deal_created']).default('note'),
 	content: z.string().min(1)
 });
 
 async function handleGetActivities(db: Db, input: unknown) {
-	const { entity_id, entity_type, limit } = getActivitiesSchema.parse(input);
+	const { customer_id, limit } = getActivitiesSchema.parse(input);
 	return db
 		.select()
 		.from(activities)
-		.where(
-			and(eq(activities.entityId, entity_id), eq(activities.entityType, entity_type))
-		)
+		.where(eq(activities.customerId, customer_id))
 		.orderBy(desc(activities.createdAt))
 		.limit(limit);
 }
@@ -786,8 +772,7 @@ async function handleCreateActivity(db: Db, input: unknown) {
 	const id = crypto.randomUUID();
 	await db.insert(activities).values({
 		id,
-		entityId: data.entity_id,
-		entityType: data.entity_type,
+		customerId: data.customer_id,
 		type: data.type,
 		content: data.content
 	});
