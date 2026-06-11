@@ -611,7 +611,7 @@
 	}
 
 	.messages-inner {
-		max-width: 720px;
+		max-width: 820px;
 		margin: 0 auto;
 		padding: 0 24px 200px;
 		display: flex;

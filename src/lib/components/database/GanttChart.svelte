@@ -129,6 +129,28 @@
 	// ── Customer lookup ──────────────────────────────────────────────────────
 	const customerMap = $derived(Object.fromEntries(customers.map(c => [c.id, c.name])));
 
+	// ── Left panel width (resizable, with progressive column hiding) ─────────
+	const LEFT_W_MIN = 76;
+	const RIGHT_MIN = 120;
+	let LEFT_W = $state(480);
+
+	// Hide secondary columns as the left panel narrows, in order of priority
+	const showStatus   = $derived(LEFT_W >= 354);
+	const showDates    = $derived(LEFT_W >= 286);
+	const showCustomer = $derived(LEFT_W >= 176);
+
+	let ganttEl = $state<HTMLDivElement | null>(null);
+	let resizing = $state(false);
+	let resizeStartX = $state(0);
+	let resizeStartW = $state(0);
+
+	function startResize(e: MouseEvent) {
+		e.preventDefault();
+		resizing = true;
+		resizeStartX = e.clientX;
+		resizeStartW = LEFT_W;
+	}
+
 	// ── Drag state ───────────────────────────────────────────────────────────
 	type DragMode = 'move' | 'left' | 'right' | 'create';
 
@@ -190,6 +212,12 @@
 	}
 
 	function onMouseMove(e: MouseEvent) {
+		if (resizing) {
+			const dx = e.clientX - resizeStartX;
+			const maxW = Math.max(LEFT_W_MIN, (ganttEl?.clientWidth ?? Infinity) - RIGHT_MIN);
+			LEFT_W = Math.min(Math.max(resizeStartW + dx, LEFT_W_MIN), maxW);
+			return;
+		}
 		if (!dragId) return;
 		const dx = e.clientX - dragClientStartX;
 		const daysDelta = Math.round(dx / pxPerDay);
@@ -226,6 +254,7 @@
 	}
 
 	function onMouseUp() {
+		if (resizing) { resizing = false; return; }
 		if (!dragId) return;
 		const o = overrides[dragId];
 		if (o) onDateChange(dragId, o.plannedStart, o.plannedEnd);
@@ -242,9 +271,11 @@
 
 	// ── Cursor ───────────────────────────────────────────────────────────────
 	const cursor = $derived(
-		dragId
-			? (dragMode === 'move' ? 'grabbing' : dragMode === 'create' ? 'crosshair' : 'ew-resize')
-			: 'default'
+		resizing
+			? 'col-resize'
+			: dragId
+				? (dragMode === 'move' ? 'grabbing' : dragMode === 'create' ? 'crosshair' : 'ew-resize')
+				: 'default'
 	);
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
@@ -255,12 +286,11 @@
 	}
 
 	const ROW_H = 40;
-	const LEFT_W = 480;
 </script>
 
 <svelte:window onmousemove={onMouseMove} onmouseup={onMouseUp} />
 
-<div class="gantt" style="cursor:{cursor}">
+<div class="gantt" bind:this={ganttEl} style="cursor:{cursor}">
 	<!-- ── Controls ──────────────────────────────────────────────────────── -->
 	<div class="controls">
 		<span class="zoom-label">ズーム</span>
@@ -273,11 +303,10 @@
 	<!-- ── Header ────────────────────────────────────────────────────────── -->
 	<div class="gantt-head">
 		<div class="left-head" style="width:{LEFT_W}px">
-			<div class="lh-col num">#</div>
 			<div class="lh-col title">案件名</div>
-			<div class="lh-col customer">顧客</div>
-			<div class="lh-col dates">期間</div>
-			<div class="lh-col status">状況</div>
+			{#if showCustomer}<div class="lh-col customer">顧客</div>{/if}
+			{#if showDates}<div class="lh-col dates">期間</div>{/if}
+			{#if showStatus}<div class="lh-col status">状況</div>{/if}
 		</div>
 		<div class="right-head" bind:this={rightHeadEl}>
 			<div class="rh-inner" style="width:{chartWidth}px">
@@ -305,23 +334,28 @@
 	<div class="gantt-body">
 		<!-- Left panel -->
 		<div class="left-body" style="width:{LEFT_W}px">
-			{#each displayDeals as deal, i}
+			{#each displayDeals as deal}
 				<div class="left-row" style="height:{ROW_H}px">
-					<span class="col num">{i + 1}</span>
 					<a class="col title" href="/database/deals/{deal.id}">{deal.title}</a>
-					<span class="col customer">{customerMap[deal.customerId] ?? '—'}</span>
-					<span class="col dates">
-						{#if deal.plannedStart && deal.plannedEnd}
-							{fmtDate(deal.plannedStart)} – {fmtDate(deal.plannedEnd)}
-						{:else}
-							<span class="unset">未設定</span>
-						{/if}
-					</span>
-					<span class="col status">
-						<span class="status-badge" style="border-color:{STATUS[deal.status]?.border ?? '#888'};color:{STATUS[deal.status]?.border ?? '#888'}">
-							{STATUS[deal.status]?.label ?? deal.status}
+					{#if showCustomer}
+						<span class="col customer">{customerMap[deal.customerId] ?? '—'}</span>
+					{/if}
+					{#if showDates}
+						<span class="col dates">
+							{#if deal.plannedStart && deal.plannedEnd}
+								{fmtDate(deal.plannedStart)} – {fmtDate(deal.plannedEnd)}
+							{:else}
+								<span class="unset">未設定</span>
+							{/if}
 						</span>
-					</span>
+					{/if}
+					{#if showStatus}
+						<span class="col status">
+							<span class="status-badge" style="border-color:{STATUS[deal.status]?.border ?? '#888'};color:{STATUS[deal.status]?.border ?? '#888'}">
+								{STATUS[deal.status]?.label ?? deal.status}
+							</span>
+						</span>
+					{/if}
 				</div>
 			{/each}
 		</div>
@@ -374,10 +408,14 @@
 			</div>
 		</div>
 	</div>
+	<!-- ── Resize handle ─────────────────────────────────────────────────── -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="resize-handle" class:active={resizing} style="left:{LEFT_W}px" onmousedown={startResize}></div>
 </div>
 
 <style>
 	.gantt {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		height: 100%;
@@ -480,7 +518,6 @@
 	.left-row:last-child { border-bottom: none; }
 
 	.col { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.col.num      { width: 36px; flex-shrink: 0; font-size: 0.75rem; color: var(--color-text-muted); }
 	.col.title    { flex: 1; min-width: 0; color: var(--color-primary); text-decoration: none; font-weight: 500; }
 	.col.title:hover { text-decoration: underline; }
 	.col.customer { width: 100px; flex-shrink: 0; color: var(--color-text-muted); font-size: 0.8125rem; }
@@ -499,7 +536,6 @@
 	}
 
 	/* Left column widths */
-	.lh-col.num      { width: 36px; flex-shrink: 0; }
 	.lh-col.title    { flex: 1; min-width: 0; }
 	.lh-col.customer { width: 100px; flex-shrink: 0; }
 	.lh-col.dates    { width: 110px; flex-shrink: 0; }
@@ -568,5 +604,22 @@
 		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		color: var(--color-text);
 		pointer-events: none;
+	}
+
+	/* Left panel resize handle */
+	.resize-handle {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 7px;
+		margin-left: -3.5px;
+		cursor: col-resize;
+		z-index: 20;
+		background: transparent;
+		transition: background 0.1s;
+	}
+	.resize-handle:hover,
+	.resize-handle.active {
+		background: color-mix(in srgb, var(--color-primary) 35%, transparent);
 	}
 </style>
