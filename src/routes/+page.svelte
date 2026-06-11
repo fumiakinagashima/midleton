@@ -14,6 +14,14 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick } from 'svelte';
 	import { marked } from 'marked';
+	import {
+		quickActionCatalog,
+		DEFAULT_QUICK_ACTION_IDS,
+		MAX_QUICK_ACTIONS,
+		QUICK_ACTIONS_STORAGE_KEY,
+		isQuickActionId,
+		type QuickActionDef
+	} from '$lib/quick-actions/catalog';
 
 	function renderMarkdown(text: string): string {
 		return marked.parse(text, { async: false }) as string;
@@ -21,6 +29,24 @@
 
 	const ls = (key: string, def: string) =>
 		typeof localStorage !== 'undefined' ? (localStorage.getItem(key) ?? def) : def;
+
+	function loadQuickActions(): QuickActionDef[] {
+		const raw = ls(QUICK_ACTIONS_STORAGE_KEY, '');
+		let ids: string[] = DEFAULT_QUICK_ACTION_IDS;
+		if (raw) {
+			try {
+				const parsed = JSON.parse(raw);
+				if (Array.isArray(parsed)) ids = parsed;
+			} catch {
+				// ignore malformed value, fall back to defaults
+			}
+		}
+		const valid = ids.filter(isQuickActionId).slice(0, MAX_QUICK_ACTIONS);
+		const ordered = valid.length > 0 ? valid : DEFAULT_QUICK_ACTION_IDS;
+		return ordered
+			.map((id) => quickActionCatalog.find((a) => a.id === id))
+			.filter((a): a is QuickActionDef => !!a);
+	}
 
 	let messages = $state<Message[]>([]);
 	let input = $state('');
@@ -31,16 +57,33 @@
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let enterToSend = $state(ls('enterToSend', 'true') !== 'false');
 	let hasStarted = $state(false);
+	let quickActions = $state(loadQuickActions());
+	let quickActionMenuOpen = $state(false);
 
 	let streamingText = $state('');
 	let streamingUIContents = $state<MessageContent[]>([]);
 
 	$effect(() => {
-		const handler = () => {
+		const handler = (e: StorageEvent) => {
 			enterToSend = (localStorage.getItem('enterToSend') ?? 'true') !== 'false';
+			if (e.key === QUICK_ACTIONS_STORAGE_KEY || e.key === null) {
+				quickActions = loadQuickActions();
+			}
 		};
 		window.addEventListener('storage', handler);
 		return () => window.removeEventListener('storage', handler);
+	});
+
+	// 開いている間だけ document クリックを監視し、メニュー外クリックで閉じる
+	// （setTimeout で開いた瞬間のクリックイベントを取りこぼす）
+	$effect(() => {
+		if (!quickActionMenuOpen) return;
+		const close = () => (quickActionMenuOpen = false);
+		const id = setTimeout(() => document.addEventListener('click', close), 0);
+		return () => {
+			clearTimeout(id);
+			document.removeEventListener('click', close);
+		};
 	});
 
 	// Input position management
@@ -258,6 +301,40 @@
 		}
 	}
 
+	async function runQuickAction(action: QuickActionDef) {
+		quickActionMenuOpen = false;
+		if (loading) return;
+		hideRegistrationUI();
+		addUserMessage(action.label);
+		if (!hasStarted) hasStarted = true;
+		loading = true;
+		await scrollLatestToTop();
+		try {
+			const res = await fetch('/api/quick-actions', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id: action.id })
+			});
+			const result = (await res.json()) as { contents: MessageContent[] };
+			messages = [
+				...messages,
+				{ id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() }
+			];
+		} catch {
+			messages = [
+				...messages,
+				{
+					id: crypto.randomUUID(),
+					role: 'assistant',
+					contents: [{ type: 'text', text: m.chat_error() }],
+					createdAt: new Date()
+				}
+			];
+		} finally {
+			loading = false;
+		}
+	}
+
 	function handleKey(e: KeyboardEvent) {
 		if (enterToSend && e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
 			e.preventDefault();
@@ -352,7 +429,48 @@
 				disabled={loading}
 			></textarea>
 			<div class="input-footer">
-				<div class="input-footer-left"></div>
+				<div class="input-footer-left">
+					<div class="quick-action-wrap">
+						<button
+							class="icon-btn"
+							onclick={(e) => {
+								e.stopPropagation();
+								quickActionMenuOpen = !quickActionMenuOpen;
+							}}
+							disabled={loading}
+							aria-label="クイックアクション"
+							aria-expanded={quickActionMenuOpen}
+						>
+							<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+								<path
+									d="M8 2.5V13.5M2.5 8H13.5"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+								/>
+							</svg>
+						</button>
+						{#if quickActionMenuOpen}
+							<div class="quick-action-menu">
+								{#if quickActions.length === 0}
+									<p class="menu-empty">
+										クイックアクションが設定されていません。<a href="/settings/quick-actions">設定</a>から追加できます。
+									</p>
+								{:else}
+									{#each quickActions as action}
+										<button class="menu-item" onclick={() => runQuickAction(action)}>
+											<span class="menu-icon">{action.icon}</span>
+											<span class="menu-text">
+												<span class="menu-label">{action.label}</span>
+												<span class="menu-desc">{action.description}</span>
+											</span>
+										</button>
+									{/each}
+								{/if}
+							</div>
+						{/if}
+					</div>
+				</div>
 				<button
 					class="send-btn"
 					onclick={handleSubmit}
@@ -656,6 +774,132 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
+	}
+
+	.quick-action-wrap {
+		position: relative;
+	}
+
+	.icon-btn {
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--color-text-muted);
+		border: 1px solid var(--color-border);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		transition:
+			color 0.15s ease,
+			border-color 0.15s ease,
+			transform 0.15s ease;
+	}
+
+	.icon-btn:disabled {
+		opacity: 0.25;
+		cursor: not-allowed;
+	}
+
+	.icon-btn:not(:disabled):hover {
+		color: var(--color-primary);
+		border-color: var(--color-primary);
+	}
+
+	.icon-btn[aria-expanded='true'] {
+		color: var(--color-primary);
+		border-color: var(--color-primary);
+		transform: rotate(45deg);
+	}
+
+	.quick-action-menu {
+		position: absolute;
+		bottom: calc(100% + 8px);
+		left: 0;
+		min-width: 240px;
+		max-width: 300px;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 12px;
+		box-shadow:
+			0 8px 24px rgba(0, 0, 0, 0.08),
+			0 1px 4px rgba(0, 0, 0, 0.04);
+		padding: 6px;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		animation: menuFadeIn 0.15s ease-out;
+	}
+
+	@keyframes menuFadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.menu-item {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		padding: 8px 10px;
+		border: none;
+		border-radius: 8px;
+		background: transparent;
+		color: var(--color-text);
+		font-size: 0.8125rem;
+		text-align: left;
+		cursor: pointer;
+		transition: background 0.1s ease;
+	}
+
+	.menu-item:hover {
+		background: var(--color-background);
+	}
+
+	.menu-icon {
+		flex-shrink: 0;
+		width: 22px;
+		font-size: 1.05rem;
+		text-align: center;
+	}
+
+	.menu-text {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-width: 0;
+	}
+
+	.menu-label {
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.menu-desc {
+		font-size: 0.75rem;
+		color: var(--color-text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.menu-empty {
+		padding: 10px 12px;
+		font-size: 0.8125rem;
+		color: var(--color-text-muted);
+		line-height: 1.6;
+	}
+
+	.menu-empty a {
+		color: var(--color-primary);
 	}
 
 	.send-btn {

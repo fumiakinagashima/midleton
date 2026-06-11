@@ -142,6 +142,7 @@
 	<nav class="subnav">
 		<a href="/settings">一般</a>
 		<a href="/settings/integrations" class="active">{m.integrations()}</a>
+		<a href="/settings/quick-actions">{m.quick_actions()}</a>
 	</nav>
 
 	<div class="header">
@@ -203,6 +204,8 @@
 
 <style>
 	.page {
+		height: 100%;
+		overflow-y: auto;
 		padding: 40px 48px;
 		max-width: 720px;
 	}

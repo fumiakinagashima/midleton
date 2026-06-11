@@ -23,12 +23,13 @@ midleton/
 │   │   ├── +page.svelte      # チャット画面（/）
 │   │   ├── ui/               # UIコンポーネントデモ（/ui）
 │   │   ├── bizcard/          # 名刺取り込み（/bizcard）
-│   │   ├── settings/         # 設定画面（/settings, /settings/integrations）
+│   │   ├── settings/         # 設定画面（/settings, /settings/integrations, /settings/quick-actions）
 │   │   ├── database/         # データ管理画面（/database, /database/[type], /database/[type]/[id] 等）
 │   │   └── api/
 │   │       ├── chat/         # チャット API エンドポイント
 │   │       ├── bizcard/      # 名刺画像 → Claude vision → JSON 抽出
 │   │       ├── integrations/ # 外部API連携 CRUD エンドポイント
+│   │       ├── quick-actions/# クイックアクション実行 API（AIを介さず dispatchTool を直接呼び出し）
 │   │       └── database/     # データ管理 REST API（tables, records CRUD）
 │   ├── lib/
 │   │   ├── components/
@@ -37,10 +38,12 @@ midleton/
 │   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values, Gantt, Chart, Kanban, Link, Bizcard）
 │   │   │   ├── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor）
 │   │   │   └── bizcard/  # 名刺スキャン専用コンポーネント（CameraScanner, cardDetector）
+│   │   ├── quick-actions/ # クイックアクションのカタログ定義（クライアント・サーバー共有、catalog.ts）
 │   │   ├── server/       # サーバーサイドロジック
 │   │   │   ├── db/       # DrizzleORM スキーマ・クエリ（schema.ts, table-service.ts）
 │   │   │   ├── mcp/      # MCPサーバー・ツール定義
-│   │   │   └── ai/       # Claude API 連携・システムプロンプト・モック
+│   │   │   ├── ai/       # Claude API 連携・システムプロンプト・モック
+│   │   │   └── quick-actions/ # クイックアクションのツール実行・結果整形レジストリ（registry.ts）
 │   │   ├── styles/       # グローバルスタイル・テーマ定義
 │   │   └── types/        # 共通型定義
 │   └── app.html
@@ -76,6 +79,17 @@ midleton/
 - `/database/approvals` — 申請管理（承認ルート・ステップ操作）
 - `/database/accounts` — アカウント管理（権限・パスワード）
 - `/settings` — アプリ設定・外部API連携管理
+- `/settings/quick-actions` — チャット入力欄の「+」ボタンに表示するクイックアクション（最大5件）の選択
+
+## クイックアクション
+
+チャット入力欄の「+」ボタンから、引数不要の一覧・集計系 MCP ツールを AI を介さず直接実行できる（`/api/quick-actions`）。レスポンスは `dispatchTool` の結果を Table / Values / Chart 等に整形して即時返却し、トークンを消費しない。
+
+- カタログ定義: `src/lib/quick-actions/catalog.ts`（クライアント・サーバー共有）
+- 実行・整形ロジック: `src/lib/server/quick-actions/registry.ts`
+- ユーザーは `/settings/quick-actions` で全候補から最大5件を選択（localStorage に保存）
+- 新しいツールを候補に追加する場合は、引数不要の一覧・集計系であることを確認した上で `catalog.ts` と `registry.ts` の両方に追加する
+- 例外として、顧客登録（`create_customer`）・名刺読取（`scan_bizcard`）は登録系だが追加済み。これらは `dispatchTool` を呼ばず、`registry.ts` の静的ハンドラ（`StaticQuickActionHandler`）として `form` / `bizcard` の `MessageContent` を直接返す（実際のツール呼び出しはユーザーがフォーム送信した時点で発生）
 
 ## 認証（フェーズ5で実装予定）
 
