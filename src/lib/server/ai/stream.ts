@@ -4,6 +4,7 @@ import { SYSTEM_PROMPT } from './prompt';
 import { tools, dispatchTool } from '$lib/server/mcp';
 import type { Db } from '$lib/server/db';
 import type { MessageContent } from '$lib/types/chat';
+import type { EmailEnv } from '$lib/server/email';
 
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -67,6 +68,7 @@ function parseUITag(tag: string): MessageContent | null {
 	const type = /type="([^"]+)"/.exec(attrStr)?.[1];
 	const title = /title="([^"]+)"/.exec(attrStr)?.[1];
 	const tool = /tool="([^"]+)"/.exec(attrStr)?.[1];
+	const submitLabel = /submitLabel="([^"]+)"/.exec(attrStr)?.[1];
 	const chartType = /chartType="([^"]+)"/.exec(attrStr)?.[1] as 'bar' | 'line' | 'pie' | undefined;
 	const chartMode = /mode="([^"]+)"/.exec(attrStr)?.[1] as 'normal' | 'stacked' | 'grouped' | undefined;
 	const href = /href="([^"]+)"/.exec(attrStr)?.[1];
@@ -75,7 +77,7 @@ function parseUITag(tag: string): MessageContent | null {
 
 	try {
 		if (type === 'form' && tool) {
-			return { type: 'form', title, fields: JSON.parse(body), tool };
+			return { type: 'form', title, fields: JSON.parse(body), tool, submitLabel };
 		} else if (type === 'table') {
 			const { columns, rows } = JSON.parse(body);
 			return { type: 'table', columns, rows };
@@ -115,7 +117,8 @@ export async function streamChat(
 	apiKey: string,
 	history: MessageParam[],
 	model: string | undefined,
-	emit: (event: StreamEvent) => void
+	emit: (event: StreamEvent) => void,
+	env?: EmailEnv
 ): Promise<void> {
 	const anthropic = new Anthropic({ apiKey });
 	let messages: MessageParam[] = [...history];
@@ -159,7 +162,7 @@ export async function streamChat(
 			toolBlocks.map(async (b) => {
 				try {
 					const input = JSON.parse(b.inputJson || '{}');
-					const result = await dispatchTool(db, b.name as never, input);
+					const result = await dispatchTool(db, b.name as never, input, env);
 					return { type: 'tool_result' as const, tool_use_id: b.id, content: JSON.stringify(result) };
 				} catch (e) {
 					return {

@@ -65,7 +65,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	// フォーム送信（tool + data）はJSONで返す
 	if (body.tool && body.data) {
 		try {
-			const result = await dispatchTool(db, body.tool as never, body.data);
+			const result = await dispatchTool(db, body.tool as never, body.data, platform.env);
 
 			if (body.tool === 'create_customer_with_contact') {
 				const { customer, contact } = result as {
@@ -85,6 +85,22 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				const contents: MessageContent[] = [
 					{ type: 'text', text: '担当者を登録しました。' },
 					{ type: 'values', title: '担当者情報', items: valueItems(contact, CONTACT_VALUE_FIELDS) }
+				];
+				return json({ contents });
+			}
+
+			if (body.tool === 'send_email') {
+				const sent = result as { to: string; subject: string };
+				const contents: MessageContent[] = [
+					{ type: 'text', text: `${sent.to} 宛にメールを送信しました。` },
+					{
+						type: 'values',
+						title: '送信内容',
+						items: [
+							{ label: '宛先', value: sent.to, format: 'text' },
+							{ label: '件名', value: sent.subject, format: 'text' }
+						]
+					}
 				];
 				return json({ contents });
 			}
@@ -158,7 +174,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		async start(controller) {
 			const enqueue = (e: StreamEvent) => controller.enqueue(new TextEncoder().encode(sse(e)));
 			try {
-				await streamChat(db, apiKey, history, model, enqueue);
+				await streamChat(db, apiKey, history, model, enqueue, platform.env);
 				enqueue({ type: 'done' });
 			} catch (e) {
 				enqueue({ type: 'error', message: e instanceof Error ? e.message : String(e) });

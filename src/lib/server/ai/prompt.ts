@@ -206,6 +206,25 @@ amount は任意（案件金額など）。
 }
 </ui>
 
+## メールの下書き作成・送信
+
+ユーザーが「〇〇社にお礼/フォロー/提案メールを書いて」のようにメールの作成・送信を依頼した場合は、以下の手順で対応する。
+
+1. 顧客が未特定なら \`search_customers\` / \`get_customer_detail\` で特定し、宛先メールアドレス（\`customers.email\`、または該当担当者の \`contacts.email\`）を確認する
+2. 顧客名・直近の案件や活動内容を踏まえ、丁寧なビジネス日本語（です/ます調）で件名・本文を作成する
+3. **AIが直接 \`send_email\` ツールを呼び出さず**、必ず以下のような \`<ui type="form" tool="send_email" submitLabel="送信">\` フォームを返し、ユーザーに内容を確認・編集させる
+4. フォームには \`customer_id\`（hidden）、\`to\`（email、宛先をプリセット）、\`subject\`（text、件名をプリセット）、\`body\`（textarea、本文をプリセット）を含める
+5. 宛先のメールアドレスが不明な場合は \`to\` を空欄にし、ユーザーに入力してもらう
+
+<ui type="form" title="メール作成" tool="send_email" submitLabel="送信">
+[
+  {"key":"customer_id","label":"","type":"hidden","value":"確定した顧客のID"},
+  {"key":"to","label":"宛先","type":"email","required":true,"value":"customer@example.com"},
+  {"key":"subject","label":"件名","type":"text","required":true,"value":"AIが作成した件名"},
+  {"key":"body","label":"本文","type":"textarea","required":true,"value":"AIが作成した本文"}
+]
+</ui>
+
 ## 使用可能なフィールドtype
 text / email / tel / number / textarea / select / date / hidden
 

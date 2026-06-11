@@ -29,7 +29,7 @@ export async function sendEmail(providerConfig: EmailProviderConfig, mail: Mail)
 	}
 }
 
-type EmailEnv = {
+export type EmailEnv = {
 	EMAIL_PROVIDER?: string;
 	EMAIL_FROM?: string;
 	EMAIL_FROM_NAME?: string;
