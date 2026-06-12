@@ -165,6 +165,35 @@ export const tools: Tool[] = [
 		}
 	},
 
+	// ── Customer health score ──────────────────────────────────────────────
+	{
+		name: 'get_customer_health_score',
+		description:
+			'顧客のヘルススコア（取引関係の健全度を0-100でAIが評価したもの）を取得する。名前（部分一致）またはIDで検索できる。「株式会社◯◯のヘルススコアは？」「◯◯との関係は良好？」などに使う。結果はDBにキャッシュされ、通常はキャッシュ済みの値を即座に返す（未計算の場合のみAIで新規計算する）。最新の状態に更新したい場合は force を true にする。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				id: { type: 'string', description: '顧客ID（id か name のどちらか一方を指定）' },
+				name: { type: 'string', description: '顧客名（部分一致）（id か name のどちらか一方を指定）' },
+				force: { type: 'boolean', description: 'true の場合、キャッシュを無視して再計算する（デフォルト: false）' }
+			},
+			required: []
+		}
+	},
+	{
+		name: 'get_customer_health_ranking',
+		description:
+			'ヘルススコアが計算済みの顧客を、スコアの高い順・低い順にランキングする。「ヘルススコアが一番高い／低い企業は？」などに使う。スコアが未計算の顧客は対象外で、件数のみ uncomputedCount / uncomputedNames で示される（未計算の顧客のスコアを知りたい場合は get_customer_health_score を個別に呼ぶ）。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				order: { type: 'string', enum: ['asc', 'desc'], description: '並び順（デフォルト: desc = 高い順）' },
+				limit: { type: 'number', description: '取得件数の上限（デフォルト: 5）' }
+			},
+			required: []
+		}
+	},
+
 	// ── Customers ──────────────────────────────────────────────────────────
 	{
 		name: 'get_customers',

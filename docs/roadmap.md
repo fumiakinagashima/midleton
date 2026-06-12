@@ -308,7 +308,14 @@
 - [x] システムプロンプトに下書きレビュー専用プロンプトを追加（`APPROVAL_DRAFT_REVIEW_SYSTEM_PROMPT` / `buildApprovalDraftReviewPrompt`、`src/lib/server/ai/prompt.ts`）
 - [x] `/database/approvals/new` に「AIレビュー」セクションを追加（提出前にタイトル・申請内容をレビュー、申請の作成・送信はブロックしない）
 
+### 顧客ヘルススコア表示
+- [x] `/api/customers/[id]/health-score` エンドポイント追加（案件・活動履歴からAIが取引関係の健全度をスコアリング、score・level・総評・良い兆候・懸念点をJSONで返す）
+- [x] システムプロンプトに顧客ヘルススコア専用プロンプトを追加（`CUSTOMER_HEALTH_SCORE_SYSTEM_PROMPT` / `buildCustomerHealthScorePrompt`、`src/lib/server/ai/prompt.ts`）
+- [x] `/database/customers/[id]` に「ヘルススコア」セクションを追加（スコア・評価バッジ・総評・良い兆候・懸念点を表示）
+- [x] `customers` テーブルにスコアのキャッシュ列を追加（`health_score` / `health_score_level` / `health_score_summary` / `health_score_positives` / `health_score_concerns` / `health_score_updated_at`、マイグレーション `0015_customer_health_score.sql`）。再計算は手動操作時のみ行うlazy cache方式（定期実行なし）とし、計算結果をDBに保存・再利用する
+- [x] 共有モジュール `src/lib/server/ai/customer-health.ts`（`getCachedCustomerHealthScore` / `computeCustomerHealthScore`）を追加し、`/api/customers/[id]/health-score` から利用するよう整理
+- [x] チャットからの利用に対応: `get_customer_health_score`（名前/IDで個別スコアを取得、未計算時のみAI計算してキャッシュ）・`get_customer_health_ranking`（キャッシュ済みスコアをランキング表示、未計算件数を別途報告）の2 MCPツールを追加
+
 ### 今後の候補（未着手）
 - [ ] フォローアップ提案（案件・活動履歴から次のアクションをAIが提案）
 - [ ] 議事録/メモ → 活動記録の自動生成（自由記述から activities への構造化登録）
-- [ ] 顧客ヘルススコア表示（活動頻度・案件状況等からAIがスコアリング）

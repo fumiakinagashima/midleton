@@ -206,6 +206,29 @@ amount は任意（案件金額など）。
 }
 </ui>
 
+## 顧客ヘルススコア
+
+顧客との取引関係の健全度（AIによる0-100のスコア）を確認したい場合は以下のツールを使う。
+
+- get_customer_health_score — 特定顧客のヘルススコアを取得する。「〇〇社のヘルススコアは？」「〇〇社との関係は良好？」などに使う。結果はDBにキャッシュされ、通常は即座に返る
+- get_customer_health_ranking — スコア計算済みの顧客をスコアの高い順・低い順にランキングする。「ヘルススコアが一番高い（低い）企業は？」などに使う。スコア未計算の顧客は対象外で、uncomputedCount / uncomputedNames に件数・社名のみ示される
+
+updatedAt（最終更新日時）は ISO 8601 形式の文字列で返るので、そのまま文字列として value に渡す（数値や別形式へ変換しない）。
+
+get_customer_health_score の結果は values コンポーネントで表示する:
+<ui type="values" title="〇〇社 ヘルススコア">
+[
+  {"label": "スコア", "value": 85, "format": "number"},
+  {"label": "評価", "value": "良好", "format": "text"},
+  {"label": "総評", "value": "...", "format": "text"},
+  {"label": "良い兆候", "value": "...", "format": "text"},
+  {"label": "懸念点", "value": "...", "format": "text"},
+  {"label": "最終更新", "value": "2026-06-01T10:00:00.000Z", "format": "datetime"}
+]
+</ui>
+
+get_customer_health_ranking の結果は table コンポーネントで表示する。uncomputedCount が1件以上ある場合は、その件数を一言補足する（社名を列挙する必要はない）。
+
 ## メールの下書き作成・送信
 
 ユーザーが「〇〇社にお礼/フォロー/提案メールを書いて」のようにメールの作成・送信を依頼した場合は、以下の手順で対応する。
@@ -330,4 +353,72 @@ ${input.content || '（未入力）'}
 
 ## 承認ルート（参考: 誰が承認するか）
 ${routeLines}`;
+}
+
+export const CUSTOMER_HEALTH_SCORE_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムの顧客ヘルススコアリングAIです。
+顧客の基本情報・案件状況・活動履歴から、その顧客との取引関係が良好に維持されているかをスコアリングするのが役目です。
+
+## 出力ルール
+- 必ず以下のJSON形式のみを出力する。説明文・マークダウン記法・コードブロックは一切付けない
+- score: 0〜100の整数。関係の健全度を表す（100が最も良好）
+- level: scoreに対応する総合評価
+  - "good": 良好。関係は安定している
+  - "warning": 注意。関係が弱まりつつある可能性がある
+  - "risk": 要注意。関係が悪化している、または離脱の懸念がある
+- summary: 総評を1〜2文で
+- positives（良い兆候）: 評価を支える要因。なければ空配列
+- concerns（懸念点）: スコアを下げている要因・注意点。なければ空配列
+
+## 評価の観点
+- 直近の活動からの経過日数（連絡が途絶えていないか）
+- 活動の頻度・傾向
+- 進行中の案件があるか、失注が続いていないか、受注実績はあるか
+- 顧客のステータス（active / inactive）
+
+{
+  "score": 0-100,
+  "level": "good" | "warning" | "risk",
+  "summary": "...",
+  "positives": ["...", "..."],
+  "concerns": ["...", "..."]
+}`;
+
+const DEAL_STATUS_LABELS: Record<string, string> = { open: '商談中', won: '受注', lost: '失注' };
+const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+	note: 'メモ', call: '電話', email: 'メール', meeting: '面談', deal_created: '案件登録'
+};
+
+export function buildCustomerHealthScorePrompt(input: {
+	customer: { name: string; status: string; createdAt: Date | string | number };
+	deals: { title: string; amount: number | null; status: string; createdAt: Date | string | number; closedAt: Date | string | number | null }[];
+	activities: { type: string; content: string; createdAt: Date | string | number }[];
+}): string {
+	const fmt = (d: Date | string | number) => {
+		const dt = new Date(d);
+		return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
+	};
+
+	const dealLines = input.deals.length > 0
+		? input.deals.map(d => `- ${d.title}（${DEAL_STATUS_LABELS[d.status] ?? d.status}, ${d.amount != null ? `${d.amount.toLocaleString()}円` : '金額未設定'}, 登録: ${fmt(d.createdAt)}${d.closedAt ? `, 完了: ${fmt(d.closedAt)}` : ''}）`).join('\n')
+		: 'なし';
+
+	const activityLines = input.activities.length > 0
+		? input.activities.map(a => `- ${fmt(a.createdAt)}（${ACTIVITY_TYPE_LABELS[a.type] ?? a.type}）: ${a.content}`).join('\n')
+		: 'なし';
+
+	return `以下の顧客情報をもとに、取引関係の健全度をスコアリングしてください。
+
+## 今日の日付
+${fmt(new Date())}
+
+## 顧客情報
+- 会社名: ${input.customer.name}
+- ステータス: ${input.customer.status === 'active' ? 'アクティブ' : '非アクティブ'}
+- 登録日: ${fmt(input.customer.createdAt)}
+
+## 案件
+${dealLines}
+
+## 活動履歴（新しい順、最大10件）
+${activityLines}`;
 }

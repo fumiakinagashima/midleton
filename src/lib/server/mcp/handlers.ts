@@ -20,6 +20,9 @@ import {
 } from '../db/approval-service';
 import { createDealRegisteredActivity, recordActivity } from '../db/table-service';
 import { sendEmail, getEmailSetup, type EmailEnv } from '../email';
+import { computeCustomerHealthScore, getCachedCustomerHealthScore } from '../ai/customer-health';
+
+export type ToolEnv = EmailEnv & { ANTHROPIC_API_KEY?: string };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -411,6 +414,96 @@ async function handleGetCustomerDetail(db: Db, input: unknown) {
 		contacts: customerContacts.map((r) => ({ ...r, custom: parseJson(r.custom) })),
 		deals: customerDeals.map((r) => ({ ...r, custom: parseJson(r.custom) })),
 		activities: customerActivities
+	};
+}
+
+// ── Customer health score ─────────────────────────────────────────────────
+
+const getCustomerHealthScoreSchema = z.object({
+	id: z.string().optional(),
+	name: z.string().optional(),
+	force: z.boolean().optional().default(false)
+});
+
+async function handleGetCustomerHealthScore(db: Db, input: unknown, env?: ToolEnv) {
+	const { id, name, force } = getCustomerHealthScoreSchema.parse(input);
+	if (!id && !name) throw new Error('id または name のどちらかを指定してください');
+
+	let customer;
+	if (id) {
+		const [row] = await db.select().from(customers).where(eq(customers.id, id));
+		if (!row) throw new Error(`顧客が見つかりません: ${id}`);
+		customer = row;
+	} else {
+		const rows = await db
+			.select()
+			.from(customers)
+			.where(like(customers.name, `%${name}%`))
+			.limit(1);
+		if (!rows[0]) throw new Error(`顧客が見つかりません: ${name}`);
+		customer = rows[0];
+	}
+
+	if (!force) {
+		const cached = getCachedCustomerHealthScore(customer);
+		if (cached) {
+			return {
+				id: customer.id,
+				name: customer.name,
+				...cached,
+				updatedAt: cached.updatedAt.toISOString(),
+				cached: true
+			};
+		}
+	}
+
+	const apiKey = env?.ANTHROPIC_API_KEY;
+	if (!apiKey) throw new Error('ANTHROPIC_API_KEY が設定されていません。');
+
+	const result = await computeCustomerHealthScore(db, customer, apiKey);
+	return {
+		id: customer.id,
+		name: customer.name,
+		...result,
+		updatedAt: result.updatedAt.toISOString(),
+		cached: false
+	};
+}
+
+const getCustomerHealthRankingSchema = z.object({
+	order: z.enum(['asc', 'desc']).optional().default('desc'),
+	limit: z.number().int().positive().optional().default(5)
+});
+
+async function handleGetCustomerHealthRanking(db: Db, input: unknown) {
+	const { order, limit } = getCustomerHealthRankingSchema.parse(input);
+	const rows = await db.select().from(customers);
+
+	const ranked: { id: string; name: string; score: number; level: string; summary: string; updatedAt: string }[] = [];
+	const uncomputedNames: string[] = [];
+
+	for (const customer of rows) {
+		const cached = getCachedCustomerHealthScore(customer);
+		if (cached) {
+			ranked.push({
+				id: customer.id,
+				name: customer.name,
+				score: cached.score,
+				level: cached.level,
+				summary: cached.summary,
+				updatedAt: cached.updatedAt.toISOString()
+			});
+		} else {
+			uncomputedNames.push(customer.name);
+		}
+	}
+
+	ranked.sort((a, b) => (order === 'asc' ? a.score - b.score : b.score - a.score));
+
+	return {
+		ranking: ranked.slice(0, limit),
+		uncomputedCount: uncomputedNames.length,
+		uncomputedNames
 	};
 }
 
@@ -1002,6 +1095,8 @@ export type ToolName =
 	| 'summarize_customers'
 	| 'summarize_activities'
 	| 'get_customer_detail'
+	| 'get_customer_health_score'
+	| 'get_customer_health_ranking'
 	| 'get_customers'
 	| 'get_customer'
 	| 'create_customer'
@@ -1030,7 +1125,7 @@ export type ToolName =
 	| 'update_approval_step'
 	| 'cancel_approval';
 
-export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?: EmailEnv) {
+export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?: ToolEnv) {
 	switch (name) {
 		case 'list_integrations':   return handleListIntegrations(db);
 		case 'call_external_api':   return handleCallExternalApi(db, input);
@@ -1041,6 +1136,8 @@ export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?:
 		case 'summarize_customers':  return handleSummarizeCustomers(db, input);
 		case 'summarize_activities': return handleSummarizeActivities(db, input);
 		case 'get_customer_detail': return handleGetCustomerDetail(db, input);
+		case 'get_customer_health_score': return handleGetCustomerHealthScore(db, input, env);
+		case 'get_customer_health_ranking': return handleGetCustomerHealthRanking(db, input);
 		case 'get_customers':      return handleGetCustomers(db, input);
 		case 'get_customer':       return handleGetCustomer(db, input);
 		case 'create_customer':    return handleCreateCustomer(db, input);
