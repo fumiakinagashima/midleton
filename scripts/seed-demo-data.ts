@@ -39,6 +39,11 @@ function pickMany<T>(arr: T[], n: number): T[] {
 	return shuffled.slice(0, n);
 }
 
+// メール誤送信防止のため、メールアドレスには実在しないドメイン（RFC 2606）を使用する
+function dummyEmailDomain(domain: string): string {
+	return `${domain.split('.')[0]}.example.test`;
+}
+
 type CompanyDef = {
 	name: string;
 	domain: string;
@@ -177,7 +182,7 @@ async function main() {
 		await db.insert(customers).values({
 			id: customerId,
 			name: company.name,
-			email: `info@${company.domain}`,
+			email: `info@${dummyEmailDomain(company.domain)}`,
 			phone: company.phone,
 			address: company.address,
 			postalCode: company.postalCode,
@@ -194,7 +199,7 @@ async function main() {
 				customerId,
 				name: person.name,
 				nameKana: person.kana,
-				email: `${person.romaji}@${company.domain}`,
+				email: `${person.romaji}@${dummyEmailDomain(company.domain)}`,
 				phone: company.phone,
 				role,
 				department
