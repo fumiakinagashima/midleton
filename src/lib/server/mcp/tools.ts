@@ -209,6 +209,120 @@ export const tools: Tool[] = [
 		}
 	},
 
+	// ── Document generation ───────────────────────────────────────────────
+	{
+		name: 'create_word_document',
+		description:
+			'見出し・段落・表からWord文書（.docx）を生成し、ダウンロードリンクを返す。社内向けの報告書・議事録など文章中心の資料に向く。「営業会議資料をWordで作って」などに使う。事前に summarize_deals / get_deals / search_deals / get_customer_detail 等で必要なデータを取得・集計してから、その内容を blocks に構成して渡す。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				filename: { type: 'string', description: 'ファイル名（拡張子なし。例: "2026年6月_営業会議資料"）' },
+				title: { type: 'string', description: '文書タイトル（任意。文書冒頭に大きく表示される）' },
+				blocks: {
+					type: 'array',
+					description: '文書の内容を順番に並べたブロックの配列',
+					items: {
+						type: 'object',
+						properties: {
+							type: { type: 'string', enum: ['heading', 'paragraph', 'table'], description: 'ブロック種別' },
+							level: { type: 'number', enum: [1, 2, 3], description: 'type が heading のときの見出しレベル（省略時1）' },
+							text: { type: 'string', description: 'type が heading / paragraph のときの本文テキスト' },
+							columns: {
+								type: 'array',
+								description: 'type が table のときの列定義',
+								items: { type: 'object', properties: { key: { type: 'string' }, label: { type: 'string' } }, required: ['key', 'label'] }
+							},
+							rows: {
+								type: 'array',
+								description: 'type が table のときの行データ（columns の key をキーとするオブジェクトの配列）',
+								items: { type: 'object', description: '列キー: 値の組' }
+							}
+						},
+						required: ['type']
+					}
+				}
+			},
+			required: ['filename', 'blocks']
+		}
+	},
+	{
+		name: 'create_excel_workbook',
+		description:
+			'シート・列・行データからExcelファイル（.xlsx）を生成し、ダウンロードリンクを返す。案件一覧・集計表など表形式データに向く。「案件状況をExcelでまとめて」などに使う。事前に summarize_deals / get_deals / search_deals 等で必要なデータを取得・集計してから、その内容を sheets に構成して渡す。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				filename: { type: 'string', description: 'ファイル名（拡張子なし。例: "2026年6月_案件一覧"）' },
+				sheets: {
+					type: 'array',
+					description: 'シートの配列',
+					items: {
+						type: 'object',
+						properties: {
+							name: { type: 'string', description: 'シート名' },
+							columns: {
+								type: 'array',
+								description: '列定義（表示順）',
+								items: {
+									type: 'object',
+									properties: {
+										key: { type: 'string' },
+										label: { type: 'string' },
+										width: { type: 'number', description: '列幅（任意）' }
+									},
+									required: ['key', 'label']
+								}
+							},
+							rows: {
+								type: 'array',
+								description: '行データ（columns の key をキーとするオブジェクトの配列）',
+								items: { type: 'object', description: '列キー: 値の組' }
+							}
+						},
+						required: ['name', 'columns', 'rows']
+					}
+				}
+			},
+			required: ['filename', 'sheets']
+		}
+	},
+	{
+		name: 'create_powerpoint_presentation',
+		description:
+			'タイトル・本文・表からPowerPointプレゼンテーション（.pptx）を生成し、ダウンロードリンクを返す。会議・プレゼン用のスライド資料に向く。「営業会議用にスライドを作って」などに使う。事前に summarize_deals / get_deals / search_deals 等で必要なデータを取得・集計してから、その内容を slides に構成して渡す。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				filename: { type: 'string', description: 'ファイル名（拡張子なし。例: "2026年6月_営業会議"）' },
+				title: { type: 'string', description: '表紙スライドのタイトル（任意）' },
+				slides: {
+					type: 'array',
+					description: 'スライドの配列（表紙の後に1スライドずつ追加される）',
+					items: {
+						type: 'object',
+						properties: {
+							title: { type: 'string', description: 'スライドタイトル（任意）' },
+							body: { type: 'array', items: { type: 'string' }, description: '箇条書き本文（任意）' },
+							table: {
+								type: 'object',
+								description: '表（任意）',
+								properties: {
+									columns: {
+										type: 'array',
+										items: { type: 'object', properties: { key: { type: 'string' }, label: { type: 'string' } }, required: ['key', 'label'] }
+									},
+									rows: { type: 'array', items: { type: 'object', description: '列キー: 値の組' } }
+								}
+							}
+						}
+					}
+				}
+			},
+			required: ['filename', 'slides']
+		}
+	},
+
 	// ── Customers ──────────────────────────────────────────────────────────
 	{
 		name: 'get_customers',

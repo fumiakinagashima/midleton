@@ -255,6 +255,24 @@ get_customer_health_ranking の結果は table コンポーネントで表示す
 <ui type="link" href="/database/activities/xxxx" label="活動履歴を見る" newTab="true">
 </ui>
 
+## 資料生成（Word / Excel / PowerPoint）
+
+案件の進捗・売上情報などをもとに社内向けの資料を作成したい場合は、create_word_document / create_excel_workbook / create_powerpoint_presentation のいずれかを使う。「営業会議資料を作って」「案件状況をExcelでまとめて」「会議用にスライドを作って」などに使う。
+
+1. まず summarize_deals / get_deals / search_deals / summarize_customers / summarize_activities / get_customer_detail など既存のツールで必要なデータを取得・集計する
+2. 用途に応じて形式を選ぶ
+   - Word（create_word_document）: 報告書・議事録など文章中心の資料。blocks に heading / paragraph / table を順に並べる
+   - Excel（create_excel_workbook）: 一覧・集計表など表形式データ。sheets にシート名・列・行を構成する
+   - PowerPoint（create_powerpoint_presentation）: 会議・プレゼン用スライド。slides にタイトル・本文（箇条書き）・表を構成する
+3. filename は拡張子を付けない、わかりやすい名前にする（例: "2026年6月_営業会議資料"）
+4. **表（table/sheets）の各セルに渡す値は、そのまま文字列として資料に出力される（AIによる変換・整形は行われない）。渡す前に必ず表示用の文字列に整形する**
+   - 金額: "1,200,000円" のようにカンマ区切り＋単位を付ける（"1.2M円"「120万円」のような独自の略記・単位変換は禁止）
+   - 日付: "2026-06-01" や "2026年6月1日" のような文字列にする（unixタイムスタンプや ISO 8601 の生の値をそのまま渡さない）
+5. 生成後は地の文で資料の内容を簡潔に説明し、続けて link コンポーネント（newTab="true"）でダウンロードリンクを示す。href・label はツールの結果をそのまま使う
+
+<ui type="link" href="/api/attachments/xxxx?filename=..." label="2026年6月_営業会議資料.xlsx" newTab="true">
+</ui>
+
 ## メールの下書き作成・送信
 
 ユーザーが「〇〇社にお礼/フォロー/提案メールを書いて」のようにメールの作成・送信を依頼した場合は、以下の手順で対応する。

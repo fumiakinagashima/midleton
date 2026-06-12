@@ -22,8 +22,15 @@ import { createDealRegisteredActivity, recordActivity, createEntityType, createR
 import { sendEmail, getEmailSetup, type EmailEnv } from '../email';
 import { computeCustomerHealthScore, getCachedCustomerHealthScore } from '../ai/customer-health';
 import { computeCustomerHandoverSummary } from '../ai/customer-handover';
+import {
+	generateWordDocument,
+	generateExcelWorkbook,
+	generatePowerpointPresentation,
+	saveGeneratedDocument,
+	type WordBlock
+} from '../documents';
 
-export type ToolEnv = EmailEnv & { ANTHROPIC_API_KEY?: string };
+export type ToolEnv = EmailEnv & { ANTHROPIC_API_KEY?: string; R2?: R2Bucket };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -543,6 +550,82 @@ async function handleGetCustomerHandoverSummary(db: Db, input: unknown, env?: To
 		name: customer.name,
 		...result
 	};
+}
+
+// ── Document generation ──────────────────────────────────────────────────────
+
+const documentTableSchema = z.object({
+	columns: z.array(z.object({ key: z.string(), label: z.string() })),
+	rows: z.array(z.record(z.string(), z.unknown()))
+});
+
+const wordBlockSchema = z.object({
+	type: z.enum(['heading', 'paragraph', 'table']),
+	level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+	text: z.string().optional(),
+	columns: z.array(z.object({ key: z.string(), label: z.string() })).optional(),
+	rows: z.array(z.record(z.string(), z.unknown())).optional()
+});
+
+const createWordDocumentSchema = z.object({
+	filename: z.string().min(1),
+	title: z.string().optional(),
+	blocks: z.array(wordBlockSchema)
+});
+
+function toWordBlocks(blocks: z.infer<typeof wordBlockSchema>[]): WordBlock[] {
+	return blocks.map((b) => {
+		if (b.type === 'heading') return { type: 'heading', level: b.level, text: b.text ?? '' };
+		if (b.type === 'paragraph') return { type: 'paragraph', text: b.text ?? '' };
+		return { type: 'table', columns: b.columns ?? [], rows: b.rows ?? [] };
+	});
+}
+
+async function handleCreateWordDocument(_db: Db, input: unknown, env?: ToolEnv) {
+	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
+	const { filename, title, blocks } = createWordDocumentSchema.parse(input);
+
+	const buffer = await generateWordDocument({ title, blocks: toWordBlocks(blocks) });
+	return saveGeneratedDocument(env.R2, buffer, `${filename}.docx`, 'docx');
+}
+
+const createExcelWorkbookSchema = z.object({
+	filename: z.string().min(1),
+	sheets: z.array(
+		z.object({
+			name: z.string(),
+			columns: z.array(z.object({ key: z.string(), label: z.string(), width: z.number().optional() })),
+			rows: z.array(z.record(z.string(), z.unknown()))
+		})
+	)
+});
+
+async function handleCreateExcelWorkbook(_db: Db, input: unknown, env?: ToolEnv) {
+	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
+	const { filename, sheets } = createExcelWorkbookSchema.parse(input);
+
+	const buffer = await generateExcelWorkbook(sheets);
+	return saveGeneratedDocument(env.R2, buffer, `${filename}.xlsx`, 'xlsx');
+}
+
+const createPowerpointPresentationSchema = z.object({
+	filename: z.string().min(1),
+	title: z.string().optional(),
+	slides: z.array(
+		z.object({
+			title: z.string().optional(),
+			body: z.array(z.string()).optional(),
+			table: documentTableSchema.optional()
+		})
+	)
+});
+
+async function handleCreatePowerpointPresentation(_db: Db, input: unknown, env?: ToolEnv) {
+	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
+	const { filename, title, slides } = createPowerpointPresentationSchema.parse(input);
+
+	const buffer = await generatePowerpointPresentation({ title, slides });
+	return saveGeneratedDocument(env.R2, buffer, `${filename}.pptx`, 'pptx');
 }
 
 // ── Customers ──────────────────────────────────────────────────────────────
@@ -1186,6 +1269,9 @@ export type ToolName =
 	| 'get_customer_health_score'
 	| 'get_customer_health_ranking'
 	| 'get_customer_handover_summary'
+	| 'create_word_document'
+	| 'create_excel_workbook'
+	| 'create_powerpoint_presentation'
 	| 'get_customers'
 	| 'get_customer'
 	| 'create_customer'
@@ -1229,6 +1315,9 @@ export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?:
 		case 'get_customer_health_score': return handleGetCustomerHealthScore(db, input, env);
 		case 'get_customer_health_ranking': return handleGetCustomerHealthRanking(db, input);
 		case 'get_customer_handover_summary': return handleGetCustomerHandoverSummary(db, input, env);
+		case 'create_word_document': return handleCreateWordDocument(db, input, env);
+		case 'create_excel_workbook': return handleCreateExcelWorkbook(db, input, env);
+		case 'create_powerpoint_presentation': return handleCreatePowerpointPresentation(db, input, env);
 		case 'get_customers':      return handleGetCustomers(db, input);
 		case 'get_customer':       return handleGetCustomer(db, input);
 		case 'create_customer':    return handleCreateCustomer(db, input);
