@@ -16,10 +16,10 @@ migrations_dir = "drizzle"
 # binding = "KV"
 # id = "<kv-namespace-id>"
 
-# R2: `wrangler r2 bucket create midleton` を実行後にコメントを外す
-# [[r2_buckets]]
-# binding = "R2"
-# bucket_name = "midleton"
+# R2: 本番デプロイ前に `wrangler r2 bucket create midleton` を実行すること
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "midleton"
 
 [vars]
 # 本番は `wrangler secret put ANTHROPIC_API_KEY` で管理する

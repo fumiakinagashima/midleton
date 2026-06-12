@@ -44,6 +44,7 @@ midleton/
 │   │   │   ├── db/       # DrizzleORM スキーマ・クエリ（schema.ts, table-service.ts）
 │   │   │   ├── mcp/      # MCPサーバー・ツール定義
 │   │   │   ├── ai/       # Claude API 連携・システムプロンプト・モック
+│   │   │   ├── documents/ # Word/Excel/PowerPoint生成（docx, exceljs, pptxgenjs、日本語フォント対応）・R2保存とダウンロードリンク生成
 │   │   │   └── quick-actions/ # クイックアクションのツール実行・結果整形レジストリ（registry.ts）
 │   │   ├── styles/       # グローバルスタイル・テーマ定義
 │   │   └── types/        # 共通型定義

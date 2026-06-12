@@ -353,3 +353,23 @@
 - [ ] AIによるワークフロー構成案の生成（チャットでの要求 → ノード構成案を提案 → 確認 → 保存）
 - [ ] フェーズ5「定期実行」TODO（実行可能オペレーションの定義・Cloudflare Queueへの登録・AIによるノード設定サポート）との統合検討
 - [ ] ワークフロー実行・管理用の非AI画面（`/database/workflows` 等）
+
+
+## フェーズ9：AIによる資料生成
+
+**目標：案件の進捗・売上情報やアプリ情報から、社内会議資料・提案資料をWord/Excel/PowerPointで生成し、ダウンロードリンクとして返す**
+
+### v1: 生成基盤
+- [x] R2バインディング有効化（`wrangler.toml`、本番デプロイ前に `wrangler r2 bucket create midleton` が必要）
+- [x] `src/lib/server/documents/` モジュール追加（日本語フォント対応）
+  - [x] `excel.ts`（exceljs、シート・列・行からxlsx生成）
+  - [x] `word.ts`（docx、見出し・段落・表からdocx生成）
+  - [x] `powerpoint.ts`（pptxgenjs、タイトル・本文・表からpptx生成）
+  - [x] `storage.ts`（R2保存＋ダウンロードリンク生成、既存の `/api/attachments/[id]` を再利用）
+- [x] Vitest で日本語コンテンツの出力検証（ZIP署名・jszip展開によるテキスト確認）
+- [x] Cloudflare Workers向けバンドル確認（`wrangler deploy --dry-run` で `docx`/`exceljs`/`pptxgenjs` が `nodejs_compat` 下で正常にバンドルされることを確認）
+
+### v2以降（TODO）: 機能実装
+- [ ] 社内会議資料の作成（案件の進捗・売上情報から自動生成するMCPツール追加）
+- [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）
+- [ ] チャットからの呼び出しフロー・確認UX
