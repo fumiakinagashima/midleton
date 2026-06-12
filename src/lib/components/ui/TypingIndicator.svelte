@@ -8,7 +8,7 @@
 	.typing {
 		display: flex;
 		align-items: center;
-		gap: 5px;
+		gap: 3px;
 		padding: 12px 16px;
 		background: var(--color-surface);
 		border-radius: 12px;
@@ -18,10 +18,10 @@
 
 	span {
 		display: block;
-		width: 7px;
-		height: 7px;
+		width: 5px;
+		height: 5px;
 		border-radius: 50%;
-		background: var(--color-text-muted);
+		background: var(--color-primary);
 		animation: bounce 1.2s ease-in-out infinite;
 	}
 
