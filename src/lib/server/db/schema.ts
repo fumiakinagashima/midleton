@@ -14,6 +14,12 @@ export const customers = sqliteTable('customers', {
 		.default('active'),
 	notes: text('notes'),
 	custom: text('custom').default('{}'),
+	healthScore: integer('health_score'),
+	healthScoreLevel: text('health_score_level', { enum: ['good', 'warning', 'risk'] }),
+	healthScoreSummary: text('health_score_summary'),
+	healthScorePositives: text('health_score_positives').default('[]'),
+	healthScoreConcerns: text('health_score_concerns').default('[]'),
+	healthScoreUpdatedAt: integer('health_score_updated_at', { mode: 'timestamp' }),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`),
