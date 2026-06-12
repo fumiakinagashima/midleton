@@ -194,6 +194,21 @@ export const tools: Tool[] = [
 		}
 	},
 
+	// ── Customer handover summary ───────────────────────────────────────────
+	{
+		name: 'get_customer_handover_summary',
+		description:
+			'顧客とのこれまでのやり取り（案件・活動履歴）をAIが要約し、担当者引き継ぎ用のサマリーと注意点を生成する。名前（部分一致）またはIDで検索できる。「〇〇社の引き継ぎ資料を作って」「〇〇社とのやり取りをまとめて」などに使う。キャッシュは行わず毎回その場で生成するため、時間がかかることがある。注意点（attentionItems）には根拠となった案件・活動履歴へのリンク用情報（sourceType, sourceId）が含まれる。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				id: { type: 'string', description: '顧客ID（id か name のどちらか一方を指定）' },
+				name: { type: 'string', description: '顧客名（部分一致）（id か name のどちらか一方を指定）' }
+			},
+			required: []
+		}
+	},
+
 	// ── Customers ──────────────────────────────────────────────────────────
 	{
 		name: 'get_customers',

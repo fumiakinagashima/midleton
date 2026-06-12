@@ -108,6 +108,7 @@ export type LinkContent = {
 	label: string;
 	href: string;
 	description?: string;
+	newTab?: boolean;
 };
 
 export type BizcardContent = {

@@ -74,6 +74,7 @@ function parseUITag(tag: string): MessageContent | null {
 	const href = /href="([^"]+)"/.exec(attrStr)?.[1];
 	const label = /label="([^"]+)"/.exec(attrStr)?.[1];
 	const description = /description="([^"]+)"/.exec(attrStr)?.[1];
+	const newTab = /newTab="([^"]+)"/.exec(attrStr)?.[1] === 'true';
 
 	try {
 		if (type === 'form' && tool) {
@@ -102,7 +103,7 @@ function parseUITag(tag: string): MessageContent | null {
 			const { columns, cards } = JSON.parse(body);
 			return { type: 'kanban', title, columns, cards };
 		} else if (type === 'link' && href && label) {
-			return { type: 'link', label, href, description };
+			return { type: 'link', label, href, description, newTab: newTab || undefined };
 		} else if (type === 'bizcard') {
 			return { type: 'bizcard', title };
 		}

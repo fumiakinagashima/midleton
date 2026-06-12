@@ -21,6 +21,7 @@ import {
 import { createDealRegisteredActivity, recordActivity } from '../db/table-service';
 import { sendEmail, getEmailSetup, type EmailEnv } from '../email';
 import { computeCustomerHealthScore, getCachedCustomerHealthScore } from '../ai/customer-health';
+import { computeCustomerHandoverSummary } from '../ai/customer-handover';
 
 export type ToolEnv = EmailEnv & { ANTHROPIC_API_KEY?: string };
 
@@ -504,6 +505,43 @@ async function handleGetCustomerHealthRanking(db: Db, input: unknown) {
 		ranking: ranked.slice(0, limit),
 		uncomputedCount: uncomputedNames.length,
 		uncomputedNames
+	};
+}
+
+// ── Customer handover summary ───────────────────────────────────────────────
+
+const getCustomerHandoverSummarySchema = z.object({
+	id: z.string().optional(),
+	name: z.string().optional()
+});
+
+async function handleGetCustomerHandoverSummary(db: Db, input: unknown, env?: ToolEnv) {
+	const { id, name } = getCustomerHandoverSummarySchema.parse(input);
+	if (!id && !name) throw new Error('id または name のどちらかを指定してください');
+
+	let customer;
+	if (id) {
+		const [row] = await db.select().from(customers).where(eq(customers.id, id));
+		if (!row) throw new Error(`顧客が見つかりません: ${id}`);
+		customer = row;
+	} else {
+		const rows = await db
+			.select()
+			.from(customers)
+			.where(like(customers.name, `%${name}%`))
+			.limit(1);
+		if (!rows[0]) throw new Error(`顧客が見つかりません: ${name}`);
+		customer = rows[0];
+	}
+
+	const apiKey = env?.ANTHROPIC_API_KEY;
+	if (!apiKey) throw new Error('ANTHROPIC_API_KEY が設定されていません。');
+
+	const result = await computeCustomerHandoverSummary(db, customer, apiKey);
+	return {
+		id: customer.id,
+		name: customer.name,
+		...result
 	};
 }
 
@@ -1097,6 +1135,7 @@ export type ToolName =
 	| 'get_customer_detail'
 	| 'get_customer_health_score'
 	| 'get_customer_health_ranking'
+	| 'get_customer_handover_summary'
 	| 'get_customers'
 	| 'get_customer'
 	| 'create_customer'
@@ -1138,6 +1177,7 @@ export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?:
 		case 'get_customer_detail': return handleGetCustomerDetail(db, input);
 		case 'get_customer_health_score': return handleGetCustomerHealthScore(db, input, env);
 		case 'get_customer_health_ranking': return handleGetCustomerHealthRanking(db, input);
+		case 'get_customer_handover_summary': return handleGetCustomerHandoverSummary(db, input, env);
 		case 'get_customers':      return handleGetCustomers(db, input);
 		case 'get_customer':       return handleGetCustomer(db, input);
 		case 'create_customer':    return handleCreateCustomer(db, input);

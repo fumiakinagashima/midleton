@@ -3,12 +3,13 @@
 		label: string;
 		href: string;
 		description?: string;
+		newTab?: boolean;
 	};
 
-	let { label, href, description }: Props = $props();
+	let { label, href, description, newTab }: Props = $props();
 </script>
 
-<a class="link-card" {href}>
+<a class="link-card" {href} target={newTab ? '_blank' : undefined} rel={newTab ? 'noopener noreferrer' : undefined}>
 	<span class="label">{label}</span>
 	{#if description}
 		<span class="desc">{description}</span>
