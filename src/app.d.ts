@@ -7,6 +7,7 @@ declare global {
 		// interface PageData {}
 		// interface PageState {}
 		interface Platform {
+			ctx: ExecutionContext;
 			env: {
 				DB: D1Database;
 				ANTHROPIC_API_KEY: string;

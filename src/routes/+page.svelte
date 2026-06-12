@@ -8,8 +8,9 @@
 	import Kanban from '$lib/components/chat/Kanban.svelte';
 	import Link from '$lib/components/chat/Link.svelte';
 	import Bizcard from '$lib/components/chat/Bizcard.svelte';
+	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent } from '$lib/types/chat';
+	import type { Message, MessageContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick } from 'svelte';
@@ -425,7 +426,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent}
+									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -447,6 +448,8 @@
 										{#if !extra.completed}
 											<Bizcard title={extra.title} onSubmitForm={handleFormSubmit} />
 										{/if}
+									{:else if extra.type === 'document_job'}
+										<DocumentJob jobId={extra.jobId} label={extra.label} />
 									{/if}
 								{/if}
 							{/each}
