@@ -298,8 +298,17 @@
 - [x] システムプロンプトにメール下書き作成フローを追加（顧客特定 → 下書き作成 → フォーム確認 → 送信）
 - [x] 本文（`body`）の textarea の高さを現状の3倍程度に拡大する（`Form.svelte`、長文メールを編集しやすくする）
 
+### 申請内容のAIレビュー
+申請者向け（文章生成支援）と承認者向け（判断支援）の2種類のレビューを用意。
+- [x] 【承認者向け／判断支援】`/api/approvals/[id]/ai-review` エンドポイント追加（承認待ちの申請をAIがレビューし、リスク・問題点・確認事項をJSONで返す）
+- [x] システムプロンプトに承認申請レビュー専用プロンプトを追加（`APPROVAL_REVIEW_SYSTEM_PROMPT` / `buildApprovalReviewPrompt`、`src/lib/server/ai/prompt.ts`）
+- [x] 添付ファイルが画像の場合はR2から取得しAIへ画像として渡す（5MBまで）
+- [x] `/database/approvals/[id]` に「AIレビュー」セクションを追加（審査中の申請のみ表示、リスクレベル・総評・問題点・確認事項を表示）
+- [x] 【申請者向け／文章生成支援】`/api/approvals/ai-review-draft` エンドポイント追加（提出前の下書きをAIがレビューし、誤字脱字・不足情報・改善提案をJSONで返す）
+- [x] システムプロンプトに下書きレビュー専用プロンプトを追加（`APPROVAL_DRAFT_REVIEW_SYSTEM_PROMPT` / `buildApprovalDraftReviewPrompt`、`src/lib/server/ai/prompt.ts`）
+- [x] `/database/approvals/new` に「AIレビュー」セクションを追加（提出前にタイトル・申請内容をレビュー、申請の作成・送信はブロックしない）
+
 ### 今後の候補（未着手）
 - [ ] フォローアップ提案（案件・活動履歴から次のアクションをAIが提案）
-- [ ] 申請内容のAIレビュー（承認前に内容の問題点・確認事項をAIが指摘）
 - [ ] 議事録/メモ → 活動記録の自動生成（自由記述から activities への構造化登録）
 - [ ] 顧客ヘルススコア表示（活動頻度・案件状況等からAIがスコアリング）
