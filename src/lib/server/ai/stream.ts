@@ -123,11 +123,13 @@ export async function streamChat(
 ): Promise<void> {
 	const anthropic = new Anthropic({ apiKey });
 	let messages: MessageParam[] = [...history];
+	let lastTurnEvents: StreamEvent[] = [];
 
 	for (let turn = 0; turn < 5; turn++) {
 		const processor = new TextStreamProcessor();
 		const toolBlocks: Array<{ id: string; name: string; inputJson: string }> = [];
 		let currentTool: { id: string; name: string; inputJson: string } | null = null;
+		const turnEvents: StreamEvent[] = [];
 
 		const stream = anthropic.messages.stream({
 			model: model ?? DEFAULT_MODEL,
@@ -144,7 +146,7 @@ export async function streamChat(
 				}
 			} else if (event.type === 'content_block_delta') {
 				if (event.delta.type === 'text_delta') {
-					for (const e of processor.process(event.delta.text)) emit(e);
+					turnEvents.push(...processor.process(event.delta.text));
 				} else if (event.delta.type === 'input_json_delta' && currentTool) {
 					currentTool.inputJson += event.delta.partial_json;
 				}
@@ -154,10 +156,16 @@ export async function streamChat(
 			}
 		}
 
-		for (const e of processor.flush()) emit(e);
+		turnEvents.push(...processor.flush());
+		lastTurnEvents = turnEvents;
 
 		const finalMsg = await stream.finalMessage();
-		if (finalMsg.stop_reason !== 'tool_use') break;
+		if (finalMsg.stop_reason !== 'tool_use') {
+			for (const e of turnEvents) emit(e);
+			return;
+		}
+
+		// ツール呼び出しを伴う中間ターンのテキスト・UIは進行状況の実況なのでユーザーには表示しない
 
 		const toolResults = await Promise.all(
 			toolBlocks.map(async (b) => {
@@ -182,4 +190,7 @@ export async function streamChat(
 			{ role: 'user' as const, content: toolResults }
 		];
 	}
+
+	// ターン上限に達した場合は最後のターンの内容を表示する
+	for (const e of lastTurnEvents) emit(e);
 }
