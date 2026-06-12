@@ -31,6 +31,8 @@ MOCK_AI="true"   # true にするとモックレスポンスで動作確認で�
 bun dev   # Vite + platformProxy で HMR 付き起動
 ```
 
+> **注意**: メール送信のSMTPプロバイダー（`/settings/email`）は `cloudflare:sockets`（workerdランタイム専用API）を使用するため、`bun dev`（Node.js上のVite）では動作しません。本番環境または `wrangler dev`（ビルド後）でのみ送信できます。ローカルでの動作確認には Resend または AWS SES を使用してください。
+
 ## UIコンポーネント
 
 コンポーネントは2種類に分類される。

@@ -19,7 +19,7 @@ import {
 	cancelApproval
 } from '../db/approval-service';
 import { createDealRegisteredActivity, recordActivity } from '../db/table-service';
-import { sendEmail, getEmailSetupFromEnv, type EmailEnv } from '../email';
+import { sendEmail, getEmailSetup, type EmailEnv } from '../email';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -790,16 +790,17 @@ const sendEmailSchema = z.object({
 
 async function handleSendEmail(db: Db, input: unknown, env?: EmailEnv) {
 	const data = sendEmailSchema.parse(input);
-	const setup = getEmailSetupFromEnv(env ?? {});
+	const setup = await getEmailSetup(db, env);
 	if (!setup) {
-		throw new Error('メール送信が設定されていません（EMAIL_PROVIDER / EMAIL_FROM などの環境変数を設定してください）');
+		throw new Error('メール送信が設定されていません（/settings/email、または EMAIL_PROVIDER / EMAIL_FROM などの環境変数を設定してください）');
 	}
+	const body = setup.signature ? `${data.body}\n\n${setup.signature}` : data.body;
 	await sendEmail(setup.providerConfig, {
 		from: setup.from,
 		fromName: setup.fromName,
 		to: data.to,
 		subject: data.subject,
-		text: data.body
+		text: body
 	});
 	if (data.customer_id) {
 		await recordActivity(db, data.customer_id, 'email', `メール「${data.subject}」を送信しました`);
