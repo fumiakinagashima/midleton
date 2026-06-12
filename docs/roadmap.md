@@ -370,6 +370,13 @@
 - [x] Cloudflare Workers向けバンドル確認（`wrangler deploy --dry-run` で `docx`/`exceljs`/`pptxgenjs` が `nodejs_compat` 下で正常にバンドルされることを確認）
 
 ### v2以降（TODO）: 機能実装
-- [ ] 社内会議資料の作成（案件の進捗・売上情報から自動生成するMCPツール追加）
+- [x] 社内会議資料の作成（案件の進捗・売上情報から自動生成するMCPツール追加）
+  - [x] `create_word_document` / `create_excel_workbook` / `create_powerpoint_presentation` MCPツール追加（AIが既存の集計・検索ツールでデータを取得し、内容を構成して渡す汎用ツール。提案資料の作成にも利用できる）
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）
 - [ ] チャットからの呼び出しフロー・確認UX
+
+### v3以降（TODO）: 本番スケール対応（非同期生成パイプライン）
+- [ ] データ件数・資料の複雑度が増えた場合、現在の同期生成（チャット応答内でWorkerが生成→R2保存）はCPU時間制限（Cloudflare Workersは有料プランで30秒、`limits.cpu_ms`で5分まで延長可）に抵触する可能性がある
+- [ ] 対策: Queue（Cloudflare Queues。本番がAWSの場合はSQS+Lambdaでも同様の構成が可能）でジョブ化し、生成処理をチャット応答から切り出す
+  - フロー: チャットからジョブ登録 → Queueコンシューマが生成 → R2保存 → 完了通知
+- [ ] 完了通知の方式は段階的に検討（ポーリング → チャット履歴への非同期追記 → 必要であればWebSocket/Durable Objects等のプッシュ通知）
