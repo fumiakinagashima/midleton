@@ -155,6 +155,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		overflow: hidden;
+		flex-shrink: 0;
 	}
 
 	table {

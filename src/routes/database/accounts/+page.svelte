@@ -250,6 +250,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		overflow: hidden;
+		flex-shrink: 0;
 	}
 
 	table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
