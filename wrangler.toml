@@ -11,10 +11,11 @@ database_name = "midleton"
 database_id = "06f71c5e-2de6-4db4-b951-64705293e69a"
 migrations_dir = "drizzle"
 
-# KV: `wrangler kv namespace create midleton` を実行後に id を設定する
-# [[kv_namespaces]]
-# binding = "KV"
-# id = "<kv-namespace-id>"
+# KV: 本番デプロイ前に `wrangler kv namespace create midleton` を実行し id を本番用の値に置き換えること
+# （ローカル開発では id はダミー値で良く、.wrangler/state にローカルKVが作成される）
+[[kv_namespaces]]
+binding = "KV"
+id = "midleton-kv-local"
 
 # R2: 本番デプロイ前に `wrangler r2 bucket create midleton` を実行すること
 [[r2_buckets]]

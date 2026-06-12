@@ -29,8 +29,9 @@ import {
 	saveGeneratedDocument,
 	type WordBlock
 } from '../documents';
+import type { LinkContent, DocumentJobContent } from '$lib/types/chat';
 
-export type ToolEnv = EmailEnv & { ANTHROPIC_API_KEY?: string; R2?: R2Bucket };
+export type ToolEnv = EmailEnv & { ANTHROPIC_API_KEY?: string; R2?: R2Bucket; KV?: KVNamespace };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -581,12 +582,55 @@ function toWordBlocks(blocks: z.infer<typeof wordBlockSchema>[]): WordBlock[] {
 	});
 }
 
-async function handleCreateWordDocument(_db: Db, input: unknown, env?: ToolEnv) {
-	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
-	const { filename, title, blocks } = createWordDocumentSchema.parse(input);
+// 資料生成ジョブをKVに登録し、ctx.waitUntilでバックグラウンド実行する（ctx無しの場合は同期実行）
+type DocumentJobStatus =
+	| { status: 'pending' }
+	| { status: 'done'; result: LinkContent }
+	| { status: 'error'; error: string };
 
-	const buffer = await generateWordDocument({ title, blocks: toWordBlocks(blocks) });
-	return saveGeneratedDocument(env.R2, buffer, `${filename}.docx`, 'docx');
+async function runDocumentJob(
+	env: ToolEnv,
+	ctx: ExecutionContext | undefined,
+	label: string,
+	generate: () => Promise<LinkContent>
+): Promise<DocumentJobContent> {
+	if (!env.KV) throw new Error('KVが設定されていないため資料生成のジョブを管理できません');
+	const kv = env.KV;
+	const jobId = crypto.randomUUID();
+
+	const put = (value: DocumentJobStatus) =>
+		kv.put(`docjob:${jobId}`, JSON.stringify(value), { expirationTtl: 3600 });
+
+	await put({ status: 'pending' });
+
+	const finish = async () => {
+		try {
+			const result = await generate();
+			await put({ status: 'done', result });
+		} catch (e) {
+			await put({ status: 'error', error: e instanceof Error ? e.message : String(e) });
+		}
+	};
+
+	if (ctx) {
+		ctx.waitUntil(finish());
+	} else {
+		await finish();
+	}
+
+	return { type: 'document_job', jobId, label };
+}
+
+async function handleCreateWordDocument(_db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
+	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
+	const r2 = env.R2;
+	const { filename, title, blocks } = createWordDocumentSchema.parse(input);
+	const label = `${filename}.docx`;
+
+	return runDocumentJob(env, ctx, label, async () => {
+		const buffer = await generateWordDocument({ title, blocks: toWordBlocks(blocks) });
+		return saveGeneratedDocument(r2, buffer, label, 'docx');
+	});
 }
 
 const createExcelWorkbookSchema = z.object({
@@ -600,12 +644,16 @@ const createExcelWorkbookSchema = z.object({
 	)
 });
 
-async function handleCreateExcelWorkbook(_db: Db, input: unknown, env?: ToolEnv) {
+async function handleCreateExcelWorkbook(_db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
 	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
+	const r2 = env.R2;
 	const { filename, sheets } = createExcelWorkbookSchema.parse(input);
+	const label = `${filename}.xlsx`;
 
-	const buffer = await generateExcelWorkbook(sheets);
-	return saveGeneratedDocument(env.R2, buffer, `${filename}.xlsx`, 'xlsx');
+	return runDocumentJob(env, ctx, label, async () => {
+		const buffer = await generateExcelWorkbook(sheets);
+		return saveGeneratedDocument(r2, buffer, label, 'xlsx');
+	});
 }
 
 const createPowerpointPresentationSchema = z.object({
@@ -620,12 +668,16 @@ const createPowerpointPresentationSchema = z.object({
 	)
 });
 
-async function handleCreatePowerpointPresentation(_db: Db, input: unknown, env?: ToolEnv) {
+async function handleCreatePowerpointPresentation(_db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
 	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
+	const r2 = env.R2;
 	const { filename, title, slides } = createPowerpointPresentationSchema.parse(input);
+	const label = `${filename}.pptx`;
 
-	const buffer = await generatePowerpointPresentation({ title, slides });
-	return saveGeneratedDocument(env.R2, buffer, `${filename}.pptx`, 'pptx');
+	return runDocumentJob(env, ctx, label, async () => {
+		const buffer = await generatePowerpointPresentation({ title, slides });
+		return saveGeneratedDocument(r2, buffer, label, 'pptx');
+	});
 }
 
 // ── Customers ──────────────────────────────────────────────────────────────
@@ -1301,7 +1353,13 @@ export type ToolName =
 	| 'update_approval_step'
 	| 'cancel_approval';
 
-export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?: ToolEnv) {
+export async function dispatchTool(
+	db: Db,
+	name: ToolName,
+	input: unknown,
+	env?: ToolEnv,
+	ctx?: ExecutionContext
+) {
 	switch (name) {
 		case 'list_integrations':   return handleListIntegrations(db);
 		case 'call_external_api':   return handleCallExternalApi(db, input);
@@ -1315,9 +1373,9 @@ export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?:
 		case 'get_customer_health_score': return handleGetCustomerHealthScore(db, input, env);
 		case 'get_customer_health_ranking': return handleGetCustomerHealthRanking(db, input);
 		case 'get_customer_handover_summary': return handleGetCustomerHandoverSummary(db, input, env);
-		case 'create_word_document': return handleCreateWordDocument(db, input, env);
-		case 'create_excel_workbook': return handleCreateExcelWorkbook(db, input, env);
-		case 'create_powerpoint_presentation': return handleCreatePowerpointPresentation(db, input, env);
+		case 'create_word_document': return handleCreateWordDocument(db, input, env, ctx);
+		case 'create_excel_workbook': return handleCreateExcelWorkbook(db, input, env, ctx);
+		case 'create_powerpoint_presentation': return handleCreatePowerpointPresentation(db, input, env, ctx);
 		case 'get_customers':      return handleGetCustomers(db, input);
 		case 'get_customer':       return handleGetCustomer(db, input);
 		case 'create_customer':    return handleCreateCustomer(db, input);

@@ -65,7 +65,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	// フォーム送信（tool + data）はJSONで返す
 	if (body.tool && body.data) {
 		try {
-			const result = await dispatchTool(db, body.tool as never, body.data, platform.env);
+			const result = await dispatchTool(db, body.tool as never, body.data, platform.env, platform.ctx);
 
 			if (body.tool === 'create_customer_with_contact') {
 				const { customer, contact } = result as {
@@ -174,7 +174,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		async start(controller) {
 			const enqueue = (e: StreamEvent) => controller.enqueue(new TextEncoder().encode(sse(e)));
 			try {
-				await streamChat(db, apiKey, history, model, enqueue, platform.env);
+				await streamChat(db, apiKey, history, model, enqueue, platform.env, platform.ctx);
 				enqueue({ type: 'done' });
 			} catch (e) {
 				enqueue({ type: 'error', message: e instanceof Error ? e.message : String(e) });

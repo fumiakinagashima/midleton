@@ -117,6 +117,12 @@ export type BizcardContent = {
 	completed?: boolean;
 };
 
+export type DocumentJobContent = {
+	type: 'document_job';
+	jobId: string;
+	label: string;
+};
+
 export type MessageContent =
 	| TextContent
 	| FormContent
@@ -127,7 +133,8 @@ export type MessageContent =
 	| ChartContent
 	| KanbanContent
 	| LinkContent
-	| BizcardContent;
+	| BizcardContent
+	| DocumentJobContent;
 
 export type Message = {
 	id: string;

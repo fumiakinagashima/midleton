@@ -75,6 +75,7 @@ function parseUITag(tag: string): MessageContent | null {
 	const label = /label="([^"]+)"/.exec(attrStr)?.[1];
 	const description = /description="([^"]+)"/.exec(attrStr)?.[1];
 	const newTab = /newTab="([^"]+)"/.exec(attrStr)?.[1] === 'true';
+	const jobId = /jobId="([^"]+)"/.exec(attrStr)?.[1];
 
 	try {
 		if (type === 'form' && tool) {
@@ -106,6 +107,8 @@ function parseUITag(tag: string): MessageContent | null {
 			return { type: 'link', label, href, description, newTab: newTab || undefined };
 		} else if (type === 'bizcard') {
 			return { type: 'bizcard', title };
+		} else if (type === 'document_job' && jobId && label) {
+			return { type: 'document_job', jobId, label };
 		}
 	} catch {
 		// malformed JSON in UI tag
@@ -119,7 +122,8 @@ export async function streamChat(
 	history: MessageParam[],
 	model: string | undefined,
 	emit: (event: StreamEvent) => void,
-	env?: EmailEnv
+	env?: EmailEnv,
+	ctx?: ExecutionContext
 ): Promise<void> {
 	const anthropic = new Anthropic({ apiKey });
 	let messages: MessageParam[] = [...history];
@@ -171,7 +175,7 @@ export async function streamChat(
 			toolBlocks.map(async (b) => {
 				try {
 					const input = JSON.parse(b.inputJson || '{}');
-					const result = await dispatchTool(db, b.name as never, input, env);
+					const result = await dispatchTool(db, b.name as never, input, env, ctx);
 					return { type: 'tool_result' as const, tool_use_id: b.id, content: JSON.stringify(result) };
 				} catch (e) {
 					return {
