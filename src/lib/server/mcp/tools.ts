@@ -462,6 +462,52 @@ export const tools: Tool[] = [
 		}
 	},
 	{
+		name: 'create_app',
+		description:
+			'チャットで「○○管理アプリを作って」のような業務アプリ作成の依頼を受けた場合に使う。カスタムテーブル（エンティティ種別）とそのフィールド定義を一括で作成し、任意でサンプルデータも登録する。作成後は /database/{name} で即座にCRUD画面（一覧・登録・編集）が使える。既存のカスタムテーブルにフィールドを追加したいだけの場合は add_entity_field を使う。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				name: { type: 'string', description: 'テーブルの識別名（英小文字・数字・アンダースコアのみ、例: sales_pipeline）' },
+				label: { type: 'string', description: 'アプリ・テーブルの表示名（例: 販売管理）' },
+				icon: { type: 'string', description: 'アイコン（絵文字推奨 例: 📈）' },
+				fields: {
+					type: 'array',
+					description: 'フィールド定義の一覧（表示順）',
+					items: {
+						type: 'object',
+						properties: {
+							key: { type: 'string', description: 'フィールドキー（英小文字・数字・アンダースコアのみ）' },
+							label: { type: 'string', description: 'フィールドの表示名' },
+							type: {
+								type: 'string',
+								enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea', 'recordSelect'],
+								description: 'フィールドの型。recordSelect は他テーブルのレコードを参照する関係フィールド'
+							},
+							required: { type: 'boolean', description: '必須フィールドかどうか' },
+							options: {
+								type: 'array',
+								items: { type: 'object', properties: { value: { type: 'string' }, label: { type: 'string' } } },
+								description: 'type が select のときの選択肢'
+							},
+							ref_table: {
+								type: 'string',
+								description: 'type が recordSelect のときの関係先テーブル名。コアテーブルは customers/contacts/deals/activities、カスタムテーブルは list_entity_types で取得した name を指定する'
+							}
+						},
+						required: ['key', 'label']
+					}
+				},
+				seed_records: {
+					type: 'array',
+					items: { type: 'object', description: 'フィールドキー: 値の組' },
+					description: '初期投入するサンプルデータ（任意。デモでの即時運用感のため2〜3件程度を推奨）'
+				}
+			},
+			required: ['name', 'label', 'fields']
+		}
+	},
+	{
 		name: 'get_entity_fields',
 		description: '指定したカスタムテーブルのフィールド定義を取得する。',
 		input_schema: {
@@ -496,14 +542,18 @@ export const tools: Tool[] = [
 				label: { type: 'string', description: 'フィールドの表示名' },
 				type: {
 					type: 'string',
-					enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea'],
-					description: 'フィールドの型'
+					enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea', 'recordSelect'],
+					description: 'フィールドの型。recordSelect は他テーブルのレコードを参照する関係フィールド'
 				},
 				required: { type: 'boolean', description: '必須フィールドかどうか' },
 				options: {
 					type: 'array',
 					items: { type: 'object', properties: { value: { type: 'string' }, label: { type: 'string' } } },
 					description: 'type が select のときの選択肢'
+				},
+				ref_table: {
+					type: 'string',
+					description: 'type が recordSelect のときの関係先テーブル名。コアテーブルは customers/contacts/deals/activities、カスタムテーブルは list_entity_types で取得した name を指定する'
 				}
 			},
 			required: ['entity_type_id', 'key', 'label']

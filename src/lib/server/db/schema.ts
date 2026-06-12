@@ -106,11 +106,12 @@ export const entityFields = sqliteTable('entity_fields', {
 		.references(() => entityTypes.id),
 	key: text('key').notNull(),
 	label: text('label').notNull(),
-	type: text('type', { enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea'] })
+	type: text('type', { enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea', 'recordSelect'] })
 		.notNull()
 		.default('text'),
 	required: integer('required', { mode: 'boolean' }).notNull().default(false),
 	options: text('options').default('[]'),
+	refTable: text('ref_table'),
 	sortOrder: integer('sort_order').notNull().default(0),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
@@ -136,11 +137,12 @@ export const coreCustomFields = sqliteTable('core_custom_fields', {
 	tableName: text('table_name').notNull(),
 	key: text('key').notNull(),
 	label: text('label').notNull(),
-	type: text('type', { enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea'] })
+	type: text('type', { enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea', 'recordSelect'] })
 		.notNull()
 		.default('text'),
 	required: integer('required', { mode: 'boolean' }).notNull().default(false),
 	options: text('options').default('[]'),
+	refTable: text('ref_table'),
 	sortOrder: integer('sort_order').notNull().default(0),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
