@@ -38,6 +38,31 @@
 	let datetimeVal = $state('');
 	let numVal = $state(0);
 
+	let generatingDoc = $state('');
+	let docError = $state('');
+
+	async function generateDocument(format: 'docx' | 'xlsx' | 'pptx') {
+		generatingDoc = format;
+		docError = '';
+		try {
+			const res = await fetch('/api/documents/test', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ format })
+			});
+			if (!res.ok) {
+				const body = (await res.json().catch(() => null)) as { error?: string } | null;
+				throw new Error(body?.error ?? '生成に失敗しました');
+			}
+			const { href } = (await res.json()) as { href: string };
+			window.location.href = href;
+		} catch (e) {
+			docError = e instanceof Error ? e.message : '生成に失敗しました';
+		} finally {
+			generatingDoc = '';
+		}
+	}
+
 	type GridRow = Record<string, string | number | null>;
 	let gridRows = $state<GridRow[]>([
 		{ name: '山田 太郎', dept: 'sales', age: 32, joined: '2022-04-01' },
@@ -315,6 +340,25 @@
 			<Chart chartType="pie" title="顧客ステータス分布" data={pieData} />
 		</div>
 	</section>
+
+	<!-- 資料生成 -->
+	<section>
+		<h2>資料生成（Word / Excel / PowerPoint）</h2>
+		<div class="stack">
+			<div class="row">
+				<button class="btn-primary" onclick={() => generateDocument('docx')} disabled={!!generatingDoc}>
+					{generatingDoc === 'docx' ? '生成中...' : 'Word生成'}
+				</button>
+				<button class="btn-primary" onclick={() => generateDocument('xlsx')} disabled={!!generatingDoc}>
+					{generatingDoc === 'xlsx' ? '生成中...' : 'Excel生成'}
+				</button>
+				<button class="btn-primary" onclick={() => generateDocument('pptx')} disabled={!!generatingDoc}>
+					{generatingDoc === 'pptx' ? '生成中...' : 'PowerPoint生成'}
+				</button>
+			</div>
+			{#if docError}<p class="val error">{docError}</p>{/if}
+		</div>
+	</section>
 </div>
 
 <style>
@@ -345,7 +389,20 @@
 		gap: 20px;
 	}
 	.stack { display: flex; flex-direction: column; gap: 12px; }
+	.row { display: flex; gap: 12px; }
 	.val { font-size: 0.8125rem; color: var(--color-text-muted); }
+	.val.error { color: var(--color-danger); }
+	.btn-primary {
+		padding: 7px 14px;
+		background: var(--color-primary);
+		color: #fff;
+		border: none;
+		border-radius: 6px;
+		font-size: 0.875rem;
+		cursor: pointer;
+	}
+	.btn-primary:disabled { opacity: 0.6; cursor: default; }
+	.btn-primary:hover:not(:disabled) { opacity: 0.9; }
 	.card-name { font-weight: 600; margin-bottom: 4px; }
 	.card-sub { font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: 8px; }
 	.badge {
