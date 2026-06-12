@@ -82,6 +82,14 @@ midleton/
 - `/settings` — アプリ設定・外部API連携管理
 - `/settings/quick-actions` — チャット入力欄の「+」ボタンに表示するクイックアクション（最大5件）の選択
 
+### AI分析セクションのパターン
+
+ノーAIページ（`/database/customers/[id]` 等）に「ボタン押下でAIが分析結果を生成・表示する」セクションを追加するパターン（例: ヘルススコア、引き継ぎサマリー）。
+
+- ランキング表示など再利用が必要な場合 → `customers` テーブル等に結果をキャッシュする専用カラムを追加し、再計算は手動操作時のみ行う（lazy cache、定期実行なし）。例: ヘルススコア（`health_score*` カラム）
+- 単発・都度確認用の場合 → キャッシュせず毎回その場でAIが生成する。例: 引き継ぎサマリー
+- いずれも `src/lib/server/ai/` に共有計算モジュールを置き、`/api/customers/[id]/...` エンドポイントと MCP ツールの両方から呼び出す（例: `customer-health.ts` / `customer-handover.ts`）
+
 ## クイックアクション
 
 チャット入力欄の「+」ボタンから、引数不要の一覧・集計系 MCP ツールを AI を介さず直接実行できる（`/api/quick-actions`）。レスポンスは `dispatchTool` の結果を Table / Values / Chart 等に整形して即時返却し、トークンを消費しない。
@@ -110,6 +118,7 @@ midleton/
 ## 開発ルール
 
 - UIコンポーネントは `src/lib/components/` に集約する。アプリUI（デザインシステム）は `ui/`、AIがノーコードとしてレスポンスに返すコンポーネント（Form, Table, Values 等）は `chat/`、データ管理ページ専用コンポーネント（RecordForm, FieldEditor）は `database/` に配置する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
+- chat の `link` コンポーネントは `newTab="true"` 属性で別タブ表示（`target="_blank" rel="noopener noreferrer"`）に対応する。参照元レコードへのリンクなど、チャットの会話を中断させたくない場合に使う。
 - DBスキーマ変更は必ず Drizzle マイグレーションを通す。直接 D1 を操作しない。将来のインフラ移行を考慮し、D1 固有 API への直接依存を避ける（DrizzleORM 経由を徹底）。
 - MCP ツールは `src/lib/server/mcp/` に定義し、Zod でスキーマを検証する。Zod スキーマの命名は camelCase + `Schema` サフィックス（例: `createCustomerInputSchema`）。
 - 秘匿情報（API キー等）は Cloudflare の環境変数または KV に保存する。コードに埋め込まない。

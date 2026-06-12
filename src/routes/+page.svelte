@@ -442,7 +442,7 @@
 											/>
 										{/if}
 									{:else if extra.type === 'link'}
-										<Link label={extra.label} href={extra.href} description={extra.description} />
+										<Link label={extra.label} href={extra.href} description={extra.description} newTab={extra.newTab} />
 									{:else if extra.type === 'bizcard'}
 										{#if !extra.completed}
 											<Bizcard title={extra.title} onSubmitForm={handleFormSubmit} />

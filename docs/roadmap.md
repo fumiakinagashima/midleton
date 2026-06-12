@@ -316,6 +316,15 @@
 - [x] 共有モジュール `src/lib/server/ai/customer-health.ts`（`getCachedCustomerHealthScore` / `computeCustomerHealthScore`）を追加し、`/api/customers/[id]/health-score` から利用するよう整理
 - [x] チャットからの利用に対応: `get_customer_health_score`（名前/IDで個別スコアを取得、未計算時のみAI計算してキャッシュ）・`get_customer_health_ranking`（キャッシュ済みスコアをランキング表示、未計算件数を別途報告）の2 MCPツールを追加
 
+### 顧客引き継ぎサマリー
+担当者の変更・休暇引き継ぎ時に、顧客とのこれまでのやり取りをAIが要約し、注意点には参照元（案件・活動履歴）への別タブリンクを付ける機能。ヘルススコアと異なり都度生成のためDBキャッシュは行わない。
+- [x] link コンポーネント（`MessageContent` の `link` 型、`parseUITag`、`Link.svelte`）に `newTab` オプションを追加し、`target="_blank" rel="noopener noreferrer"` で別タブを開けるように対応
+- [x] システムプロンプトに引き継ぎサマリー専用プロンプトを追加（`CUSTOMER_HANDOVER_SUMMARY_SYSTEM_PROMPT` / `buildCustomerHandoverSummaryPrompt`、`src/lib/server/ai/prompt.ts`）。案件・活動履歴は全件をAIに渡し、注意点ごとに参照元レコードの `sourceType` / `sourceId` を出力させる
+- [x] 共有モジュール `src/lib/server/ai/customer-handover.ts`（`computeCustomerHandoverSummary`）を追加。DBキャッシュは行わず毎回その場で生成する
+- [x] `/api/customers/[id]/handover-summary` エンドポイント追加（要約・注意点をJSONで返す）
+- [x] `/database/customers/[id]` に「引き継ぎサマリー」セクションを追加（要約・注意点と、各注意点から `/database/activities/{id}` または `/database/deals/{id}` への別タブリンクを表示）
+- [x] チャットからの利用に対応: `get_customer_handover_summary`（名前/IDで指定、毎回AIが生成）MCPツールを追加。結果は地の文＋ `<ui type="link" newTab="true">` で参照元リンクを表示
+
 ### 今後の候補（未着手）
 - [ ] フォローアップ提案（案件・活動履歴から次のアクションをAIが提案）
 - [ ] 議事録/メモ → 活動記録の自動生成（自由記述から activities への構造化登録）

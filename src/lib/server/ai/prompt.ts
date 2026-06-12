@@ -229,6 +229,22 @@ get_customer_health_score の結果は values コンポーネントで表示す�
 
 get_customer_health_ranking の結果は table コンポーネントで表示する。uncomputedCount が1件以上ある場合は、その件数を一言補足する（社名を列挙する必要はない）。
 
+## 顧客引き継ぎサマリー
+
+担当者の変更・休暇引き継ぎなどで、ある顧客とのこれまでのやり取りを要約したい場合は get_customer_handover_summary ツールを使う。「〇〇社の引き継ぎ資料を作って」「〇〇社とのやり取りをまとめて」などに使う。
+このツールはキャッシュを行わず、毎回その場でAIが生成するため時間がかかることがある（待たせる旨を一言伝えてよい）。
+
+結果は次の形式で表示する:
+1. summary はそのまま地の文として表示する
+2. attentionItems がある場合は、各項目について地の文で内容を述べたうえで、続けて参照元への link コンポーネントを表示する
+   - sourceType が "activity" の場合: href="/database/activities/{sourceId}"、label="活動履歴を見る"
+   - sourceType が "deal" の場合: href="/database/deals/{sourceId}"、label="案件を見る"
+   - いずれも newTab="true" を必ず指定する（別タブで開く）
+   - {sourceId} は結果に含まれる sourceId をそのまま使う（書き換え・変換しない）
+
+<ui type="link" href="/database/activities/xxxx" label="活動履歴を見る" newTab="true">
+</ui>
+
 ## メールの下書き作成・送信
 
 ユーザーが「〇〇社にお礼/フォロー/提案メールを書いて」のようにメールの作成・送信を依頼した場合は、以下の手順で対応する。
@@ -421,4 +437,66 @@ ${dealLines}
 
 ## 活動履歴（新しい順、最大10件）
 ${activityLines}`;
+}
+
+export const CUSTOMER_HANDOVER_SUMMARY_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムの顧客引き継ぎ支援AIです。
+担当者の変更や休暇などで顧客対応を引き継ぐ際に、これまでのやり取りを要約し、後任者が把握しておくべき注意点をまとめるのが役目です。
+
+## 出力ルール
+- 必ず以下のJSON形式のみを出力する。説明文・マークダウン記法・コードブロックは一切付けない
+- summary: これまでの経緯・取引状況・現在の状態を3〜5文程度で要約する。後任者が読んで全体像をつかめるようにする
+- attentionItems（注意点）: 後任者が特に気をつけるべき事項（未解決の懸念・クレーム、価格や条件に関する約束、次回のアクション予定、失注の経緯など）。重要なものを優先し、なければ空配列
+  - content: 注意点の内容を1〜2文で
+  - sourceType: 根拠となったレコードの種類。"activity"（活動履歴）または "deal"（案件）
+  - sourceId: 根拠となったレコードのID。入力データの「[ID: ...]」に記載された値をそのまま使う（変換・省略しない）
+- summary・content 内で金額に言及する場合は、入力データに記載されている表記（カンマ区切り＋「円」、例: 21,800,000円）をそのまま使う。「百万円」「M円」「2.18千万円」のような単位変換・省略表記は行わない
+
+{
+  "summary": "...",
+  "attentionItems": [
+    {"content": "...", "sourceType": "activity" | "deal", "sourceId": "..."}
+  ]
+}`;
+
+export function buildCustomerHandoverSummaryPrompt(input: {
+	customer: { name: string; status: string; notes: string | null; createdAt: Date | string | number };
+	contacts: { name: string; role: string | null; department: string | null }[];
+	deals: { id: string; title: string; amount: number | null; status: string; createdAt: Date | string | number; closedAt: Date | string | number | null; plannedStart: string | null; plannedEnd: string | null; notes: string | null }[];
+	activities: { id: string; type: string; content: string; createdAt: Date | string | number }[];
+}): string {
+	const fmt = (d: Date | string | number) => {
+		const dt = new Date(d);
+		return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
+	};
+
+	const contactLines = input.contacts.length > 0
+		? input.contacts.map(c => `- ${c.name}${c.role ? `（${c.role}${c.department ? ` / ${c.department}` : ''}）` : ''}`).join('\n')
+		: 'なし';
+
+	const dealLines = input.deals.length > 0
+		? input.deals.map(d => `- [ID: ${d.id}] ${d.title}（${DEAL_STATUS_LABELS[d.status] ?? d.status}, ${d.amount != null ? `${d.amount.toLocaleString()}円` : '金額未設定'}, 登録: ${fmt(d.createdAt)}${d.closedAt ? `, 完了: ${fmt(d.closedAt)}` : ''}${d.notes ? `, 備考: ${d.notes}` : ''}）`).join('\n')
+		: 'なし';
+
+	const activityLines = input.activities.length > 0
+		? input.activities.map(a => `- [ID: ${a.id}] ${fmt(a.createdAt)}（${ACTIVITY_TYPE_LABELS[a.type] ?? a.type}）: ${a.content}`).join('\n')
+		: 'なし';
+
+	return `以下の顧客に関する情報をもとに、担当者引き継ぎ用の要約を作成してください。
+
+## 顧客情報
+- 会社名: ${input.customer.name}
+- ステータス: ${input.customer.status === 'active' ? 'アクティブ' : '非アクティブ'}
+- 登録日: ${fmt(input.customer.createdAt)}
+${input.customer.notes ? `- 備考: ${input.customer.notes}` : ''}
+
+## 担当者
+${contactLines}
+
+## 案件（全件）
+${dealLines}
+
+## 活動履歴（全件、新しい順）
+${activityLines}
+
+attentionItems の sourceId には、上記の「[ID: ...]」に記載されたIDをそのまま使ってください。`;
 }

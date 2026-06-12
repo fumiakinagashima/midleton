@@ -3,6 +3,7 @@
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 	import type { CustomerHealthScoreResult } from '../../../api/customers/[id]/health-score/+server';
+	import type { CustomerHandoverSummaryResult } from '../../../api/customers/[id]/handover-summary/+server';
 
 	let { data }: { data: PageData } = $props();
 
@@ -46,6 +47,32 @@
 			healthScoreError = e instanceof Error ? e.message : String(e);
 		} finally {
 			healthScoreLoading = false;
+		}
+	}
+
+	const SOURCE_TYPE_LABELS: Record<string, string> = { activity: '活動履歴', deal: '案件' };
+
+	let handoverSummary = $state<CustomerHandoverSummaryResult | null>(null);
+	let handoverLoading = $state(false);
+	let handoverError = $state('');
+
+	async function runHandoverSummary() {
+		if (handoverLoading) return;
+		handoverLoading = true;
+		handoverError = '';
+		handoverSummary = null;
+		try {
+			const res = await fetch(`/api/customers/${id}/handover-summary`, { method: 'POST' });
+			const result = await res.json() as CustomerHandoverSummaryResult & { error?: string };
+			if (!res.ok) {
+				handoverError = result.error ?? '引き継ぎサマリーの生成に失敗しました。';
+				return;
+			}
+			handoverSummary = result;
+		} catch (e) {
+			handoverError = e instanceof Error ? e.message : String(e);
+		} finally {
+			handoverLoading = false;
 		}
 	}
 
@@ -174,6 +201,49 @@
 							<ul class="ai-review-list ai-review-concerns">
 								{#each healthScore.concerns as item}
 									<li>{item}</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</section>
+
+		<section class="health-section">
+			<div class="section-head">
+				<h2 class="section-title">引き継ぎサマリー</h2>
+				<button class="btn-ai-review" onclick={runHandoverSummary} disabled={handoverLoading}>
+					{#if handoverLoading}
+						生成中...
+					{:else if handoverSummary}
+						✨ 再生成
+					{:else}
+						✨ AIで要約
+					{/if}
+				</button>
+			</div>
+			{#if handoverError}
+				<p class="ai-review-error">{handoverError}</p>
+			{/if}
+			{#if handoverSummary}
+				<div class="ai-review-box">
+					<p class="ai-review-summary">{handoverSummary.summary}</p>
+					{#if handoverSummary.attentionItems.length > 0}
+						<div class="ai-review-group">
+							<h3 class="ai-review-group-title">注意点</h3>
+							<ul class="ai-review-list ai-review-attention">
+								{#each handoverSummary.attentionItems as item}
+									<li>
+										{item.content}
+										<a
+											class="source-link"
+											href="/database/{item.sourceType === 'deal' ? 'deals' : 'activities'}/{item.sourceId}"
+											target="_blank"
+											rel="noopener noreferrer"
+										>
+											{SOURCE_TYPE_LABELS[item.sourceType] ?? item.sourceType}を見る
+										</a>
+									</li>
 								{/each}
 							</ul>
 						</div>
@@ -377,4 +447,14 @@
 	.ai-review-list { margin: 0; padding-left: 1.4em; font-size: 0.875rem; line-height: 1.7; display: flex; flex-direction: column; gap: 4px; }
 	.ai-review-positives li::marker { color: #16a34a; }
 	.ai-review-concerns li::marker { color: #dc2626; }
+	.ai-review-attention li::marker { color: #ca8a04; }
+
+	.source-link {
+		margin-left: 8px;
+		font-size: 0.8125rem;
+		color: var(--color-primary);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.source-link:hover { text-decoration: underline; }
 </style>
