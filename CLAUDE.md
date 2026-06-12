@@ -24,7 +24,7 @@ midleton/
 │   │   ├── +page.svelte      # チャット画面（/）
 │   │   ├── ui/               # UIコンポーネントデモ（/ui）
 │   │   ├── bizcard/          # 名刺取り込み（/bizcard）
-│   │   ├── settings/         # 設定画面（/settings, /settings/integrations, /settings/quick-actions）
+│   │   ├── settings/         # 設定画面（/settings, /settings/integrations, /settings/quick-actions, /settings/email）
 │   │   ├── database/         # データ管理画面（/database, /database/[type], /database/[type]/[id] 等）
 │   │   └── api/
 │   │       ├── chat/         # チャット API エンドポイント

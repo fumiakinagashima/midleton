@@ -100,7 +100,14 @@ function buildMimeMessage(mail: Mail): string {
 }
 
 export async function sendSmtp(config: SmtpConfig, mail: Mail): Promise<void> {
-	const { connect } = await import('cloudflare:sockets');
+	let connect: (typeof import('cloudflare:sockets'))['connect'];
+	try {
+		({ connect } = await import('cloudflare:sockets'));
+	} catch {
+		throw new Error(
+			'SMTP送信は Cloudflare Workers ランタイムでのみ利用できます（`bun run dev` のローカル環境では利用できません）。本番環境（デプロイ後）または `wrangler dev` でお試しください。ローカルでのテストには Resend または AWS SES をご利用ください。'
+		);
+	}
 
 	const isSecure = config.secure === true || config.secure === 'true';
 	const port = typeof config.port === 'string' ? parseInt(config.port, 10) : config.port;

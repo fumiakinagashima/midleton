@@ -158,6 +158,23 @@ export const integrations = sqliteTable('integrations', {
 		.default(sql`(unixepoch())`)
 });
 
+export const emailProviders = sqliteTable('email_providers', {
+	id: text('id').primaryKey(),
+	provider: text('provider', { enum: ['resend', 'ses', 'smtp'] })
+		.notNull()
+		.default('resend'),
+	config: text('config').notNull().default('{}'),
+	fromAddress: text('from_address').notNull().default(''),
+	fromName: text('from_name'),
+	signature: text('signature'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export const accounts = sqliteTable('accounts', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
@@ -206,6 +223,8 @@ export type EntityType = typeof entityTypes.$inferSelect;
 export type EntityField = typeof entityFields.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
 export type CoreCustomField = typeof coreCustomFields.$inferSelect;
+export type EmailProviderSettings = typeof emailProviders.$inferSelect;
+export type NewEmailProviderSettings = typeof emailProviders.$inferInsert;
 export type Account = typeof accounts.$inferSelect;
 export type Integration = typeof integrations.$inferSelect;
 export type NewIntegration = typeof integrations.$inferInsert;

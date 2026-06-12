@@ -203,7 +203,9 @@
   - [x] プロバイダー実装: Resend / AWS SES（SigV4）/ SMTP（cloudflare:sockets + STARTTLS）。設定は環境変数（`EMAIL_PROVIDER` 等、Cloudflare Secrets / `.dev.vars`）経由
   - [x] `/api/email/send` エンドポイント
   - [x] MCP ツール `send_email`（フェーズ7で追加。Claude が下書きフォーム経由で送信）
-  - [ ] `email_providers` テーブル・`/settings/email` 管理 UI（未実装。現状は環境変数ベースの設定）
+  - [x] `email_providers` テーブル・`/settings/email` 管理 UI（DB設定を優先し、未設定時は環境変数にフォールバック）
+    - [x] 設定タブで SMTP / SES / Resend を切り替えて設定できるようにする
+    - [x] 署名（フッター）設定を追加し、`send_email` 送信時に本文へ自動付与する
 - [x] `/database` 配下全ページを `+page.server.ts` のSSR `load` 関数化し、ハイドレーション時の再フェッチによる画面ちらつきを解消
 - [ ] `/settings/integrations` など他の `onMount` フェッチ画面も同様にSSR `load` 化（チャットAI（`/`）以外は原則SSR、という方針に統一）
 
@@ -294,6 +296,7 @@
 - [x] フォーム送信ボタンのラベルをツールごとに指定可能に（`submitLabel`、メールフォームは「送信」表示）
 - [x] 送信成功時、`customer_id` 指定があれば活動履歴に「メール」種別で自動記録（`recordActivity`）
 - [x] システムプロンプトにメール下書き作成フローを追加（顧客特定 → 下書き作成 → フォーム確認 → 送信）
+- [x] 本文（`body`）の textarea の高さを現状の3倍程度に拡大する（`Form.svelte`、長文メールを編集しやすくする）
 
 ### 今後の候補（未着手）
 - [ ] フォローアップ提案（案件・活動履歴から次のアクションをAIが提案）

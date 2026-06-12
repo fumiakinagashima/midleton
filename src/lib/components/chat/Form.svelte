@@ -66,6 +66,7 @@
 			{#if field.type === 'textarea'}
 				<textarea
 					id={field.key}
+					class:large={field.key === 'body'}
 					placeholder={field.placeholder ?? ''}
 					required={field.required}
 					bind:value={values[field.key]}
@@ -148,6 +149,10 @@
 	textarea {
 		min-height: 80px;
 		resize: vertical;
+	}
+
+	textarea.large {
+		min-height: 240px;
 	}
 
 	button {
