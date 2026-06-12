@@ -5,18 +5,20 @@
 
 	type Props = {
 		fields?: LocalField[];
+		availableTables?: { value: string; label: string }[];
 	};
 
-	let { fields = $bindable([]) }: Props = $props();
+	let { fields = $bindable([]), availableTables = [] }: Props = $props();
 
-	const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
+	const FIELD_TYPES: { value: CustomFieldType | 'recordSelect'; label: string }[] = [
 		{ value: 'text', label: 'テキスト' },
 		{ value: 'number', label: '数値' },
 		{ value: 'select', label: '選択' },
 		{ value: 'date', label: '日付' },
 		{ value: 'email', label: 'メール' },
 		{ value: 'tel', label: '電話番号' },
-		{ value: 'textarea', label: '長文テキスト' }
+		{ value: 'textarea', label: '長文テキスト' },
+		{ value: 'recordSelect', label: '関係' }
 	];
 
 	function addField() {
@@ -75,7 +77,7 @@
 						/>
 						<select
 							value={field.type}
-							onchange={(e) => updateField(field._id, { type: (e.target as HTMLSelectElement).value as CustomFieldType })}
+							onchange={(e) => updateField(field._id, { type: (e.target as HTMLSelectElement).value as CustomFieldType | 'recordSelect' })}
 						>
 							{#each FIELD_TYPES as t}
 								<option value={t.value}>{t.label}</option>
@@ -106,6 +108,20 @@
 								value={formatOptions(field.options)}
 								oninput={(e) => updateField(field._id, { options: parseOptions((e.target as HTMLTextAreaElement).value) })}
 							></textarea>
+						</div>
+					{:else if field.type === 'recordSelect'}
+						<div class="options-row">
+							<label class="options-label" for="ref-{field._id}">関連先テーブル</label>
+							<select
+								id="ref-{field._id}"
+								value={field.refTable ?? ''}
+								onchange={(e) => updateField(field._id, { refTable: (e.target as HTMLSelectElement).value })}
+							>
+								<option value="" disabled>選択してください</option>
+								{#each availableTables as t}
+									<option value={t.value}>{t.label}</option>
+								{/each}
+							</select>
 						</div>
 					{/if}
 				</div>

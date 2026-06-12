@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import FieldEditor from '$lib/components/database/FieldEditor.svelte';
-	import type { EditableField, CustomFieldType, FieldDef } from '$lib/server/db/table-service';
+	import type { EditableField, FieldDef } from '$lib/server/db/table-service';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -14,8 +14,9 @@
 	function toEditableFields(fieldDefs: FieldDef[]): EditableField[] {
 		return fieldDefs.map(f => ({
 			_id: crypto.randomUUID(),
-			key: f.key, label: f.label, type: f.type as CustomFieldType,
-			required: f.required ?? false, options: f.options ?? []
+			key: f.key, label: f.label, type: f.type,
+			required: f.required ?? false, options: f.options ?? [],
+			refTable: f.refTable
 		}));
 	}
 
@@ -34,7 +35,7 @@
 
 	const FIELD_TYPE_LABELS: Record<string, string> = {
 		text: 'テキスト', number: '数値', select: '選択', date: '日付',
-		email: 'メール', tel: '電話番号', textarea: '長文テキスト'
+		email: 'メール', tel: '電話番号', textarea: '長文テキスト', recordSelect: '関係'
 	};
 
 	async function handleSubmit(e: Event) {
@@ -97,7 +98,7 @@
 
 			<div class="form-section">
 				<h2 class="section-title">カスタムフィールド</h2>
-				<FieldEditor bind:fields={customFields} />
+				<FieldEditor bind:fields={customFields} availableTables={data.availableTables} />
 			</div>
 
 			{#if error}
@@ -127,7 +128,7 @@
 
 			<div class="form-section">
 				<h2 class="section-title">フィールド定義</h2>
-				<FieldEditor bind:fields />
+				<FieldEditor bind:fields availableTables={data.availableTables} />
 			</div>
 
 			{#if error}

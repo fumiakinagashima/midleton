@@ -141,7 +141,8 @@ export async function getCoreCustomFields(db: Db, tableName: string): Promise<Fi
 		.orderBy(coreCustomFields.sortOrder);
 	return fields.map(f => ({
 		key: f.key, label: f.label, type: f.type, required: f.required,
-		options: JSON.parse(f.options ?? '[]'), listable: true, isCustom: true
+		options: JSON.parse(f.options ?? '[]'), listable: true, isCustom: true,
+		refTable: f.refTable ?? undefined
 	}));
 }
 
@@ -154,6 +155,7 @@ export async function updateCoreCustomFields(db: Db, tableName: string, fields: 
 			key: f.key, label: f.label, type: f.type,
 			required: f.required ?? false,
 			options: JSON.stringify(f.options ?? []),
+			refTable: f.refTable ?? null,
 			sortOrder: i
 		});
 	}
@@ -179,7 +181,8 @@ export async function getTableInfo(db: Db, type: string): Promise<TableInfo | nu
 		id: et.name, label: et.label, icon: et.icon ?? 'table', isCore: false,
 		fields: fields.map(f => ({
 			key: f.key, label: f.label, type: f.type, required: f.required,
-			options: JSON.parse(f.options ?? '[]'), listable: true
+			options: JSON.parse(f.options ?? '[]'), listable: true,
+			refTable: f.refTable ?? undefined
 		}))
 	};
 }
@@ -213,7 +216,8 @@ export async function listAllTables(db: Db): Promise<(TableInfo & { count: numbe
 				id: et.name, label: et.label, icon: et.icon ?? 'table', isCore: false, count,
 				fields: fields.map(f => ({
 					key: f.key, label: f.label, type: f.type, required: f.required,
-					options: JSON.parse(f.options ?? '[]'), listable: true
+					options: JSON.parse(f.options ?? '[]'), listable: true,
+					refTable: f.refTable ?? undefined
 				}))
 			};
 		})
@@ -473,7 +477,7 @@ export async function deleteRecord(db: Db, type: string, id: string): Promise<vo
 
 // ── Entity type (custom table) management ──────────────────────────────────
 
-export type EditableField = Omit<FieldDef, 'listable' | 'isCustom' | 'type'> & { _id: string; type: CustomFieldType };
+export type EditableField = Omit<FieldDef, 'listable' | 'isCustom'> & { _id: string };
 
 export type EntityTypeInput = {
 	name: string;
@@ -500,6 +504,7 @@ export async function createEntityType(db: Db, input: EntityTypeInput): Promise<
 			key: f.key, label: f.label, type: f.type,
 			required: f.required ?? false,
 			options: JSON.stringify(f.options ?? []),
+			refTable: f.refTable ?? null,
 			sortOrder: i
 		});
 	}
@@ -525,6 +530,7 @@ export async function updateEntityType(db: Db, name: string, input: Partial<Enti
 				key: f.key, label: f.label, type: f.type,
 				required: f.required ?? false,
 				options: JSON.stringify(f.options ?? []),
+				refTable: f.refTable ?? null,
 				sortOrder: i
 			});
 		}

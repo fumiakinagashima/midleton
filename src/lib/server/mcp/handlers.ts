@@ -18,7 +18,7 @@ import {
 	updateApprovalStep,
 	cancelApproval
 } from '../db/approval-service';
-import { createDealRegisteredActivity, recordActivity } from '../db/table-service';
+import { createDealRegisteredActivity, recordActivity, createEntityType, createRecord } from '../db/table-service';
 import { sendEmail, getEmailSetup, type EmailEnv } from '../email';
 import { computeCustomerHealthScore, getCachedCustomerHealthScore } from '../ai/customer-health';
 import { computeCustomerHandoverSummary } from '../ai/customer-handover';
@@ -953,12 +953,13 @@ const addEntityFieldSchema = z.object({
 	entity_type_id: z.string(),
 	key: z.string().min(1).regex(/^[a-z0-9_]+$/),
 	label: z.string().min(1),
-	type: z.enum(['text', 'number', 'select', 'date', 'email', 'tel', 'textarea']).default('text'),
+	type: z.enum(['text', 'number', 'select', 'date', 'email', 'tel', 'textarea', 'recordSelect']).default('text'),
 	required: z.boolean().default(false),
 	options: z
 		.array(z.object({ value: z.string(), label: z.string() }))
 		.optional()
-		.default([])
+		.default([]),
+	ref_table: z.string().optional()
 });
 
 const getEntitiesSchema = z.object({
@@ -988,6 +989,54 @@ async function handleGetEntityFields(db: Db, input: unknown) {
 		.where(eq(entityFields.entityTypeId, entity_type_id))
 		.orderBy(entityFields.sortOrder, entityFields.createdAt)
 		.then((rows) => rows.map((r) => ({ ...r, options: parseJson(r.options) })));
+}
+
+const createAppFieldSchema = z.object({
+	key: z.string().min(1).regex(/^[a-z0-9_]+$/, '英小文字・数字・アンダースコアのみ使用可'),
+	label: z.string().min(1),
+	type: z.enum(['text', 'number', 'select', 'date', 'email', 'tel', 'textarea', 'recordSelect']).default('text'),
+	required: z.boolean().default(false),
+	options: z
+		.array(z.object({ value: z.string(), label: z.string() }))
+		.optional()
+		.default([]),
+	ref_table: z.string().optional()
+});
+
+const createAppSchema = z.object({
+	name: z.string().min(1).regex(/^[a-z0-9_]+$/, '英小文字・数字・アンダースコアのみ使用可'),
+	label: z.string().min(1),
+	icon: z.string().optional(),
+	fields: z.array(createAppFieldSchema).min(1),
+	seed_records: z.array(z.record(z.string(), z.unknown())).optional().default([])
+});
+
+async function handleCreateApp(db: Db, input: unknown) {
+	const data = createAppSchema.parse(input);
+
+	await createEntityType(db, {
+		name: data.name,
+		label: data.label,
+		icon: data.icon,
+		fields: data.fields.map((f) => ({
+			_id: crypto.randomUUID(),
+			key: f.key, label: f.label, type: f.type, required: f.required, options: f.options,
+			refTable: f.ref_table
+		}))
+	});
+
+	for (const record of data.seed_records) {
+		await createRecord(db, data.name, record);
+	}
+
+	return {
+		name: data.name,
+		label: data.label,
+		icon: data.icon,
+		fieldCount: data.fields.length,
+		seedCount: data.seed_records.length,
+		url: `/database/${data.name}`
+	};
 }
 
 async function handleCreateEntityType(db: Db, input: unknown) {
@@ -1023,6 +1072,7 @@ async function handleAddEntityField(db: Db, input: unknown) {
 		type: data.type,
 		required: data.required,
 		options: JSON.stringify(data.options),
+		refTable: data.ref_table ?? null,
 		sortOrder
 	});
 	const [row] = await db.select().from(entityFields).where(eq(entityFields.id, id));
@@ -1152,6 +1202,7 @@ export type ToolName =
 	| 'create_activity'
 	| 'send_email'
 	| 'list_entity_types'
+	| 'create_app'
 	| 'get_entity_fields'
 	| 'create_entity_type'
 	| 'add_entity_field'
@@ -1194,6 +1245,7 @@ export async function dispatchTool(db: Db, name: ToolName, input: unknown, env?:
 		case 'create_activity':    return handleCreateActivity(db, input);
 		case 'send_email':         return handleSendEmail(db, input, env);
 		case 'list_entity_types':  return handleListEntityTypes(db);
+		case 'create_app':         return handleCreateApp(db, input);
 		case 'get_entity_fields':  return handleGetEntityFields(db, input);
 		case 'create_entity_type': return handleCreateEntityType(db, input);
 		case 'add_entity_field':   return handleAddEntityField(db, input);
