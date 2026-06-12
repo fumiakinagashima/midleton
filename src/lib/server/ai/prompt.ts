@@ -239,3 +239,95 @@ text / email / tel / number / textarea / select / date / hidden
   {"key":"status","label":"ステータス","type":"select","options":[{"label":"商談中","value":"open"},{"label":"受注","value":"won"},{"label":"失注","value":"lost"}]}
 ]
 </ui>`;
+
+export const APPROVAL_REVIEW_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムの社内承認申請レビューAIです。
+承認者が承認操作を行う前に、申請内容を読み、問題点や確認すべき事項を指摘するのが役目です。
+
+## 出力ルール
+- 必ず以下のJSON形式のみを出力する。説明文・マークダウン記法・コードブロックは一切付けない
+- riskLevel: 申請内容に金額・取引条件・期日・記載漏れなどのリスクや矛盾がどの程度あるかを示す
+  - "low": 特に問題なし。通常通り承認して問題ない
+  - "medium": 承認前に確認・検討した方が良い点がある
+  - "high": 承認前に必ず確認すべき重大な懸念がある（金額の矛盾、条件の欠落、規程との不整合など）
+- concerns（問題点）: 申請内容・添付資料から読み取れる矛盾・リスク・記載漏れなど。問題が見当たらない場合は空配列
+- checks（確認事項）: 承認者が承認前に確認・質問すべき点。なければ空配列
+- summary: レビュー全体の総評を1〜2文で
+
+{
+  "riskLevel": "low" | "medium" | "high",
+  "summary": "...",
+  "concerns": ["...", "..."],
+  "checks": ["...", "..."]
+}`;
+
+export function buildApprovalReviewPrompt(row: {
+	title: string;
+	content: string;
+	submittedBy: string;
+	attachments: { name: string; mimeType: string; size: number }[];
+	route: { step: number; approver: string; role?: string }[];
+}): string {
+	const attachmentLines = row.attachments.length > 0
+		? row.attachments.map(a => `- ${a.name}（${a.mimeType}, ${a.size}バイト）`).join('\n')
+		: 'なし';
+	const routeLines = row.route.length > 0
+		? row.route.map(s => `- Step${s.step}: ${s.approver}${s.role ? `（${s.role}）` : ''}`).join('\n')
+		: 'なし';
+
+	return `以下の社内承認申請の内容をレビューし、承認者が確認すべき問題点・確認事項を指摘してください。
+
+## タイトル
+${row.title}
+
+## 申請者
+${row.submittedBy || '不明'}
+
+## 申請内容
+${row.content || '（記載なし）'}
+
+## 添付ファイル
+${attachmentLines}
+
+## 承認ルート
+${routeLines}
+
+添付画像が一緒に渡されている場合は、その内容（金額・日付・宛先など）が申請内容と整合しているかも確認してください。`;
+}
+
+export const APPROVAL_DRAFT_REVIEW_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムの社内承認申請 作成支援AIです。
+申請者がまだ提出していない申請の下書き（タイトル・申請内容）を読み、提出前に直した方が良い点を指摘するのが役目です。
+
+## 出力ルール
+- 必ず以下のJSON形式のみを出力する。説明文・マークダウン記法・コードブロックは一切付けない
+- summary: このまま提出して問題ないか、修正を検討した方がよいかを1〜2文で
+- issues（誤字脱字・表現）: タイトル・本文の誤字脱字、不自然な日本語、敬語の誤りなど。なければ空配列
+- missing（不足している情報）: 承認者が判断するために必要だが書かれていない情報（金額・期間・対象・理由・背景など）。なければ空配列
+- suggestions（改善提案）: より伝わりやすい書き方・構成にするための提案。なければ空配列
+
+{
+  "summary": "...",
+  "issues": ["...", "..."],
+  "missing": ["...", "..."],
+  "suggestions": ["...", "..."]
+}`;
+
+export function buildApprovalDraftReviewPrompt(input: {
+	title: string;
+	content: string;
+	route: { step: number; approver: string; role?: string }[];
+}): string {
+	const routeLines = input.route.length > 0
+		? input.route.map(s => `- Step${s.step}: ${s.approver}${s.role ? `（${s.role}）` : ''}`).join('\n')
+		: 'なし';
+
+	return `これから提出する社内承認申請の下書きをレビューしてください。誤字脱字・不足情報・改善点があれば指摘してください。
+
+## タイトル
+${input.title || '（未入力）'}
+
+## 申請内容
+${input.content || '（未入力）'}
+
+## 承認ルート（参考: 誰が承認するか）
+${routeLines}`;
+}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Attachment } from '$lib/server/db/approval-service';
+	import type { ApprovalDraftReviewResult } from '../../../api/approvals/ai-review-draft/+server';
 	import type { PageData } from './$types';
 	import { toast } from '$lib/stores/toast.svelte';
 
@@ -45,6 +46,42 @@
 	let saving = $state(false);
 	let error = $state('');
 	let fileError = $state('');
+
+	let aiReview = $state<ApprovalDraftReviewResult | null>(null);
+	let aiReviewLoading = $state(false);
+	let aiReviewError = $state('');
+
+	async function runAiReview() {
+		if (aiReviewLoading) return;
+		if (!title.trim() && !content.trim()) {
+			aiReviewError = 'タイトルまたは申請内容を入力してください。';
+			return;
+		}
+		aiReviewLoading = true;
+		aiReviewError = '';
+		aiReview = null;
+		try {
+			const res = await fetch('/api/approvals/ai-review-draft', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					title: title.trim(),
+					content: content.trim(),
+					route: routeEntries.filter(r => r.approver.trim()).map(r => ({ step: r.step, approver: r.approver.trim(), role: r.role.trim() || undefined }))
+				})
+			});
+			const result = await res.json() as ApprovalDraftReviewResult & { error?: string };
+			if (!res.ok) {
+				aiReviewError = result.error ?? 'AIレビューに失敗しました。';
+				return;
+			}
+			aiReview = result;
+		} catch (e) {
+			aiReviewError = e instanceof Error ? e.message : String(e);
+		} finally {
+			aiReviewLoading = false;
+		}
+	}
 
 	// TODO(auth): submittedBy をログインセッションの accountId から取得する（現状は localStorage で代替）
 	const submittedBy = typeof localStorage !== 'undefined'
@@ -172,6 +209,60 @@
 		<div class="field">
 			<label>申請内容</label>
 			<textarea class="content-input" bind:value={content} rows="5" placeholder="申請の背景・理由・詳細を記入してください。"></textarea>
+		</div>
+
+		<!-- AI Review (draft) -->
+		<div class="field">
+			<div class="field-header">
+				<label>AIレビュー <span class="limit">（提出前のチェック）</span></label>
+				<button type="button" class="btn-ai-review" onclick={runAiReview} disabled={aiReviewLoading}>
+					{#if aiReviewLoading}
+						レビュー中...
+					{:else if aiReview}
+						✨ 再レビュー
+					{:else}
+						✨ 内容をAIにレビューしてもらう
+					{/if}
+				</button>
+			</div>
+			{#if aiReviewError}
+				<p class="ai-review-error">{aiReviewError}</p>
+			{/if}
+			{#if aiReview}
+				<div class="ai-review-box">
+					<p class="ai-review-summary">{aiReview.summary}</p>
+					{#if aiReview.issues.length > 0}
+						<div class="ai-review-group">
+							<h3 class="ai-review-group-title">誤字脱字・表現</h3>
+							<ul class="ai-review-list">
+								{#each aiReview.issues as item}
+									<li>{item}</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+					{#if aiReview.missing.length > 0}
+						<div class="ai-review-group">
+							<h3 class="ai-review-group-title">不足している情報</h3>
+							<ul class="ai-review-list">
+								{#each aiReview.missing as item}
+									<li>{item}</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+					{#if aiReview.suggestions.length > 0}
+						<div class="ai-review-group">
+							<h3 class="ai-review-group-title">改善提案</h3>
+							<ul class="ai-review-list">
+								{#each aiReview.suggestions as item}
+									<li>{item}</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 
 		<!-- Attachments -->
@@ -305,6 +396,49 @@
 
 	.req { color: var(--color-danger, #dc2626); }
 	.limit { font-weight: 400; opacity: 0.7; }
+
+	/* AI Review */
+	.btn-ai-review {
+		padding: 6px 14px;
+		background: none;
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		border-radius: 6px;
+		font-size: 0.8125rem;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.btn-ai-review:hover { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
+	.btn-ai-review:disabled { opacity: 0.5; cursor: not-allowed; }
+
+	.ai-review-error {
+		margin: 0;
+		padding: 10px 14px;
+		background: color-mix(in srgb, #dc2626 10%, transparent);
+		border: 1px solid #dc2626;
+		border-radius: 6px;
+		color: #dc2626;
+		font-size: 0.875rem;
+	}
+
+	.ai-review-box {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 14px 16px;
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+	}
+	.ai-review-summary { margin: 0; font-size: 0.9375rem; line-height: 1.7; }
+	.ai-review-group { display: flex; flex-direction: column; gap: 6px; }
+	.ai-review-group-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		margin: 0;
+	}
+	.ai-review-list { margin: 0; padding-left: 1.4em; font-size: 0.875rem; line-height: 1.7; display: flex; flex-direction: column; gap: 4px; }
 
 	input[type="text"], input[type="email"], input[type="number"] {
 		padding: 9px 11px;

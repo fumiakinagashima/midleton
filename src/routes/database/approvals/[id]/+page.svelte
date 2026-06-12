@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import type { ApprovalRow } from '$lib/server/db/approval-service';
+	import type { ApprovalReviewResult } from '../../../api/approvals/[id]/ai-review/+server';
 	import type { PageData } from './$types';
 	import * as m from '$lib/paraglide/messages.js';
 
@@ -24,6 +25,32 @@
 	const STEP_ICONS: Record<string, string> = {
 		pending: '○', approved: '✓', rejected: '✗'
 	};
+	const RISK_LABELS: Record<string, string> = { low: '低', medium: '中', high: '高' };
+	const RISK_COLORS: Record<string, string> = { low: '#16a34a', medium: '#ca8a04', high: '#dc2626' };
+
+	let aiReview = $state<ApprovalReviewResult | null>(null);
+	let aiReviewLoading = $state(false);
+	let aiReviewError = $state('');
+
+	async function runAiReview() {
+		if (!row || aiReviewLoading) return;
+		aiReviewLoading = true;
+		aiReviewError = '';
+		aiReview = null;
+		try {
+			const res = await fetch(`/api/approvals/${row.id}/ai-review`, { method: 'POST' });
+			const result = await res.json() as ApprovalReviewResult & { error?: string };
+			if (!res.ok) {
+				aiReviewError = result.error ?? 'AIレビューに失敗しました。';
+				return;
+			}
+			aiReview = result;
+		} catch (e) {
+			aiReviewError = e instanceof Error ? e.message : String(e);
+		} finally {
+			aiReviewLoading = false;
+		}
+	}
 
 	async function act(stepIndex: number, action: 'approve_step' | 'reject_step') {
 		if (!row || actionLoading) return;
@@ -109,6 +136,55 @@
 			<section class="section">
 				<h2 class="section-title">申請内容</h2>
 				<div class="content-box">{row.content}</div>
+			</section>
+		{/if}
+
+		<!-- AI Review -->
+		{#if row.status === 'pending'}
+			<section class="section">
+				<div class="section-head">
+					<h2 class="section-title">AIレビュー</h2>
+					<button class="btn-ai-review" onclick={runAiReview} disabled={aiReviewLoading}>
+						{#if aiReviewLoading}
+							レビュー中...
+						{:else if aiReview}
+							✨ 再レビュー
+						{:else}
+							✨ AIにレビューしてもらう
+						{/if}
+					</button>
+				</div>
+				{#if aiReviewError}
+					<p class="ai-review-error">{aiReviewError}</p>
+				{/if}
+				{#if aiReview}
+					<div class="ai-review-box">
+						<span class="risk-badge" style="color:{RISK_COLORS[aiReview.riskLevel]};border-color:{RISK_COLORS[aiReview.riskLevel]}">
+							リスク: {RISK_LABELS[aiReview.riskLevel] ?? aiReview.riskLevel}
+						</span>
+						<p class="ai-review-summary">{aiReview.summary}</p>
+						{#if aiReview.concerns.length > 0}
+							<div class="ai-review-group">
+								<h3 class="ai-review-group-title">問題点</h3>
+								<ul class="ai-review-list ai-review-concerns">
+									{#each aiReview.concerns as item}
+										<li>{item}</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+						{#if aiReview.checks.length > 0}
+							<div class="ai-review-group">
+								<h3 class="ai-review-group-title">確認事項</h3>
+								<ul class="ai-review-list ai-review-checks">
+									{#each aiReview.checks as item}
+										<li>{item}</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</section>
 		{/if}
 
@@ -256,6 +332,62 @@
 		letter-spacing: 0.05em;
 		margin: 0;
 	}
+	.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+	/* AI Review */
+	.btn-ai-review {
+		padding: 6px 14px;
+		background: none;
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		border-radius: 6px;
+		font-size: 0.8125rem;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.btn-ai-review:hover { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
+	.btn-ai-review:disabled { opacity: 0.5; cursor: not-allowed; }
+
+	.ai-review-error {
+		margin: 0;
+		padding: 10px 14px;
+		background: color-mix(in srgb, #dc2626 10%, transparent);
+		border: 1px solid #dc2626;
+		border-radius: 6px;
+		color: #dc2626;
+		font-size: 0.875rem;
+	}
+
+	.ai-review-box {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 14px 16px;
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+	}
+	.risk-badge {
+		display: inline-flex;
+		align-self: flex-start;
+		font-size: 0.75rem;
+		padding: 2px 10px;
+		border-radius: 20px;
+		border: 1px solid;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.ai-review-summary { margin: 0; font-size: 0.9375rem; line-height: 1.7; }
+	.ai-review-group { display: flex; flex-direction: column; gap: 6px; }
+	.ai-review-group-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		margin: 0;
+	}
+	.ai-review-list { margin: 0; padding-left: 1.4em; font-size: 0.875rem; line-height: 1.7; display: flex; flex-direction: column; gap: 4px; }
+	.ai-review-concerns li::marker { color: #dc2626; }
+	.ai-review-checks li::marker { color: #ca8a04; }
 
 	.content-box {
 		padding: 14px 16px;
