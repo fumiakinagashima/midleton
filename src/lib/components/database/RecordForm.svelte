@@ -38,6 +38,18 @@
 		e.preventDefault();
 		onsubmit({ ...values });
 	}
+
+	// フォーム選択肢（formOptions）に現在値が含まれない場合は options から補完して表示する
+	// （例: 活動履歴「種類」のフォームでは選択不可だが、既存の「案件登録」レコードは編集時に表示できるようにする）
+	function selectOptions(field: FieldDef): { label: string; value: string }[] {
+		const opts = field.formOptions ?? field.options ?? [];
+		const current = values[field.key];
+		if (current && !opts.some(o => o.value === current)) {
+			const fallback = field.options?.find(o => o.value === current);
+			if (fallback) return [...opts, fallback];
+		}
+		return opts;
+	}
 </script>
 
 <form class="form" onsubmit={handleSubmit}>
@@ -65,7 +77,7 @@
 				{:else if field.type === 'select'}
 					<select id={field.key} required={field.required} bind:value={values[field.key]}>
 						<option value="">選択してください</option>
-						{#each field.options ?? [] as opt}
+						{#each selectOptions(field) as opt}
 							<option value={opt.value}>{opt.label}</option>
 						{/each}
 					</select>

@@ -13,6 +13,9 @@ export type FieldDef = {
 	type: CustomFieldType | 'recordSelect';
 	required?: boolean;
 	options?: { label: string; value: string }[];
+	// 登録・編集フォームの選択肢（省略時は options を使用）。
+	// システムが自動付与する値（例: 活動履歴の「案件登録」）を表示用 options には残しつつ、フォームでは選択不可にする場合に指定する
+	formOptions?: { label: string; value: string }[];
 	listable?: boolean;
 	isCustom?: boolean;
 	refTable?: string;
@@ -97,6 +100,11 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 					{ label: 'メモ', value: 'note' }, { label: '電話', value: 'call' },
 					{ label: 'メール', value: 'email' }, { label: '面談', value: 'meeting' },
 					{ label: '案件登録', value: 'deal_created' }
+				],
+				// 「案件登録」は案件登録時にシステムが自動で記録するため、フォームでは選択させない
+				formOptions: [
+					{ label: 'メモ', value: 'note' }, { label: '電話', value: 'call' },
+					{ label: 'メール', value: 'email' }, { label: '面談', value: 'meeting' }
 				]
 			},
 			{ key: 'content', label: '内容', type: 'textarea', required: true, listable: true }
