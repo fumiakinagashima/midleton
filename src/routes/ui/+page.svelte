@@ -21,7 +21,8 @@
 	import DataGrid from '$lib/components/ui/DataGrid.svelte';
 	import Kanban from '$lib/components/chat/Kanban.svelte';
 	import Chart from '$lib/components/chat/Chart.svelte';
-
+	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
+	
 	let text = $state('');
 	let memo = $state('');
 	let status = $state('');
@@ -169,7 +170,14 @@
 
 <div class="page">
 	<h1>UI コンポーネント</h1>
-
+	<!-- ローディング-->
+	<section>
+		<h2>ローディング</h2>
+		<div class="grid2">
+			<TypingIndicator />
+		</div>
+	</section>
+	
 	<!-- フォーム入力 -->
 	<section>
 		<h2>フォーム入力</h2>
