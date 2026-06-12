@@ -125,7 +125,7 @@ export async function streamChat(
 	let messages: MessageParam[] = [...history];
 	let lastTurnEvents: StreamEvent[] = [];
 
-	for (let turn = 0; turn < 5; turn++) {
+	for (let turn = 0; turn < 10; turn++) {
 		const processor = new TextStreamProcessor();
 		const toolBlocks: Array<{ id: string; name: string; inputJson: string }> = [];
 		let currentTool: { id: string; name: string; inputJson: string } | null = null;
