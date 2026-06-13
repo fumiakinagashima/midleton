@@ -60,11 +60,11 @@
 	<aside class="sidebar">
 		<div class="sidebar-header">
 			<span class="logo">MIDLETON</span>
-			<a href="/" class="new-chat-btn" title={m.new_chat()} onclick={() => chatSession.startNew()}>
+			<!--<a href="/" class="new-chat-btn" title={m.new_chat()} onclick={() => chatSession.startNew()}>
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M12 5v14M5 12h14" />
 				</svg>
-			</a>
+			</a>-->
 		</div>
 
 		<a href="/" class="new-chat-row" onclick={() => chatSession.startNew()}>
@@ -187,9 +187,10 @@
 	.logo {
 		font-size: 1rem;
 		font-weight: 700;
-		color: var(--sidebar-text);
+		color: var(--color-primary);
 		padding: 0 4px;
 		letter-spacing: -0.01em;
+		font-family: Georgia, 'Times New Roman', Times, serif;
 	}
 
 	.new-chat-btn {
