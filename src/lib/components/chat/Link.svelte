@@ -4,9 +4,10 @@
 		href: string;
 		description?: string;
 		newTab?: boolean;
+		download?: boolean;
 	};
 
-	let { label, href, description, newTab }: Props = $props();
+	let { label, href, description, newTab, download }: Props = $props();
 </script>
 
 <a class="link-card" {href} target={newTab ? '_blank' : undefined} rel={newTab ? 'noopener noreferrer' : undefined}>
@@ -14,9 +15,17 @@
 	{#if description}
 		<span class="desc">{description}</span>
 	{/if}
-	<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-		<path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
-	</svg>
+	{#if download}
+		<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+			<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-linecap="round" stroke-linejoin="round" />
+			<polyline points="7 10 12 15 17 10" stroke-linecap="round" stroke-linejoin="round" />
+			<line x1="12" y1="15" x2="12" y2="3" stroke-linecap="round" stroke-linejoin="round" />
+		</svg>
+	{:else}
+		<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+			<path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+		</svg>
+	{/if}
 </a>
 
 <style>
@@ -51,7 +60,7 @@
 		color: var(--color-text-muted);
 	}
 
-	.arrow {
+	.icon {
 		position: absolute;
 		right: 12px;
 		top: 50%;

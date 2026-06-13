@@ -56,7 +56,7 @@
 		<span class="job-label">生成中: {label}</span>
 	</div>
 {:else if job.status === 'done'}
-	<Link label={job.result.label} href={job.result.href} description={job.result.description} newTab={job.result.newTab} />
+	<Link label={job.result.label} href={job.result.href} description={job.result.description} newTab={job.result.newTab} download={true} />
 {:else}
 	<p class="job-error">資料の生成に失敗しました: {job.error}</p>
 {/if}
