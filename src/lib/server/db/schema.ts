@@ -233,6 +233,31 @@ export const notifications = sqliteTable('notifications', {
 		.default(sql`(unixepoch())`)
 });
 
+export const chats = sqliteTable('chats', {
+	id: text('id').primaryKey(),
+	title: text('title').notNull().default(''),
+	// TODO(auth): 現状null=全アカウント共通。ログイン実装後にアカウント別フィルタを追加する
+	accountId: text('account_id'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const chatMessages = sqliteTable('chat_messages', {
+	id: text('id').primaryKey(),
+	chatId: text('chat_id')
+		.notNull()
+		.references(() => chats.id),
+	role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+	contents: text('contents').notNull().default('[]'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
 export type Contact = typeof contacts.$inferSelect;
