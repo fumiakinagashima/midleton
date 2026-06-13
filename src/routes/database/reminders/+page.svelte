@@ -1,0 +1,232 @@
+<script lang="ts">
+	import { untrack } from 'svelte';
+	import Form from '$lib/components/chat/Form.svelte';
+	import type { ReminderListRow } from '$lib/server/db/reminder-service';
+	import type { FormField } from '$lib/types/chat';
+	import type { PageData } from './$types';
+	import * as m from '$lib/paraglide/messages.js';
+
+	let { data }: { data: PageData } = $props();
+
+	let rows = $state<ReminderListRow[]>(untrack(() => data.rows));
+	$effect(() => {
+		rows = data.rows;
+	});
+
+	const STATUS_LABELS: Record<string, string> = {
+		pending: m.reminder_status_pending(), sent: m.reminder_status_sent(), failed: m.reminder_status_failed()
+	};
+	const STATUS_COLORS: Record<string, string> = {
+		pending: '#ca8a04', sent: '#16a34a', failed: '#dc2626'
+	};
+
+	function fmtDateTime(d: string | Date): string {
+		const dt = new Date(d);
+		return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+	}
+
+	function defaultRemindAt(): string {
+		const dt = new Date();
+		const pad = (n: number) => String(n).padStart(2, '0');
+		return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+	}
+
+	let formKey = $state(0);
+	function buildFormFields(): FormField[] {
+		return [
+			{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true, value: defaultRemindAt() },
+			{ key: 'channels', label: '通知先', type: 'multiselect', required: true, value: 'notification', options: data.channelOptions },
+			{ key: 'content', label: '内容', type: 'textarea', required: true }
+		];
+	}
+
+	let submitting = $state(false);
+	let formError = $state('');
+
+	async function handleSubmit(values: Record<string, string>) {
+		if (submitting) return;
+		submitting = true;
+		formError = '';
+		try {
+			const res = await fetch('/api/reminders', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(values)
+			});
+			if (!res.ok) {
+				const err = (await res.json()) as { error?: string };
+				formError = err.error ?? '登録に失敗しました。';
+				return;
+			}
+			const row = (await res.json()) as ReminderListRow;
+			rows = [row, ...rows].sort((a, b) => new Date(b.remindAt).getTime() - new Date(a.remindAt).getTime());
+			formKey += 1;
+		} finally {
+			submitting = false;
+		}
+	}
+
+	async function deleteRow(id: string) {
+		if (!confirm('このリマインダーを削除しますか？')) return;
+		await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
+		rows = rows.filter(r => r.id !== id);
+	}
+</script>
+
+<div class="page">
+	<header class="page-header">
+		<div class="breadcrumb">
+			<a href="/database">データ管理</a>
+			<span class="sep">/</span>
+			<span>リマインダー</span>
+		</div>
+	</header>
+
+	<section class="form-section">
+		{#key formKey}
+			<Form title="リマインダーを登録" fields={buildFormFields()} submitLabel="登録" onsubmit={handleSubmit} />
+		{/key}
+		{#if formError}
+			<p class="form-error">{formError}</p>
+		{/if}
+	</section>
+
+	{#if rows.length === 0}
+		<div class="empty">
+			<p>リマインダーが登録されていません。</p>
+		</div>
+	{:else}
+		<div class="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th>日時</th>
+						<th>内容</th>
+						<th>通知先</th>
+						<th>ステータス</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each rows as row}
+						<tr>
+							<td class="datetime-cell">{fmtDateTime(row.remindAt)}</td>
+							<td class="content-cell">{row.content}</td>
+							<td class="muted">{row.channelLabels.join(' / ')}</td>
+							<td>
+								<span class="status-badge" style="color:{STATUS_COLORS[row.status]};border-color:{STATUS_COLORS[row.status]}">
+									{STATUS_LABELS[row.status] ?? row.status}
+								</span>
+							</td>
+							<td class="actions">
+								<button class="action-del" onclick={() => deleteRow(row.id)}>削除</button>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	{/if}
+</div>
+
+<style>
+	.page {
+		padding: 24px 32px;
+		height: 100%;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+
+	.page-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.breadcrumb {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 0.9375rem;
+	}
+	.breadcrumb a { color: var(--color-primary); text-decoration: none; }
+	.breadcrumb a:hover { text-decoration: underline; }
+	.sep { color: var(--color-text-muted); }
+	.breadcrumb span:last-child { font-weight: 600; }
+
+	.form-section {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.form-error {
+		margin: 0;
+		font-size: 0.875rem;
+		color: var(--color-danger, #dc2626);
+	}
+
+	.table-wrap {
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		overflow: hidden;
+		flex-shrink: 0;
+	}
+
+	table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+	thead { background: var(--color-surface); }
+	th {
+		padding: 9px 14px;
+		text-align: left;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		border-bottom: 1px solid var(--color-border);
+		white-space: nowrap;
+	}
+	td {
+		padding: 10px 14px;
+		border-bottom: 1px solid var(--color-border);
+		max-width: 320px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	tbody tr:last-child td { border-bottom: none; }
+
+	.datetime-cell { font-weight: 500; white-space: nowrap; }
+	.content-cell { max-width: 400px; }
+	.muted { color: var(--color-text-muted); }
+
+	.status-badge {
+		font-size: 0.75rem;
+		padding: 2px 8px;
+		border-radius: 20px;
+		border: 1px solid;
+		font-weight: 500;
+		white-space: nowrap;
+	}
+
+	.actions { text-align: right; white-space: nowrap; width: 1%; }
+	.action-del {
+		background: none;
+		border: none;
+		color: var(--color-danger, #dc2626);
+		font-size: 0.8125rem;
+		cursor: pointer;
+		padding: 0;
+	}
+	.action-del:hover { text-decoration: underline; }
+
+	.empty {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 6px;
+		margin-top: 32px;
+		color: var(--color-text-muted);
+		font-size: 0.875rem;
+	}
+</style>

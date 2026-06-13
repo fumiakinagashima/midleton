@@ -39,6 +39,17 @@
 		e.preventDefault();
 		onsubmit(values);
 	}
+
+	function toggleMultiselect(key: string, value: string, checked: boolean) {
+		const current = (values[key] ?? '').split(',').filter(Boolean);
+		if (checked) {
+			if (!current.includes(value)) current.push(value);
+		} else {
+			const idx = current.indexOf(value);
+			if (idx !== -1) current.splice(idx, 1);
+		}
+		values[key] = current.join(',');
+	}
 </script>
 
 <form class="form" onsubmit={handleSubmit}>
@@ -56,6 +67,25 @@
 				bind:value={values[field.key]}
 				options={recordOptions[field.refTable ?? ''] ?? []}
 			/>
+		{:else if field.type === 'multiselect'}
+			<fieldset class="field">
+				<legend>
+					{field.label}
+					{#if field.required}<span class="required">*</span>{/if}
+				</legend>
+				<div class="checkbox-group">
+					{#each field.options ?? [] as opt}
+						<label class="checkbox-option">
+							<input
+								type="checkbox"
+								checked={(values[field.key] ?? '').split(',').filter(Boolean).includes(opt.value)}
+								onchange={(e) => toggleMultiselect(field.key, opt.value, e.currentTarget.checked)}
+							/>
+							{opt.label}
+						</label>
+					{/each}
+				</div>
+			</fieldset>
 		{:else}
 		<div class="field">
 			<label for={field.key}>
@@ -118,14 +148,42 @@
 		gap: 4px;
 	}
 
-	label {
+	fieldset.field {
+		border: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	label,
+	legend {
 		font-size: 0.875rem;
 		color: var(--color-text-muted);
+		padding: 0;
 	}
 
 	.required {
 		color: var(--color-danger);
 		margin-left: 2px;
+	}
+
+	.checkbox-group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin-top: 4px;
+	}
+
+	.checkbox-option {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.9375rem;
+		color: var(--color-text);
+	}
+
+	.checkbox-option input[type='checkbox'] {
+		width: auto;
+		padding: 0;
 	}
 
 	input,

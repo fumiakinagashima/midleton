@@ -335,11 +335,12 @@
 ### 今後の候補（未着手）
 - [ ] フォローアップ提案（案件・活動履歴から次のアクションをAIが提案）
 - [ ] 議事録/メモ → 活動記録の自動生成（自由記述から activities への構造化登録）
-- [ ] リマインダー機能: 案件・タスク等に設定したリマインダーを、メール・Slack・通知センターから選択して通知する（複数選択可）
-  - メール・Slackは連携設定済みの場合のみ選択可能
-  - メールは既存のメール送信基盤を使うが、宛先は顧客ではなくアカウント本人（営業メールではなく「システムメール」として送信）
-  - Slack連携は`/settings/integrations`への新規追加が必要（Webhook等）
-  - 通知センターへの通知はフェーズ9 v3「通知センター（汎用）」の実装が前提
+- [x] リマインダー機能（登録フロー）: クイックアクション「リマインダー設定」、またはチャットでの自然言語入力（例:「今日の14:50に会議のリマインダーをSlackに通知して」）から、日時・内容・通知先（通知センター／メール／Slack、複数選択可）を指定したフォームを表示し、`reminders` テーブルに登録する（`src/lib/server/db/reminder-service.ts`、`create_reminder` MCPツール）
+  - メール・Slackは設定済みの場合のみ通知先の選択肢に表示する。Slackは `integrations` の `base_url` に `hooks.slack.com` を含む連携を検出し、表示ラベルはその連携の `name`、値は `slack:<integration_id>` とする（`src/lib/server/slack/index.ts`）
+  - 「15:00の10分前」「〜ごろ」等の相対的・曖昧な時刻表現は、フォーム表示前に絶対時刻に変換して確認する（システムプロンプトに現在日時を動的注入: `buildSystemPrompt`）
+  - 日付を指定せず時刻のみが指定された場合は、現在時刻との前後関係に関わらず本日の日付を使う
+- [x] リマインダー画面（`/database/reminders`）: 登録フォーム（日時・通知先・内容）と、登録済みリマインダーの一覧（日時・内容・通知先（連携名に変換済み）・ステータス（未送信／送信済／失敗）、削除可）を表示する管理画面（`src/lib/server/db/reminder-service.ts` の `listReminders`/`createReminderRow`/`deleteReminder`/`getReminderChannelOptions`、`/api/reminders`、`/api/reminders/[id]`）
+- [ ] リマインダー配信: `reminders` テーブルの `pending` レコードを Cloudflare Cron Trigger で監視し、`remind_at` に達したら `channels`（通知センター／メール／Slack）へ実際に通知を送信する（送信後 `status` を `sent` / `failed` に更新）
 
 
 ## フェーズ8：AIによるノーコードアプリ生成

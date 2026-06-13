@@ -80,5 +80,8 @@
   "approval_status_pending": "審査中",
   "approval_status_approved": "承認済",
   "approval_status_rejected": "否決",
-  "approval_status_cancelled": "取消"
+  "approval_status_cancelled": "取消",
+  "reminder_status_pending": "未送信",
+  "reminder_status_sent": "送信済",
+  "reminder_status_failed": "失敗"
 }

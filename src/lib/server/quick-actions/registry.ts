@@ -1,5 +1,6 @@
 import type { Db } from '../db';
-import { dispatchTool, type ToolName } from '../mcp';
+import { dispatchTool, type ToolName, type ToolEnv } from '../mcp';
+import { getReminderChannelOptions } from '../db/reminder-service';
 import type { MessageContent } from '$lib/types/chat';
 import type { QuickActionId } from '$lib/quick-actions/catalog';
 
@@ -36,10 +37,18 @@ type StaticQuickActionHandler = {
 	contents: MessageContent[];
 };
 
-type QuickActionHandler = ToolQuickActionHandler | StaticQuickActionHandler;
+type DynamicQuickActionHandler = {
+	build: (db: Db, env?: ToolEnv) => Promise<MessageContent[]>;
+};
+
+type QuickActionHandler = ToolQuickActionHandler | StaticQuickActionHandler | DynamicQuickActionHandler;
 
 function isToolHandler(handler: QuickActionHandler): handler is ToolQuickActionHandler {
 	return 'tool' in handler;
+}
+
+function isDynamicHandler(handler: QuickActionHandler): handler is DynamicQuickActionHandler {
+	return 'build' in handler;
 }
 
 const handlers: Record<QuickActionId, QuickActionHandler> = {
@@ -274,11 +283,37 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 
 	scan_bizcard: {
 		contents: [{ type: 'bizcard', title: '名刺を読み取ってください' }]
+	},
+
+	create_reminder: {
+		build: async (db, env) => {
+			const options = await getReminderChannelOptions(db, env);
+			return [
+				{
+					type: 'form',
+					title: 'リマインダー設定',
+					tool: 'create_reminder',
+					fields: [
+						{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true },
+						{
+							key: 'channels',
+							label: '通知先',
+							type: 'multiselect',
+							required: true,
+							value: 'notification',
+							options
+						},
+						{ key: 'content', label: '内容', type: 'textarea', required: true }
+					]
+				}
+			];
+		}
 	}
 };
 
-export async function runQuickAction(db: Db, id: QuickActionId): Promise<MessageContent[]> {
+export async function runQuickAction(db: Db, id: QuickActionId, env?: ToolEnv): Promise<MessageContent[]> {
 	const handler = handlers[id];
+	if (isDynamicHandler(handler)) return handler.build(db, env);
 	if (!isToolHandler(handler)) return handler.contents;
 	const result = await dispatchTool(db, handler.tool, handler.input ?? {});
 	return handler.format(result);

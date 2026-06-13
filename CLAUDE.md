@@ -80,6 +80,7 @@ midleton/
 - `/database` — データ管理（コアテーブル＋カスタムテーブルの CRUD、スキーマ定義）
 - `/database/approvals` — 申請管理（承認ルート・ステップ操作）
 - `/database/accounts` — アカウント管理（権限・パスワード）
+- `/database/reminders` — リマインダー管理（登録フォーム・一覧・削除。チャット／クイックアクションからも登録可能）
 - `/settings` — アプリ設定・外部API連携管理
 - `/settings/quick-actions` — チャット入力欄の「+」ボタンに表示するクイックアクション（最大5件）の選択
 
@@ -99,7 +100,8 @@ midleton/
 - 実行・整形ロジック: `src/lib/server/quick-actions/registry.ts`
 - ユーザーは `/settings/quick-actions` で全候補から最大5件を選択（localStorage に保存）
 - 新しいツールを候補に追加する場合は、引数不要の一覧・集計系であることを確認した上で `catalog.ts` と `registry.ts` の両方に追加する
-- 例外として、顧客登録（`create_customer`）・名刺読取（`scan_bizcard`）は登録系だが追加済み。これらは `dispatchTool` を呼ばず、`registry.ts` の静的ハンドラ（`StaticQuickActionHandler`）として `form` / `bizcard` の `MessageContent` を直接返す（実際のツール呼び出しはユーザーがフォーム送信した時点で発生）
+- 例外として、顧客登録（`create_customer`）・名刺読取（`scan_bizcard`）・リマインダー設定（`create_reminder`）は登録系だが追加済み。`create_customer`/`scan_bizcard` は `dispatchTool` を呼ばず、`registry.ts` の静的ハンドラ（`StaticQuickActionHandler`）として `form` / `bizcard` の `MessageContent` を直接返す。`create_reminder` はDB参照結果（設定済み連携など）に応じてフォーム内容を動的に組み立てる必要があるため、`DynamicQuickActionHandler`（`build(db, env?)`）として実装する（実際のツール呼び出しはユーザーがフォーム送信した時点で発生）
+- Slack連携の検出: `integrations` テーブルの `base_url` に `hooks.slack.com` を含むレコードを Slack Incoming Webhook 連携として扱う（`src/lib/server/slack/index.ts`）。通知先選択肢のラベルにはその連携の `name`、値には `slack:<integration_id>` を使う
 
 ## 認証（フェーズ5で実装予定）
 
