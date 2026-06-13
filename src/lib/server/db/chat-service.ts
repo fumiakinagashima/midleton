@@ -95,3 +95,8 @@ export async function upsertChatMessage(
 export async function updateChatTitle(db: Db, id: string, title: string): Promise<void> {
 	await db.update(chats).set({ title }).where(eq(chats.id, id));
 }
+
+export async function deleteChat(db: Db, id: string): Promise<void> {
+	await db.delete(chatMessages).where(eq(chatMessages.chatId, id));
+	await db.delete(chats).where(eq(chats.id, id));
+}
