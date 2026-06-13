@@ -13,11 +13,9 @@
 	import type { Message, MessageContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { marked } from 'marked';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { page } from '$app/stores';
-	import { notificationCenter, type NotificationItem } from '$lib/stores/notifications.svelte';
 	import { chatSession } from '$lib/stores/chat-session.svelte';
 	import {
 		quickActionCatalog,
@@ -53,7 +51,14 @@
 			.filter((a): a is QuickActionDef => !!a);
 	}
 
-	let messages = $state<Message[]>([]);
+	let { data } = $props();
+
+	function seedMessageFromNotification(seed: { id: string; seedContent: MessageContent[] } | null): Message[] {
+		if (!seed) return [];
+		return [{ id: crypto.randomUUID(), role: 'assistant', contents: seed.seedContent, createdAt: new Date() }];
+	}
+
+	let messages = $state<Message[]>(untrack(() => seedMessageFromNotification(data.seedNotification)));
 	let input = $state('');
 	let loading = $state(false);
 	let listEl = $state<HTMLElement | null>(null);
@@ -61,7 +66,7 @@
 	let inputWrapEl = $state<HTMLElement | null>(null);
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let enterToSend = $state(ls('enterToSend', 'true') !== 'false');
-	let hasStarted = $state(false);
+	let hasStarted = $state(untrack(() => !!data.seedNotification));
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
 
@@ -79,30 +84,20 @@
 		return () => window.removeEventListener('storage', handler);
 	});
 
-	// 通知一覧から ?notification=<id> 付きで遷移してきた場合、その内容を新規チャットの最初のメッセージとして表示する
-	let seededNotificationId: string | null = null;
-
-	async function seedFromNotification(id: string) {
-		try {
-			const res = await fetch(`/api/notifications/${id}`);
-			if (!res.ok) return;
-			const notification = (await res.json()) as NotificationItem;
-			if (!hasStarted) hasStarted = true;
-			messages = [
-				...messages,
-				{ id: crypto.randomUUID(), role: 'assistant', contents: notification.seedContent, createdAt: new Date() }
-			];
-			notificationCenter.markRead(id);
-		} catch {
-			// ignore fetch errors
-		}
-	}
+	// 通知一覧から ?notification=<id> 付きで遷移してきた場合、その内容をチャットの最初のメッセージとして表示する
+	// 初回ロード時は +page.server.ts の load が SSR でシードするため messages/hasStarted の初期値に直接反映済み（ちらつき防止）。
+	// この effect は同一ルート内でのクライアントサイド遷移（通知ドロワーから別の通知をクリック）時の追加反映を担う。
+	let seededNotificationId: string | null = untrack(() => data.seedNotification?.id ?? null);
 
 	$effect(() => {
-		const id = $page.url.searchParams.get('notification');
-		if (!id || id === seededNotificationId) return;
-		seededNotificationId = id;
-		seedFromNotification(id);
+		const seed = data.seedNotification;
+		if (!seed || seed.id === seededNotificationId) return;
+		seededNotificationId = seed.id;
+		if (!hasStarted) hasStarted = true;
+		messages = [
+			...messages,
+			{ id: crypto.randomUUID(), role: 'assistant', contents: seed.seedContent, createdAt: new Date() }
+		];
 	});
 
 	// サイドバーの「新しいチャット」クリック時にチャット状態をリセットする
