@@ -125,6 +125,7 @@ midleton/
 - 秘匿情報（API キー等）は Cloudflare の環境変数または KV に保存する。コードに埋め込まない。
 - MCP ツールが Cloudflare の環境変数・シークレット（`platform.env`）を必要とする場合は、`dispatchTool` の任意引数 `env` 経由で渡す（例: `send_email`）。
 - AIへのシステムプロンプトは `src/lib/server/ai/` で一元管理する。
+- テキスト入力で Enter キー押下時に送信・確定などのアクションを行う場合、日本語入力の変換確定Enterで誤発火しないよう `keydown` ハンドラで `event.isComposing` が `true` の場合は処理しない（チャット入力欄の `handleKey`、サイドバー履歴のリネーム入力 `handleRenameKeydown` を参照）。
 
 ## ロードマップ
 

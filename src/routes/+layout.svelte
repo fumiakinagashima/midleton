@@ -7,8 +7,9 @@
 	import { themeStore } from '$lib/stores/theme.svelte';
 	import { notificationCenter } from '$lib/stores/notifications.svelte';
 	import { chatSession } from '$lib/stores/chat-session.svelte';
-	import { chatHistory } from '$lib/stores/chat-history.svelte';
+	import { chatHistory, type ChatSummary } from '$lib/stores/chat-history.svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { untrack } from 'svelte';
 
 	let { data, children } = $props();
@@ -72,6 +73,76 @@
 
 		return groups.filter((g) => g.items.length > 0);
 	});
+
+	// チャット履歴の「...」メニュー（タイトル変更・削除）
+	let openMenuId = $state<string | null>(null);
+	let renamingId = $state<string | null>(null);
+	let renameValue = $state('');
+
+	function toggleHistoryMenu(id: string) {
+		openMenuId = openMenuId === id ? null : id;
+	}
+
+	function startRename(item: ChatSummary) {
+		renamingId = item.id;
+		renameValue = item.title;
+		openMenuId = null;
+	}
+
+	async function commitRename(id: string) {
+		if (renamingId !== id) return;
+		renamingId = null;
+		const title = renameValue.trim();
+		const current = chatHistory.items.find((c) => c.id === id);
+		if (!title || !current || title === current.title) return;
+		chatHistory.updateTitle(id, title);
+		try {
+			await fetch(`/api/chats/${id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ title })
+			});
+		} catch {
+			// 失敗時もUI上は変更後のタイトルを維持する（再読み込みで元に戻る）
+		}
+	}
+
+	function handleRenameKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.isComposing) {
+			e.preventDefault();
+			(e.currentTarget as HTMLInputElement).blur();
+		} else if (e.key === 'Escape') {
+			renamingId = null;
+		}
+	}
+
+	async function deleteChatItem(item: ChatSummary) {
+		openMenuId = null;
+		if (!confirm(m.history_delete_confirm())) return;
+		chatHistory.remove(item.id);
+		if (page.url.searchParams.get('id') === item.id) goto('/');
+		try {
+			await fetch(`/api/chats/${item.id}`, { method: 'DELETE' });
+		} catch {
+			// ローカル一覧からは削除済み。失敗時はリロードで復活する
+		}
+	}
+
+	function focusOnMount(node: HTMLInputElement) {
+		node.focus();
+		node.select();
+	}
+
+	// メニュー外クリックで閉じる
+	$effect(() => {
+		if (!openMenuId) return;
+		const close = () => (openMenuId = null);
+		const id = setTimeout(() => document.addEventListener('click', close), 0);
+		return () => {
+			clearTimeout(id);
+			document.removeEventListener('click', close);
+		};
+	});
 </script>
 
 <svelte:head>
@@ -100,13 +171,49 @@
 			{#each historyGroups as group}
 				<p class="group-label">{group.label}</p>
 				{#each group.items as item}
-					<a
-						href="/?id={item.id}"
-						class="history-item"
-						class:active={page.url.searchParams.get('id') === item.id}
-					>
-						{item.title || m.new_chat()}
-					</a>
+					<div class="history-item-row" class:active={page.url.searchParams.get('id') === item.id}>
+						{#if renamingId === item.id}
+							<input
+								class="history-rename-input"
+								bind:value={renameValue}
+								onkeydown={handleRenameKeydown}
+								onblur={() => commitRename(item.id)}
+								use:focusOnMount
+							/>
+						{:else}
+							<a href="/?id={item.id}" class="history-item">
+								{item.title || m.new_chat()}
+							</a>
+						{/if}
+						<div class="history-menu-wrap">
+							<button
+								class="history-menu-btn"
+								aria-label={m.history_menu()}
+								aria-expanded={openMenuId === item.id}
+								onclick={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									toggleHistoryMenu(item.id);
+								}}
+							>
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+									<circle cx="12" cy="5" r="1.6" />
+									<circle cx="12" cy="12" r="1.6" />
+									<circle cx="12" cy="19" r="1.6" />
+								</svg>
+							</button>
+							{#if openMenuId === item.id}
+								<div class="history-menu">
+									<button class="history-menu-item" onclick={() => startRename(item)}>
+										{m.history_rename()}
+									</button>
+									<button class="history-menu-item danger" onclick={() => deleteChatItem(item)}>
+										{m.history_delete()}
+									</button>
+								</div>
+							{/if}
+						</div>
+					</div>
 				{/each}
 			{/each}
 		</nav>
@@ -266,7 +373,26 @@
 		font-weight: 500;
 	}
 
+	.history-item-row {
+		position: relative;
+		display: flex;
+		align-items: center;
+		border-radius: 8px;
+		transition: background 0.15s;
+	}
+
+	.history-item-row:hover,
+	.history-item-row.active {
+		background: var(--sidebar-hover);
+	}
+
+	.history-item-row.active .history-item {
+		color: var(--color-text);
+	}
+
 	.history-item {
+		flex: 1;
+		min-width: 0;
 		display: block;
 		padding: 7px 10px;
 		border-radius: 8px;
@@ -276,14 +402,86 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		transition: background 0.15s;
 	}
 
-	.history-item:hover { background: var(--sidebar-hover); }
-
-	.history-item.active {
-		background: var(--sidebar-hover);
+	.history-rename-input {
+		flex: 1;
+		min-width: 0;
+		padding: 6px 9px;
+		margin: 1px 0;
+		border: 1px solid var(--color-primary);
+		border-radius: 8px;
+		background: var(--color-surface);
 		color: var(--color-text);
+		font-size: 0.875rem;
+		font-family: inherit;
+		outline: none;
+	}
+
+	.history-menu-wrap {
+		position: relative;
+		flex-shrink: 0;
+	}
+
+	.history-menu-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		margin-right: 4px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--sidebar-text-muted);
+		cursor: pointer;
+		transition: background 0.1s ease, color 0.1s ease;
+	}
+
+	.history-menu-btn:hover,
+	.history-menu-btn[aria-expanded='true'] {
+		background: var(--color-border);
+		color: var(--sidebar-text);
+	}
+
+	.history-menu {
+		position: absolute;
+		top: calc(100% + 2px);
+		right: 0;
+		min-width: 140px;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 10px;
+		box-shadow:
+			0 8px 24px rgba(0, 0, 0, 0.08),
+			0 1px 4px rgba(0, 0, 0, 0.04);
+		padding: 4px;
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		z-index: 20;
+	}
+
+	.history-menu-item {
+		display: block;
+		width: 100%;
+		padding: 7px 10px;
+		border: none;
+		border-radius: 7px;
+		background: transparent;
+		color: var(--color-text);
+		font-size: 0.8125rem;
+		text-align: left;
+		cursor: pointer;
+		transition: background 0.1s ease;
+	}
+
+	.history-menu-item:hover {
+		background: var(--color-background);
+	}
+
+	.history-menu-item.danger {
+		color: var(--color-danger);
 	}
 
 	.sidebar-footer {

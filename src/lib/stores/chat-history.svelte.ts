@@ -15,6 +15,10 @@ class ChatHistoryStore {
 		const item = this.items.find((c) => c.id === id);
 		if (item) item.title = title;
 	}
+
+	remove(id: string) {
+		this.items = this.items.filter((c) => c.id !== id);
+	}
 }
 
 export const chatHistory = new ChatHistoryStore();

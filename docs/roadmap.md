@@ -291,6 +291,7 @@
 - [x] メッセージ追加・フォーム/カンバンの完了状態変更・`document_job`→`link`解決のたびに`/api/chats/[id]/messages`へ非同期で永続化（upsert）
 - [x] 最初のメッセージ送信時に切り詰めタイトルを即時表示し、`/api/chats/[id]/title`でAIが短いタイトルを生成してサイドバーを更新（`CHAT_TITLE_SYSTEM_PROMPT`, `generateChatTitle`）
 - [x] `+page.server.ts`が`?id=<chatId>`をSSRで復元し、サイドバー履歴（`+layout.server.ts`の`listChats`）から会話を再開できる（今日/昨日/過去7日間/それ以前で分類、開いているチャットをハイライト）
+- [x] サイドバー履歴項目の「…」メニューからタイトル変更（`PATCH /api/chats/[id]`）・チャット削除（`DELETE /api/chats/[id]`、物理削除）ができる
 
 
 ## フェーズ7：AI活用フェーズ（プロアクティブAI）
