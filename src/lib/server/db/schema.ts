@@ -219,6 +219,20 @@ export const approvalRequests = sqliteTable('approval_requests', {
 		.default(sql`(unixepoch())`)
 });
 
+export const notifications = sqliteTable('notifications', {
+	id: text('id').primaryKey(),
+	type: text('type').notNull().default('generic'),
+	title: text('title').notNull(),
+	body: text('body').notNull().default(''),
+	seedContent: text('seed_content').notNull().default('[]'),
+	// TODO(auth): 現状null=全アカウント共通。ログイン実装後にアカウント別フィルタを追加する
+	accountId: text('account_id'),
+	isRead: integer('is_read', { mode: 'boolean' }).notNull().default(false),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
 export type Contact = typeof contacts.$inferSelect;
@@ -238,3 +252,5 @@ export type Integration = typeof integrations.$inferSelect;
 export type NewIntegration = typeof integrations.$inferInsert;
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;
 export type NewApprovalRequest = typeof approvalRequests.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;

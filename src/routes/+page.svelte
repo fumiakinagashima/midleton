@@ -16,6 +16,9 @@
 	import { tick } from 'svelte';
 	import { marked } from 'marked';
 	import { toast } from '$lib/stores/toast.svelte';
+	import { page } from '$app/stores';
+	import { notificationCenter, type NotificationItem } from '$lib/stores/notifications.svelte';
+	import { chatSession } from '$lib/stores/chat-session.svelte';
 	import {
 		quickActionCatalog,
 		DEFAULT_QUICK_ACTION_IDS,
@@ -74,6 +77,44 @@
 		};
 		window.addEventListener('storage', handler);
 		return () => window.removeEventListener('storage', handler);
+	});
+
+	// 通知一覧から ?notification=<id> 付きで遷移してきた場合、その内容を新規チャットの最初のメッセージとして表示する
+	let seededNotificationId: string | null = null;
+
+	async function seedFromNotification(id: string) {
+		try {
+			const res = await fetch(`/api/notifications/${id}`);
+			if (!res.ok) return;
+			const notification = (await res.json()) as NotificationItem;
+			if (!hasStarted) hasStarted = true;
+			messages = [
+				...messages,
+				{ id: crypto.randomUUID(), role: 'assistant', contents: notification.seedContent, createdAt: new Date() }
+			];
+			notificationCenter.markRead(id);
+		} catch {
+			// ignore fetch errors
+		}
+	}
+
+	$effect(() => {
+		const id = $page.url.searchParams.get('notification');
+		if (!id || id === seededNotificationId) return;
+		seededNotificationId = id;
+		seedFromNotification(id);
+	});
+
+	// サイドバーの「新しいチャット」クリック時にチャット状態をリセットする
+	// （"/" への遷移はコンポーネントインスタンスを再利用するため自動では戻らない）
+	$effect(() => {
+		if (chatSession.resetToken === 0) return;
+		messages = [];
+		hasStarted = false;
+		streamingText = '';
+		streamingUIContents = [];
+		seededNotificationId = null;
+		input = '';
 	});
 
 	// 開いている間だけ document クリックを監視し、メニュー外クリックで閉じる
