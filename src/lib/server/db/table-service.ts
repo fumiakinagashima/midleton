@@ -39,7 +39,7 @@ export const CORE_TABLE_NAMES = ['customers', 'contacts', 'deals', 'activities']
 // /database/[type] ルートと衝突する予約済み名
 const RESERVED_NAMES = new Set([
 	...CORE_TABLE_NAMES,
-	'approvals', 'accounts',          // 固定ルート
+	'approvals', 'accounts', 'reminders', // 固定ルート
 	'entity_types', 'entity_fields', 'entities', 'core_custom_fields',
 	'approval_requests', 'approval_attachments', 'integrations', // 物理テーブル名
 	'new', 'schema', 'gantt',         // サブルート名

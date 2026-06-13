@@ -233,6 +233,20 @@ export const notifications = sqliteTable('notifications', {
 		.default(sql`(unixepoch())`)
 });
 
+export const reminders = sqliteTable('reminders', {
+	id: text('id').primaryKey(),
+	remindAt: integer('remind_at', { mode: 'timestamp' }).notNull(),
+	content: text('content').notNull(),
+	// JSON配列: 'notification' | 'email' | 'slack:<integration_id>'
+	channels: text('channels').notNull().default('[]'),
+	status: text('status', { enum: ['pending', 'sent', 'failed'] }).notNull().default('pending'),
+	// TODO(auth): 現状null=全アカウント共通。ログイン実装後にアカウント別フィルタを追加する
+	accountId: text('account_id'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export const chats = sqliteTable('chats', {
 	id: text('id').primaryKey(),
 	title: text('title').notNull().default(''),
@@ -279,3 +293,5 @@ export type ApprovalRequest = typeof approvalRequests.$inferSelect;
 export type NewApprovalRequest = typeof approvalRequests.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+export type Reminder = typeof reminders.$inferSelect;
+export type NewReminder = typeof reminders.$inferInsert;

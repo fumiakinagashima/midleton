@@ -21,7 +21,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	const db = createDb(platform.env.DB);
 
 	try {
-		const contents = await runQuickAction(db, id);
+		const contents = await runQuickAction(db, id, platform.env);
 		return json({ contents });
 	} catch (e) {
 		return json({

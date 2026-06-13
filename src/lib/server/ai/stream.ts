@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
-import { SYSTEM_PROMPT } from './prompt';
+import { buildSystemPrompt } from './prompt';
 import { tools, dispatchTool } from '$lib/server/mcp';
 import type { Db } from '$lib/server/db';
 import type { MessageContent } from '$lib/types/chat';
@@ -138,7 +138,7 @@ export async function streamChat(
 		const stream = anthropic.messages.stream({
 			model: model ?? DEFAULT_MODEL,
 			max_tokens: 8192,
-			system: SYSTEM_PROMPT,
+			system: buildSystemPrompt(),
 			tools,
 			messages
 		});

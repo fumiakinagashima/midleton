@@ -564,6 +564,23 @@ export const tools: Tool[] = [
 			required: ['to', 'subject', 'body']
 		}
 	},
+	{
+		name: 'create_reminder',
+		description:
+			'指定した日時にリマインダーを登録する（登録のみ。実際の通知送信は別途行われる）。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				remind_at: { type: 'string', description: '通知日時（YYYY-MM-DDTHH:mm形式）' },
+				content: { type: 'string', description: 'リマインダーの内容' },
+				channels: {
+					type: 'string',
+					description: '通知先（カンマ区切り）。notification / email / slack:<integration_id>'
+				}
+			},
+			required: ['remind_at', 'content', 'channels']
+		}
+	},
 
 	// ── User-defined entity types ──────────────────────────────────────────
 	{

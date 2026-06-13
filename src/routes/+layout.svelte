@@ -257,6 +257,14 @@
 				アカウント
 			</a>
 
+			<a href="/database/reminders" class="settings-row">
+				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="10"/>
+					<polyline points="12 6 12 12 16 14"/>
+				</svg>
+				リマインダー
+			</a>
+
 			<a href="/bizcard" class="settings-row">
 				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<rect x="2" y="6" width="20" height="14" rx="2"/>

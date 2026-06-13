@@ -1,4 +1,15 @@
-export type FieldType = 'text' | 'email' | 'tel' | 'number' | 'textarea' | 'select' | 'date' | 'hidden' | 'recordSelect';
+export type FieldType =
+	| 'text'
+	| 'email'
+	| 'tel'
+	| 'number'
+	| 'textarea'
+	| 'select'
+	| 'date'
+	| 'datetime-local'
+	| 'hidden'
+	| 'recordSelect'
+	| 'multiselect';
 
 export type FormField = {
 	key: string;

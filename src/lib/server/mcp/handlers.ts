@@ -20,6 +20,7 @@ import {
 } from '../db/approval-service';
 import { createDealRegisteredActivity, recordActivity, createEntityType, createRecord } from '../db/table-service';
 import { createNotification } from '../db/notification-service';
+import { createReminder, resolveChannelLabels } from '../db/reminder-service';
 import { sendEmail, getEmailSetup, type EmailEnv } from '../email';
 import { computeCustomerHealthScore, getCachedCustomerHealthScore } from '../ai/customer-health';
 import { computeCustomerHandoverSummary } from '../ai/customer-handover';
@@ -1092,6 +1093,28 @@ async function handleSendEmail(db: Db, input: unknown, env?: EmailEnv) {
 	return { to: data.to, subject: data.subject };
 }
 
+// ── Reminders ────────────────────────────────────────────────────────────
+
+const createReminderSchema = z.object({
+	remind_at: z.string().min(1),
+	content: z.string().min(1),
+	channels: z.string().min(1)
+});
+
+async function handleCreateReminder(db: Db, input: unknown) {
+	const data = createReminderSchema.parse(input);
+	const channels = data.channels.split(',').map((c) => c.trim()).filter(Boolean);
+	const reminder = await createReminder(db, {
+		remindAt: new Date(data.remind_at),
+		content: data.content,
+		channels
+	});
+
+	const channelLabels = await resolveChannelLabels(db, channels);
+
+	return { ...reminder, channelLabels };
+}
+
 // ── User-defined entity types ──────────────────────────────────────────────
 
 const createEntityTypeSchema = z.object({
@@ -1357,6 +1380,7 @@ export type ToolName =
 	| 'get_activities'
 	| 'create_activity'
 	| 'send_email'
+	| 'create_reminder'
 	| 'list_entity_types'
 	| 'create_app'
 	| 'get_entity_fields'
@@ -1409,6 +1433,7 @@ export async function dispatchTool(
 		case 'get_activities':     return handleGetActivities(db, input);
 		case 'create_activity':    return handleCreateActivity(db, input);
 		case 'send_email':         return handleSendEmail(db, input, env);
+		case 'create_reminder':    return handleCreateReminder(db, input);
 		case 'list_entity_types':  return handleListEntityTypes(db);
 		case 'create_app':         return handleCreateApp(db, input);
 		case 'get_entity_fields':  return handleGetEntityFields(db, input);
