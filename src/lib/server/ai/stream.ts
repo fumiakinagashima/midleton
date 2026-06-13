@@ -137,7 +137,7 @@ export async function streamChat(
 
 		const stream = anthropic.messages.stream({
 			model: model ?? DEFAULT_MODEL,
-			max_tokens: 4096,
+			max_tokens: 8192,
 			system: SYSTEM_PROMPT,
 			tools,
 			messages

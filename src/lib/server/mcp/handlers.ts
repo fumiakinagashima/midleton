@@ -19,6 +19,7 @@ import {
 	cancelApproval
 } from '../db/approval-service';
 import { createDealRegisteredActivity, recordActivity, createEntityType, createRecord } from '../db/table-service';
+import { createNotification } from '../db/notification-service';
 import { sendEmail, getEmailSetup, type EmailEnv } from '../email';
 import { computeCustomerHealthScore, getCachedCustomerHealthScore } from '../ai/customer-health';
 import { computeCustomerHandoverSummary } from '../ai/customer-handover';
@@ -589,6 +590,7 @@ type DocumentJobStatus =
 	| { status: 'error'; error: string };
 
 async function runDocumentJob(
+	db: Db,
 	env: ToolEnv,
 	ctx: ExecutionContext | undefined,
 	label: string,
@@ -607,8 +609,24 @@ async function runDocumentJob(
 		try {
 			const result = await generate();
 			await put({ status: 'done', result });
+			await createNotification(db, {
+				type: 'document_job',
+				title: `「${label}」の生成が完了しました`,
+				body: `「${label}」のダウンロード準備ができました。`,
+				seedContent: [
+					{ type: 'text', text: `資料「${label}」の生成が完了しました。` },
+					{ type: 'link', label: result.label, href: result.href, description: result.description }
+				]
+			});
 		} catch (e) {
-			await put({ status: 'error', error: e instanceof Error ? e.message : String(e) });
+			const message = e instanceof Error ? e.message : String(e);
+			await put({ status: 'error', error: message });
+			await createNotification(db, {
+				type: 'document_job',
+				title: `「${label}」の生成に失敗しました`,
+				body: message,
+				seedContent: [{ type: 'text', text: `資料「${label}」の生成に失敗しました: ${message}` }]
+			});
 		}
 	};
 
@@ -621,13 +639,13 @@ async function runDocumentJob(
 	return { type: 'document_job', jobId, label };
 }
 
-async function handleCreateWordDocument(_db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
+async function handleCreateWordDocument(db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
 	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
 	const r2 = env.R2;
 	const { filename, title, blocks } = createWordDocumentSchema.parse(input);
 	const label = `${filename}.docx`;
 
-	return runDocumentJob(env, ctx, label, async () => {
+	return runDocumentJob(db, env, ctx, label, async () => {
 		const buffer = await generateWordDocument({ title, blocks: toWordBlocks(blocks) });
 		return saveGeneratedDocument(r2, buffer, label, 'docx');
 	});
@@ -644,13 +662,13 @@ const createExcelWorkbookSchema = z.object({
 	)
 });
 
-async function handleCreateExcelWorkbook(_db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
+async function handleCreateExcelWorkbook(db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
 	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
 	const r2 = env.R2;
 	const { filename, sheets } = createExcelWorkbookSchema.parse(input);
 	const label = `${filename}.xlsx`;
 
-	return runDocumentJob(env, ctx, label, async () => {
+	return runDocumentJob(db, env, ctx, label, async () => {
 		const buffer = await generateExcelWorkbook(sheets);
 		return saveGeneratedDocument(r2, buffer, label, 'xlsx');
 	});
@@ -668,13 +686,13 @@ const createPowerpointPresentationSchema = z.object({
 	)
 });
 
-async function handleCreatePowerpointPresentation(_db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
+async function handleCreatePowerpointPresentation(db: Db, input: unknown, env?: ToolEnv, ctx?: ExecutionContext) {
 	if (!env?.R2) throw new Error('R2が設定されていないため資料を生成できません');
 	const r2 = env.R2;
 	const { filename, title, slides } = createPowerpointPresentationSchema.parse(input);
 	const label = `${filename}.pptx`;
 
-	return runDocumentJob(env, ctx, label, async () => {
+	return runDocumentJob(db, env, ctx, label, async () => {
 		const buffer = await generatePowerpointPresentation({ title, slides });
 		return saveGeneratedDocument(r2, buffer, label, 'pptx');
 	});

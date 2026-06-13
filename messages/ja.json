@@ -69,6 +69,8 @@
   "email_settings_from_name": "送信者名",
   "email_settings_signature": "署名",
   "email_settings_signature_desc": "メール送信時、本文の末尾に自動で追加されます",
+  "notifications": "通知",
+  "notifications_empty": "通知はありません",
   "approval_status_pending": "審査中",
   "approval_status_approved": "承認済",
   "approval_status_rejected": "否決",
