@@ -7,11 +7,14 @@
 	import { themeStore } from '$lib/stores/theme.svelte';
 	import { notificationCenter } from '$lib/stores/notifications.svelte';
 	import { chatSession } from '$lib/stores/chat-session.svelte';
+	import { chatHistory } from '$lib/stores/chat-history.svelte';
+	import { page } from '$app/state';
 	import { untrack } from 'svelte';
 
 	let { data, children } = $props();
 
 	notificationCenter.unreadCount = untrack(() => data.unreadNotificationCount);
+	chatHistory.seed(untrack(() => data.chats));
 
 	let notificationDrawerOpen = $state(false);
 
@@ -44,12 +47,31 @@
 		localStorage.setItem('theme', themeStore.value);
 	});
 
-	const historyGroups = [
-		{
-			label: m.history_today(),
-			items: [{ id: '1', title: '顧客情報を登録したい' }]
+	const historyGroups = $derived.by(() => {
+		const startOfToday = new Date();
+		startOfToday.setHours(0, 0, 0, 0);
+		const startOfYesterday = new Date(startOfToday);
+		startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+		const startOfLast7Days = new Date(startOfToday);
+		startOfLast7Days.setDate(startOfLast7Days.getDate() - 7);
+
+		const groups = [
+			{ label: m.history_today(), items: [] as typeof chatHistory.items },
+			{ label: m.history_yesterday(), items: [] as typeof chatHistory.items },
+			{ label: m.history_last_7_days(), items: [] as typeof chatHistory.items },
+			{ label: m.history_older(), items: [] as typeof chatHistory.items }
+		];
+
+		for (const chat of chatHistory.items) {
+			const updatedAt = new Date(chat.updatedAt);
+			if (updatedAt >= startOfToday) groups[0].items.push(chat);
+			else if (updatedAt >= startOfYesterday) groups[1].items.push(chat);
+			else if (updatedAt >= startOfLast7Days) groups[2].items.push(chat);
+			else groups[3].items.push(chat);
 		}
-	];
+
+		return groups.filter((g) => g.items.length > 0);
+	});
 </script>
 
 <svelte:head>
@@ -78,7 +100,13 @@
 			{#each historyGroups as group}
 				<p class="group-label">{group.label}</p>
 				{#each group.items as item}
-					<a href="/?id={item.id}" class="history-item">{item.title}</a>
+					<a
+						href="/?id={item.id}"
+						class="history-item"
+						class:active={page.url.searchParams.get('id') === item.id}
+					>
+						{item.title || m.new_chat()}
+					</a>
 				{/each}
 			{/each}
 		</nav>
@@ -252,6 +280,11 @@
 	}
 
 	.history-item:hover { background: var(--sidebar-hover); }
+
+	.history-item.active {
+		background: var(--sidebar-hover);
+		color: var(--color-text);
+	}
 
 	.sidebar-footer {
 		padding: 8px;

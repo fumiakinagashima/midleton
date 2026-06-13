@@ -6,9 +6,10 @@
 	type Props = {
 		jobId: string;
 		label: string;
+		onResolved?: (result: LinkContent) => void;
 	};
 
-	let { jobId, label }: Props = $props();
+	let { jobId, label, onResolved }: Props = $props();
 
 	type JobState =
 		| { status: 'pending' }
@@ -29,6 +30,7 @@
 			const data = (await res.json()) as JobState;
 			job = data;
 			if (data.status !== 'pending') stop();
+			if (data.status === 'done') onResolved?.(data.result);
 		} catch {
 			job = { status: 'error', error: '資料の生成状況を取得できませんでした' };
 			stop();

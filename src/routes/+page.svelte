@@ -16,7 +16,10 @@
 	import { tick, untrack } from 'svelte';
 	import { marked } from 'marked';
 	import { toast } from '$lib/stores/toast.svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { chatSession } from '$lib/stores/chat-session.svelte';
+	import { chatHistory } from '$lib/stores/chat-history.svelte';
 	import {
 		quickActionCatalog,
 		DEFAULT_QUICK_ACTION_IDS,
@@ -58,7 +61,14 @@
 		return [{ id: crypto.randomUUID(), role: 'assistant', contents: seed.seedContent, createdAt: new Date() }];
 	}
 
-	let messages = $state<Message[]>(untrack(() => seedMessageFromNotification(data.seedNotification)));
+	function seedMessagesFromChat(seed: { id: string; messages: { id: string; role: 'user' | 'assistant'; contents: MessageContent[]; createdAt: Date }[] } | null): Message[] {
+		if (!seed) return [];
+		return seed.messages.map((msg) => ({ id: msg.id, role: msg.role, contents: msg.contents, createdAt: msg.createdAt }));
+	}
+
+	let messages = $state<Message[]>(untrack(() =>
+		data.seedChat ? seedMessagesFromChat(data.seedChat) : seedMessageFromNotification(data.seedNotification)
+	));
 	let input = $state('');
 	let loading = $state(false);
 	let listEl = $state<HTMLElement | null>(null);
@@ -66,7 +76,8 @@
 	let inputWrapEl = $state<HTMLElement | null>(null);
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let enterToSend = $state(ls('enterToSend', 'true') !== 'false');
-	let hasStarted = $state(untrack(() => !!data.seedNotification));
+	let hasStarted = $state(untrack(() => !!data.seedNotification || (!!data.seedChat && data.seedChat.messages.length > 0)));
+	let currentChatId: string | null = untrack(() => data.seedChat?.id ?? null);
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
 
@@ -98,6 +109,19 @@
 			...messages,
 			{ id: crypto.randomUUID(), role: 'assistant', contents: seed.seedContent, createdAt: new Date() }
 		];
+	});
+
+	// サイドバー履歴クリック等で `?id=` が変わった場合、その会話を復元する。
+	// assignChatId() が発行した自分自身のURL変更（currentChatId と一致）では何もしない。
+	$effect(() => {
+		const urlChatId = page.url.searchParams.get('id');
+		if (urlChatId === currentChatId) return;
+		currentChatId = urlChatId;
+		messages = seedMessagesFromChat(data.seedChat);
+		hasStarted = !!data.seedChat && data.seedChat.messages.length > 0;
+		streamingText = '';
+		streamingUIContents = [];
+		input = '';
 	});
 
 	// サイドバーの「新しいチャット」クリック時にチャット状態をリセットする
@@ -187,11 +211,71 @@
 		});
 	}
 
-	function addUserMessage(text: string) {
-		messages = [
-			...messages,
-			{ id: crypto.randomUUID(), role: 'user', contents: [{ type: 'text', text }], createdAt: new Date() }
-		];
+	function addUserMessage(text: string, isFirst = false) {
+		const message: Message = { id: crypto.randomUUID(), role: 'user', contents: [{ type: 'text', text }], createdAt: new Date() };
+		messages = [...messages, message];
+		persistMessage(message, isFirst ? text : undefined);
+	}
+
+	// 新規チャット（URLにidも notification も無い状態）で最初のメッセージを送る際、
+	// Copilot/Claude.aiのようにチャットIDをURLへ付与する（履歴からの再アクセスを想定）
+	function assignChatId() {
+		const url = new URL(window.location.href);
+		if (url.searchParams.has('id') || url.searchParams.has('notification')) return;
+		const id = crypto.randomUUID();
+		url.searchParams.set('id', id);
+		currentChatId = id;
+		goto(`${url.pathname}?${url.searchParams}`, { replaceState: true, noScroll: true, keepFocus: true });
+	}
+
+	function chatTitleFrom(text: string): string {
+		const t = text.trim().replace(/\s+/g, ' ');
+		return t.length > 24 ? t.slice(0, 24) + '…' : t;
+	}
+
+	async function persistMessage(message: Message, firstMessageText?: string) {
+		if (!currentChatId) return;
+		const chatId = currentChatId;
+		try {
+			await fetch(`/api/chats/${chatId}/messages`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					id: message.id,
+					role: message.role,
+					contents: message.contents,
+					...(firstMessageText ? { title: chatTitleFrom(firstMessageText) } : {})
+				})
+			});
+		} catch {
+			// 保存失敗時もチャット表示は継続する
+		}
+		if (firstMessageText) {
+			chatHistory.prepend({ id: chatId, title: chatTitleFrom(firstMessageText), updatedAt: new Date().toISOString() });
+			requestChatTitle(chatId, firstMessageText);
+		}
+	}
+
+	async function requestChatTitle(chatId: string, message: string) {
+		try {
+			const res = await fetch(`/api/chats/${chatId}/title`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ message })
+			});
+			if (!res.ok) return;
+			const { title } = (await res.json()) as { title: string };
+			if (title) chatHistory.updateTitle(chatId, title);
+		} catch {
+			// 失敗時は切り詰めタイトルのまま
+		}
+	}
+
+	function resolveDocumentJob(msg: Message, jobId: string, result: LinkContent) {
+		const idx = msg.contents.findIndex((c) => c.type === 'document_job' && c.jobId === jobId);
+		if (idx === -1) return;
+		msg.contents[idx] = result;
+		persistMessage(msg);
 	}
 
 	function finalizeStreamingMessage() {
@@ -200,21 +284,23 @@
 		contents.push(...streamingUIContents);
 		if (contents.length === 0) contents.push({ type: 'text', text: m.chat_error() });
 		hidePreviousDealKanban(contents);
-		messages = [
-			...messages,
-			{ id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() }
-		];
+		const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() };
+		messages = [...messages, message];
+		persistMessage(message);
 		streamingText = '';
 		streamingUIContents = [];
 	}
 
 	function hideRegistrationUI() {
 		for (const msg of messages) {
+			let changed = false;
 			for (const content of msg.contents) {
-				if (content.type === 'form' || content.type === 'bizcard') {
+				if ((content.type === 'form' || content.type === 'bizcard') && !content.completed) {
 					content.completed = true;
+					changed = true;
 				}
 			}
+			if (changed) persistMessage(msg);
 		}
 	}
 
@@ -230,11 +316,14 @@
 		const hasNewDealKanban = newContents.some((c) => c.type === 'kanban' && isDealStatusKanban(c));
 		if (!hasNewDealKanban) return;
 		for (const msg of messages) {
+			let changed = false;
 			for (const content of msg.contents) {
-				if (content.type === 'kanban' && isDealStatusKanban(content)) {
+				if (content.type === 'kanban' && isDealStatusKanban(content) && !content.completed) {
 					content.completed = true;
+					changed = true;
 				}
 			}
+			if (changed) persistMessage(msg);
 		}
 	}
 
@@ -256,9 +345,9 @@
 		}
 	}
 
-	async function sendMessage(text: string) {
+	async function sendMessage(text: string, isFirst = false) {
 		hideRegistrationUI();
-		addUserMessage(text);
+		addUserMessage(text, isFirst);
 		loading = true;
 		streamingText = '';
 		streamingUIContents = [];
@@ -339,14 +428,22 @@
 		if (!text || loading) return;
 		input = '';
 		if (textareaEl) textareaEl.style.height = 'auto';
-		if (!hasStarted) hasStarted = true;
-		await sendMessage(text);
+		const isFirst = !hasStarted;
+		if (isFirst) {
+			hasStarted = true;
+			assignChatId();
+		}
+		await sendMessage(text, isFirst);
 	}
 
 	async function handleActionSelect(action: ActionItem) {
 		if (loading) return;
-		if (!hasStarted) hasStarted = true;
-		await sendMessage(action.label);
+		const isFirst = !hasStarted;
+		if (isFirst) {
+			hasStarted = true;
+			assignChatId();
+		}
+		await sendMessage(action.label, isFirst);
 	}
 
 	async function handleFormSubmit(tool: string, data: Record<string, string>) {
@@ -359,20 +456,18 @@
 				body: JSON.stringify({ tool, data, history: messages })
 			});
 			const result = (await res.json()) as { contents: MessageContent[] };
-			messages = [
-				...messages,
-				{ id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() }
-			];
+			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() };
+			messages = [...messages, message];
+			persistMessage(message);
 		} catch {
-			messages = [
-				...messages,
-				{
-					id: crypto.randomUUID(),
-					role: 'assistant',
-					contents: [{ type: 'text', text: m.chat_error() }],
-					createdAt: new Date()
-				}
-			];
+			const message: Message = {
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				contents: [{ type: 'text', text: m.chat_error() }],
+				createdAt: new Date()
+			};
+			messages = [...messages, message];
+			persistMessage(message);
 		} finally {
 			loading = false;
 		}
@@ -382,8 +477,12 @@
 		quickActionMenuOpen = false;
 		if (loading) return;
 		hideRegistrationUI();
-		addUserMessage(action.label);
-		if (!hasStarted) hasStarted = true;
+		const isFirst = !hasStarted;
+		if (isFirst) {
+			hasStarted = true;
+			assignChatId();
+		}
+		addUserMessage(action.label, isFirst);
 		loading = true;
 		await scrollLatestToTop();
 		try {
@@ -394,20 +493,18 @@
 			});
 			const result = (await res.json()) as { contents: MessageContent[] };
 			hidePreviousDealKanban(result.contents);
-			messages = [
-				...messages,
-				{ id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() }
-			];
+			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() };
+			messages = [...messages, message];
+			persistMessage(message);
 		} catch {
-			messages = [
-				...messages,
-				{
-					id: crypto.randomUUID(),
-					role: 'assistant',
-					contents: [{ type: 'text', text: m.chat_error() }],
-					createdAt: new Date()
-				}
-			];
+			const message: Message = {
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				contents: [{ type: 'text', text: m.chat_error() }],
+				createdAt: new Date()
+			};
+			messages = [...messages, message];
+			persistMessage(message);
 		} finally {
 			loading = false;
 		}
@@ -485,7 +582,7 @@
 											<Bizcard title={extra.title} onSubmitForm={handleFormSubmit} />
 										{/if}
 									{:else if extra.type === 'document_job'}
-										<DocumentJob jobId={extra.jobId} label={extra.label} />
+										<DocumentJob jobId={extra.jobId} label={extra.label} onResolved={(result) => resolveDocumentJob(msg, extra.jobId, result)} />
 									{/if}
 								{/if}
 							{/each}

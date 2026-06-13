@@ -286,6 +286,12 @@
 - [ ] ヘルプ（使い方・機能説明）をAIから呼び出せるようにする（MCPツール化）
 - [ ] 利用状況（API利用状況・システム利用統計等）をAIから呼び出せるようにする（MCPツール化）
 
+### ⑦ チャット履歴のサーバー永続化
+- [x] D1に`chats`（id, title, accountId, createdAt, updatedAt）・`chat_messages`（id, chatId, role, contents, createdAt）テーブルを追加（1:N、`src/lib/server/db/chat-service.ts`）
+- [x] メッセージ追加・フォーム/カンバンの完了状態変更・`document_job`→`link`解決のたびに`/api/chats/[id]/messages`へ非同期で永続化（upsert）
+- [x] 最初のメッセージ送信時に切り詰めタイトルを即時表示し、`/api/chats/[id]/title`でAIが短いタイトルを生成してサイドバーを更新（`CHAT_TITLE_SYSTEM_PROMPT`, `generateChatTitle`）
+- [x] `+page.server.ts`が`?id=<chatId>`をSSRで復元し、サイドバー履歴（`+layout.server.ts`の`listChats`）から会話を再開できる（今日/昨日/過去7日間/それ以前で分類、開いているチャットをハイライト）
+
 
 ## フェーズ7：AI活用フェーズ（プロアクティブAI）
 
@@ -392,5 +398,5 @@
     - [x] クリックすると新規チャット（`/?notification=<id>`）が開き、通知の`seedContent`（資料生成完了メッセージ＋ダウンロードリンク等）をシードにAIとの会話が始まり、そこから次の操作に繋げられる
     - [x] 未読件数バッジは`+layout.server.ts`のSSRロードで初期表示し、`/api/notifications/unread-count`を15秒間隔でポーリングして更新する（`src/routes/+layout.svelte`）
     - [ ] 上記ポーリング（15秒間隔 ×セッション数）はセッション数が増えるとD1リクエスト数が線形に増加する。負荷・コストが問題になる場合はWebSocket/Durable Objects等のプッシュ型への移行や、間隔の動的調整、複数タブでのリクエスト共有などを検討する
-    - チャット履歴のサーバー永続化（別途検討中）が実現した場合も、通知センターは「再訪時のエントリポイント」として併用する想定
+    - [x] チャット履歴のサーバー永続化（フェーズ6 ⑦で実装）後も、通知センターは「再訪時のエントリポイント」として併用する
   - [ ] Queue化後も同じ`document_job`通知パターン（ポーリングカード）をそのまま再利用する想定
