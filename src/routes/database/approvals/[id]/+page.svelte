@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { page } from '$app/state';
 	import type { ApprovalRow } from '$lib/server/db/approval-service';
 	import type { ApprovalReviewResult } from '../../../api/approvals/[id]/ai-review/+server';
 	import type { PageData } from './$types';
@@ -242,8 +243,7 @@
 								{#if step.acted_at}
 									<p class="step-date">{fmtDate(step.acted_at)}</p>
 								{/if}
-								<!-- TODO(auth): ログインユーザーの accountId が step.accountId と一致する場合のみ承認・否決ボタンを表示する -->
-								{#if step.status === 'pending' && row.status === 'pending'}
+								{#if step.status === 'pending' && row.status === 'pending' && (!step.accountId || step.accountId === page.data.account?.id)}
 									<div class="step-actions">
 										<textarea
 											class="comment-input"

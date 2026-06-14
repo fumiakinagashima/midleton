@@ -9,8 +9,8 @@ export const load: LayoutServerLoad = async ({ platform, locals, url }) => {
 	}
 	const db = createDb(platform.env.DB);
 	const [unreadNotificationCount, chatRows] = await Promise.all([
-		countUnreadNotifications(db),
-		listChats(db)
+		countUnreadNotifications(db, locals.account.id),
+		listChats(db, locals.account.id)
 	]);
 	const chats = chatRows.map((c) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt.toISOString() }));
 	return { account: locals.account, unreadNotificationCount, chats };

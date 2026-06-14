@@ -83,11 +83,6 @@
 		}
 	}
 
-	// TODO(auth): submittedBy をログインセッションの accountId から取得する（現状は localStorage で代替）
-	const submittedBy = typeof localStorage !== 'undefined'
-		? (localStorage.getItem('userName') ?? '')
-		: '';
-
 	function addStep() {
 		const maxStep = Math.max(...routeEntries.map(r => r.step), 0);
 		routeEntries = [...routeEntries, { step: maxStep + 1, accountId: '', approver: '', email: '', role: '' }];
@@ -160,7 +155,6 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					title: title.trim(),
-					submittedBy: submittedBy || undefined,
 					content: content.trim() || undefined,
 					attachments,
 					route: routeEntries.map(r => ({

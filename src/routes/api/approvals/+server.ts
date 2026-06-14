@@ -11,12 +11,12 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 	return json({ rows });
 };
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
 	const db = createDb(platform.env.DB);
 	try {
 		const data = await request.json() as Parameters<typeof createApproval>[1];
-		const row = await createApproval(db, data);
+		const row = await createApproval(db, { ...data, submittedBy: locals.account!.name });
 		return json(row, { status: 201 });
 	} catch (e) {
 		return json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });

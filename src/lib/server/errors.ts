@@ -6,6 +6,7 @@ export function apiError(message: string, status: number, code?: string): Respon
 
 export const errors = {
 	badRequest: (msg: string) => apiError(msg, 400, 'BAD_REQUEST'),
+	forbidden: (msg = 'アクセス権限がありません') => apiError(msg, 403, 'FORBIDDEN'),
 	notFound: (msg = 'リソースが見つかりません') => apiError(msg, 404, 'NOT_FOUND'),
 	tooManyRequests: (retryAfter: number) =>
 		new Response(

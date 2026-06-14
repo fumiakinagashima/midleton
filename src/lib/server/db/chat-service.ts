@@ -1,4 +1,4 @@
-import { eq, asc, desc } from 'drizzle-orm';
+import { eq, asc, desc, isNull, or } from 'drizzle-orm';
 import { chats, chatMessages } from './schema';
 import type { Db } from '.';
 import type { MessageContent } from '$lib/types/chat';
@@ -53,8 +53,13 @@ export async function ensureChat(
 		.onConflictDoNothing();
 }
 
-export async function listChats(db: Db, limit = 50): Promise<ChatRow[]> {
-	const rows = await db.select().from(chats).orderBy(desc(chats.updatedAt)).limit(limit);
+export async function listChats(db: Db, accountId?: string, limit = 50): Promise<ChatRow[]> {
+	const rows = await db
+		.select()
+		.from(chats)
+		.where(accountId ? or(isNull(chats.accountId), eq(chats.accountId, accountId)) : undefined)
+		.orderBy(desc(chats.updatedAt))
+		.limit(limit);
 	return rows.map(toChatRow);
 }
 

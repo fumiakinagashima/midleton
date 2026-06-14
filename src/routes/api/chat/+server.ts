@@ -5,7 +5,7 @@ import { env } from '$env/dynamic/private';
 import { streamChat, type StreamEvent } from '$lib/server/ai/stream';
 import { mockChat } from '$lib/server/ai/mock';
 import { createDb } from '$lib/server/db';
-import { dispatchTool } from '$lib/server/mcp';
+import { dispatchTool, type ToolEnv } from '$lib/server/mcp';
 import { checkRateLimit } from '$lib/server/rate-limit';
 import { errors } from '$lib/server/errors';
 import type { Message, MessageContent, ValueItem } from '$lib/types/chat';
@@ -36,7 +36,7 @@ function valueItems(obj: Record<string, unknown>, fields: { key: string; label: 
 		.map((f) => ({ label: f.label, value: obj[f.key] as string, format: 'text' as const }));
 }
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	const mockMode = platform?.env?.MOCK_AI === 'true' || env.MOCK_AI === 'true';
 
 	if (!platform?.env?.DB) {
@@ -55,6 +55,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	}
 
 	const db = createDb(platform.env.DB);
+	const toolEnv: ToolEnv = {
+		...platform.env,
+		accountId: locals.account?.id,
+		accountName: locals.account?.name
+	};
 	const body = await request.json() as {
 		message?: string;
 		tool?: string;
@@ -65,7 +70,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	// フォーム送信（tool + data）はJSONで返す
 	if (body.tool && body.data) {
 		try {
-			const result = await dispatchTool(db, body.tool as never, body.data, platform.env, platform.ctx);
+			const result = await dispatchTool(db, body.tool as never, body.data, toolEnv, platform.ctx);
 
 			if (body.tool === 'create_customer_with_contact') {
 				const { customer, contact } = result as {
@@ -191,7 +196,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		async start(controller) {
 			const enqueue = (e: StreamEvent) => controller.enqueue(new TextEncoder().encode(sse(e)));
 			try {
-				await streamChat(db, apiKey, history, model, enqueue, platform.env, platform.ctx);
+				await streamChat(db, apiKey, history, model, enqueue, toolEnv, platform.ctx);
 				enqueue({ type: 'done' });
 			} catch (e) {
 				enqueue({ type: 'error', message: e instanceof Error ? e.message : String(e) });

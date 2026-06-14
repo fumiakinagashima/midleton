@@ -18,7 +18,7 @@ export type ChannelOption = { label: string; value: string };
 
 export async function createReminder(
 	db: Db,
-	input: { remindAt: Date; content: string; channels: string[] }
+	input: { remindAt: Date; content: string; channels: string[]; accountId?: string | null }
 ): Promise<Reminder> {
 	const id = crypto.randomUUID();
 	await db.insert(reminders).values({
@@ -26,7 +26,8 @@ export async function createReminder(
 		remindAt: input.remindAt,
 		content: input.content,
 		channels: JSON.stringify(input.channels),
-		status: 'pending'
+		status: 'pending',
+		accountId: input.accountId ?? null
 	});
 	const [row] = await db.select().from(reminders).where(eq(reminders.id, id));
 	return row;
@@ -75,7 +76,7 @@ export async function listReminders(db: Db): Promise<ReminderListRow[]> {
 
 export async function createReminderRow(
 	db: Db,
-	input: { remindAt: Date; content: string; channels: string[] }
+	input: { remindAt: Date; content: string; channels: string[]; accountId?: string | null }
 ): Promise<ReminderListRow> {
 	const reminder = await createReminder(db, input);
 	return toListRow(db, reminder);

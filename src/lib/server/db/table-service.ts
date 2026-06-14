@@ -344,21 +344,23 @@ export async function recordActivity(
 	db: Db,
 	customerId: string,
 	type: 'note' | 'call' | 'email' | 'meeting' | 'deal_created',
-	content: string
+	content: string,
+	createdBy?: string
 ): Promise<void> {
-	await db.insert(activities).values({ id: crypto.randomUUID(), customerId, type, content });
+	await db.insert(activities).values({ id: crypto.randomUUID(), customerId, type, content, createdBy: createdBy ?? '' });
 }
 
 /**
  * 案件登録時の活動履歴の insert クエリを構築する（未実行）。
  * 案件insertと合わせて `db.batch([...])` で原子的に実行するために使う。
  */
-export function dealRegisteredActivityInsert(db: Db, customerId: string, dealTitle: string) {
+export function dealRegisteredActivityInsert(db: Db, customerId: string, dealTitle: string, createdBy?: string) {
 	return db.insert(activities).values({
 		id: crypto.randomUUID(),
 		customerId,
 		type: 'deal_created' as const,
-		content: `案件「${dealTitle}」を登録しました`
+		content: `案件「${dealTitle}」を登録しました`,
+		createdBy: createdBy ?? ''
 	});
 }
 
