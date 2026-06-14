@@ -172,15 +172,17 @@
 		gap: 6px;
 		margin-top: 4px;
 	}
-
+	
 	.checkbox-option {
 		display: flex;
 		align-items: center;
 		gap: 6px;
+		width: fit-content;
 		font-size: 0.9375rem;
+		padding: 2px 4px;
 		color: var(--color-text);
+		cursor: pointer;
 	}
-
 	.checkbox-option input[type='checkbox'] {
 		width: auto;
 		padding: 0;
