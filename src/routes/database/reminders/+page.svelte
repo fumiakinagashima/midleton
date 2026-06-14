@@ -6,6 +6,7 @@
 	import type { FormField } from '$lib/types/chat';
 	import type { PageData } from './$types';
 	import { toast } from '$lib/stores/toast.svelte';
+	import { formatJstDateTime, nowJstDatetimeLocal } from '$lib/datetime';
 	import * as m from '$lib/paraglide/messages.js';
 
 	let { data }: { data: PageData } = $props();
@@ -22,21 +23,10 @@
 		pending: '#ca8a04', sent: '#16a34a', failed: '#dc2626'
 	};
 
-	function fmtDateTime(d: string | Date): string {
-		const dt = new Date(d);
-		return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
-	}
-
-	function defaultRemindAt(): string {
-		const dt = new Date();
-		const pad = (n: number) => String(n).padStart(2, '0');
-		return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-	}
-
 	let formKey = $state(0);
 	function buildFormFields(): FormField[] {
 		return [
-			{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true, value: defaultRemindAt() },
+			{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true, value: nowJstDatetimeLocal() },
 			{ key: 'channels', label: '通知先', type: 'multiselect', required: true, value: 'notification', options: data.channelOptions },
 			{ key: 'content', label: '内容', type: 'textarea', required: true }
 		];
@@ -142,7 +132,7 @@
 				<tbody>
 					{#each rows as row}
 						<tr>
-							<td class="datetime-cell">{fmtDateTime(row.remindAt)}</td>
+							<td class="datetime-cell">{formatJstDateTime(row.remindAt)}</td>
 							<td class="content-cell">{row.content}</td>
 							<td class="muted">{row.channelLabels.join(' / ')}</td>
 							<td>

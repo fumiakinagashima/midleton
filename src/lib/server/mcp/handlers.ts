@@ -32,6 +32,7 @@ import {
 	type WordBlock
 } from '../documents';
 import type { LinkContent, DocumentJobContent } from '$lib/types/chat';
+import { parseJstDatetime } from '$lib/datetime';
 
 export type ToolEnv = EmailEnv & { ANTHROPIC_API_KEY?: string; R2?: R2Bucket; KV?: KVNamespace };
 
@@ -1105,7 +1106,7 @@ async function handleCreateReminder(db: Db, input: unknown) {
 	const data = createReminderSchema.parse(input);
 	const channels = data.channels.split(',').map((c) => c.trim()).filter(Boolean);
 	const reminder = await createReminder(db, {
-		remindAt: new Date(data.remind_at),
+		remindAt: parseJstDatetime(data.remind_at),
 		content: data.content,
 		channels
 	});
