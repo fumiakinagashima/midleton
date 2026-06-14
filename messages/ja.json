@@ -1,5 +1,11 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "signin_title": "サインイン",
+  "signin_email": "メールアドレス",
+  "signin_password": "パスワード",
+  "signin_submit": "サインイン",
+  "signin_error": "サインインに失敗しました。",
+  "signout": "サインアウト",
   "new_chat": "新しいチャット",
   "settings": "設定",
   "theme_light": "ライト",

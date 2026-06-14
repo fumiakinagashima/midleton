@@ -34,6 +34,15 @@ export async function getAccount(db: Db, id: string): Promise<AccountRow | null>
 	return r ? toRow(r) : null;
 }
 
+/** ログインAPI専用。`AccountRow` に `passwordHash` を加えて返す。 */
+export async function getAccountByEmailWithPassword(
+	db: Db,
+	email: string
+): Promise<(AccountRow & { passwordHash: string | null }) | null> {
+	const [r] = await db.select().from(accounts).where(eq(accounts.email, email));
+	return r ? { ...toRow(r), passwordHash: r.passwordHash } : null;
+}
+
 export async function createAccount(
 	db: Db,
 	input: { name: string; email?: string; role?: string; permission?: 'general' | 'admin'; passwordHash?: string }

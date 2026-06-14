@@ -17,6 +17,11 @@
 	notificationCenter.unreadCount = untrack(() => data.unreadNotificationCount);
 	chatHistory.seed(untrack(() => data.chats));
 
+	async function handleSignout() {
+		await fetch('/api/auth/signout', { method: 'POST' });
+		window.location.href = '/signin';
+	}
+
 	let notificationDrawerOpen = $state(false);
 
 	function toggleNotificationDrawer() {
@@ -149,6 +154,11 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
+{#if !data.account}
+	<main class="content-full">
+		{@render children()}
+	</main>
+{:else}
 <div class="shell">
 	<aside class="sidebar">
 		<div class="sidebar-header">
@@ -292,6 +302,17 @@
 				</svg>
 				{m.settings()}
 			</a>
+
+			<div class="account-row">
+				<span class="account-name">{data.account.name}</span>
+				<button class="signout-btn" onclick={handleSignout} title={m.signout()} aria-label={m.signout()}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+						<polyline points="16 17 21 12 16 7"/>
+						<line x1="21" y1="12" x2="9" y2="12"/>
+					</svg>
+				</button>
+			</div>
 		</div>
 	</aside>
 
@@ -299,6 +320,7 @@
 		{@render children()}
 	</main>
 </div>
+{/if}
 
 <NotificationDrawer open={notificationDrawerOpen} onclose={() => (notificationDrawerOpen = false)} />
 
@@ -539,9 +561,55 @@
 		text-align: center;
 	}
 
+	.account-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 10px;
+		margin-top: 4px;
+		border-top: 1px solid var(--sidebar-border);
+	}
+
+	.account-name {
+		flex: 1;
+		min-width: 0;
+		font-size: 0.8125rem;
+		color: var(--sidebar-text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.signout-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		flex-shrink: 0;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--sidebar-text-muted);
+		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
+	}
+
+	.signout-btn:hover {
+		background: var(--sidebar-hover);
+		color: var(--sidebar-text);
+	}
+
 	/* ── Main ── */
 	.content {
 		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.content-full {
+		height: 100vh;
+		overflow: auto;
 		display: flex;
 		flex-direction: column;
 	}
