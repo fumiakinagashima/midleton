@@ -143,6 +143,7 @@ midleton/
 - UIコンポーネントは `src/lib/components/` に集約する。アプリUI（デザインシステム）は `ui/`、AIがノーコードとしてレスポンスに返すコンポーネント（Form, Table, Values 等）は `chat/`、データ管理ページ専用コンポーネント（RecordForm, FieldEditor）は `database/` に配置する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
 - chat の `link` コンポーネントは `newTab="true"` 属性で別タブ表示（`target="_blank" rel="noopener noreferrer"`）に対応する。参照元レコードへのリンクなど、チャットの会話を中断させたくない場合に使う。
 - DBスキーマ変更は必ず Drizzle マイグレーションを通す。直接 D1 を操作しない。将来のインフラ移行を考慮し、D1 固有 API への直接依存を避ける（DrizzleORM 経由を徹底）。
+- 複数テーブル・複数レコードを同時に更新（登録・編集・削除）する場合は `db.batch([...])` で原子的に実行する。DrizzleORM の D1 ドライバの `db.transaction()`（BEGIN/COMMIT）はローカル（Miniflare）では動くが本番の D1 ではエラーになるため使用しない。`batch()` は実行前にクエリを全て組み立てる必要があり、前段の結果を読んで後続クエリの内容を分岐するような処理には使えない点に注意する。
 - MCP ツールは `src/lib/server/mcp/` に定義し、Zod でスキーマを検証する。Zod スキーマの命名は camelCase + `Schema` サフィックス（例: `createCustomerInputSchema`）。
 - 秘匿情報（API キー等）は Cloudflare の環境変数または KV に保存する。コードに埋め込まない。
 - MCP ツールが Cloudflare の環境変数・シークレット（`platform.env`）を必要とする場合は、`dispatchTool` の任意引数 `env` 経由で渡す（例: `send_email`）。
