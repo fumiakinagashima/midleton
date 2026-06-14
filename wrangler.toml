@@ -2,8 +2,12 @@ name = "midleton"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-main = ".svelte-kit/cloudflare/_worker.js"
+main = "worker.ts"
 assets = { directory = ".svelte-kit/cloudflare/", binding = "ASSETS" }
+
+# リマインダー配信: pending な reminders を1分ごとにチェックし、remind_at に達したものを送信する
+[triggers]
+crons = ["* * * * *"]
 
 [[d1_databases]]
 binding = "DB"

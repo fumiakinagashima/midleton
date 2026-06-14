@@ -54,7 +54,9 @@ midleton/
 ├── drizzle.local.config.ts  # ローカル D1 SQLite 向け Drizzle Studio 設定
 ├── docs/
 │   └── ROADMAP.md
-├── wrangler.toml
+├── worker.ts             # Cloudflare Workers エントリポイント（wrangler.toml の main）
+├── wrangler.toml         # 本番用設定（bindings, [triggers] 等）
+├── wrangler.build.jsonc  # ビルド時のみ使用するアダプタ向け設定
 └── CLAUDE.md
 ```
 
@@ -102,6 +104,24 @@ midleton/
 - 新しいツールを候補に追加する場合は、引数不要の一覧・集計系であることを確認した上で `catalog.ts` と `registry.ts` の両方に追加する
 - 例外として、顧客登録（`create_customer`）・名刺読取（`scan_bizcard`）・リマインダー設定（`create_reminder`）は登録系だが追加済み。`create_customer`/`scan_bizcard` は `dispatchTool` を呼ばず、`registry.ts` の静的ハンドラ（`StaticQuickActionHandler`）として `form` / `bizcard` の `MessageContent` を直接返す。`create_reminder` はDB参照結果（設定済み連携など）に応じてフォーム内容を動的に組み立てる必要があるため、`DynamicQuickActionHandler`（`build(db, env?)`）として実装する（実際のツール呼び出しはユーザーがフォーム送信した時点で発生）
 - Slack連携の検出: `integrations` テーブルの `base_url` に `hooks.slack.com` を含むレコードを Slack Incoming Webhook 連携として扱う（`src/lib/server/slack/index.ts`）。通知先選択肢のラベルにはその連携の `name`、値には `slack:<integration_id>` を使う
+
+## リマインダー配信
+
+`reminders` テーブルの `pending` レコードを監視し、`remind_at` に達したものを `channels`（通知センター／メール／Slack）へ送信する（`src/lib/server/reminders/delivery.ts` の `processDueReminders`）。送信後 `status` を `sent` / `failed` に更新する。
+
+- 手動実行: `/api/reminders/run`（`/database/reminders` の「配信を実行」ボタン）
+- 自動実行: Cloudflare Cron Trigger（`wrangler.toml` の `[triggers]`、毎分実行）。ハンドラは `worker.ts` の `scheduled`
+- `channels` が `email` の場合は「システムメール」（環境変数 `EMAIL_PROVIDER` 等、`getEmailSetupFromEnv`）を使う。`/settings/email`・`send_email` MCPツールが使う DB設定（`getEmailSetup`、署名付き）とは別物
+  - TODO(auth): ログイン機能実装まで、送信先はテスト用固定アドレス（`delivery.ts` の `REMINDER_EMAIL_TO`）
+
+### Worker エントリポイント（Cron Trigger 対応）
+
+`@sveltejs/adapter-cloudflare` が生成する `_worker.js` は `fetch` のみで `scheduled` をエクスポートできないため、独自のラッパーを `main` に指定している。
+
+- `worker.ts`（プロジェクトルート）: SvelteKit生成の `fetch` をラップし、`scheduled` を追加。`src/` 外に置くことで `bun run check`（svelte-check）の対象から外し、ビルド前に存在しない生成物 `.svelte-kit/cloudflare/_worker.js` への依存による型エラーを避けている
+- `wrangler.build.jsonc`: アダプタのビルド時専用設定。`main`/`assets` をデフォルトの `.svelte-kit/cloudflare/_worker.js` に向け、アダプタがそこへ生成物を書き出すようにする（`svelte.config.js` の `adapter({ config: 'wrangler.build.jsonc', ... })`）
+- `wrangler.toml`: 実際の `wrangler dev` / `deploy` 用設定。`main = "worker.ts"`、bindings、`[triggers]` を定義
+- ビルド（`bun run build`）→ `wrangler dev` / `deploy` の順で実行する（`worker.ts` が `.svelte-kit/cloudflare/_worker.js` を相対importするため、先にビルドが必要）
 
 ## 認証（フェーズ5で実装予定）
 

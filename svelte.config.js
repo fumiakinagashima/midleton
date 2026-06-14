@@ -10,6 +10,10 @@ const config = {
 	},
 	kit: {
 		adapter: adapter({
+			// wrangler.toml's `main` points at our custom src/worker.ts (adds the
+			// `scheduled` handler), so use a separate config for the adapter's
+			// build step to avoid it overwriting that file.
+			config: 'wrangler.build.jsonc',
 			platformProxy: {
 				enabled: true,
 				persist: { path: '.wrangler/state/v3' }

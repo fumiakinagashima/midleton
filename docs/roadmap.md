@@ -340,7 +340,7 @@
   - 「15:00の10分前」「〜ごろ」等の相対的・曖昧な時刻表現は、フォーム表示前に絶対時刻に変換して確認する（システムプロンプトに現在日時を動的注入: `buildSystemPrompt`）
   - 日付を指定せず時刻のみが指定された場合は、現在時刻との前後関係に関わらず本日の日付を使う
 - [x] リマインダー画面（`/database/reminders`）: 登録フォーム（日時・通知先・内容）と、登録済みリマインダーの一覧（日時・内容・通知先（連携名に変換済み）・ステータス（未送信／送信済／失敗）、削除可）を表示する管理画面（`src/lib/server/db/reminder-service.ts` の `listReminders`/`createReminderRow`/`deleteReminder`/`getReminderChannelOptions`、`/api/reminders`、`/api/reminders/[id]`）
-- [ ] リマインダー配信: `reminders` テーブルの `pending` レコードを Cloudflare Cron Trigger で監視し、`remind_at` に達したら `channels`（通知センター／メール／Slack）へ実際に通知を送信する（送信後 `status` を `sent` / `failed` に更新）
+- [x] リマインダー配信: `reminders` テーブルの `pending` レコードを Cloudflare Cron Trigger で監視し、`remind_at` に達したら `channels`（通知センター／メール／Slack）へ実際に通知を送信する（送信後 `status` を `sent` / `failed` に更新）。配信ロジックは `src/lib/server/reminders/delivery.ts`（`processDueReminders`）。手動実行は `/api/reminders/run`（`/database/reminders` の「配信を実行」ボタン）、自動実行は Cron Trigger（`worker.ts` の `scheduled`、`wrangler.toml` の `[triggers]`、毎分実行）
 
 
 ## フェーズ8：AIによるノーコードアプリ生成
