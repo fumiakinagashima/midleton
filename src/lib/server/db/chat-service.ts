@@ -77,19 +77,21 @@ export async function upsertChatMessage(
 	input: { id: string; chatId: string; role: 'user' | 'assistant'; contents: MessageContent[] }
 ): Promise<void> {
 	const contents = JSON.stringify(input.contents);
-	await db
-		.insert(chatMessages)
-		.values({
-			id: input.id,
-			chatId: input.chatId,
-			role: input.role,
-			contents
-		})
-		.onConflictDoUpdate({
-			target: chatMessages.id,
-			set: { contents }
-		});
-	await db.update(chats).set({ updatedAt: new Date() }).where(eq(chats.id, input.chatId));
+	await db.batch([
+		db
+			.insert(chatMessages)
+			.values({
+				id: input.id,
+				chatId: input.chatId,
+				role: input.role,
+				contents
+			})
+			.onConflictDoUpdate({
+				target: chatMessages.id,
+				set: { contents }
+			}),
+		db.update(chats).set({ updatedAt: new Date() }).where(eq(chats.id, input.chatId))
+	]);
 }
 
 export async function updateChatTitle(db: Db, id: string, title: string): Promise<void> {
@@ -97,6 +99,8 @@ export async function updateChatTitle(db: Db, id: string, title: string): Promis
 }
 
 export async function deleteChat(db: Db, id: string): Promise<void> {
-	await db.delete(chatMessages).where(eq(chatMessages.chatId, id));
-	await db.delete(chats).where(eq(chats.id, id));
+	await db.batch([
+		db.delete(chatMessages).where(eq(chatMessages.chatId, id)),
+		db.delete(chats).where(eq(chats.id, id))
+	]);
 }

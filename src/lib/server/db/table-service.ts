@@ -1,9 +1,16 @@
 import { eq, desc, sql } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
 import type { Db } from './index';
 import {
 	customers, contacts, deals, activities,
 	entityTypes, entityFields, entities, coreCustomFields
 } from './schema';
+
+/** クエリ件数が可変の場合に `db.batch([...])` を呼ぶためのヘルパー。空配列なら何もしない。 */
+async function batchIfNonEmpty<U extends BatchItem<'sqlite'>>(db: Db, queries: U[]): Promise<void> {
+	if (queries.length === 0) return;
+	await db.batch(queries as [U, ...U[]]);
+}
 
 export type CustomFieldType = 'text' | 'number' | 'select' | 'date' | 'email' | 'tel' | 'textarea';
 
@@ -147,18 +154,19 @@ export async function getCoreCustomFields(db: Db, tableName: string): Promise<Fi
 }
 
 export async function updateCoreCustomFields(db: Db, tableName: string, fields: EditableField[]): Promise<void> {
-	await db.delete(coreCustomFields).where(eq(coreCustomFields.tableName, tableName));
-	for (let i = 0; i < fields.length; i++) {
-		const f = fields[i];
-		await db.insert(coreCustomFields).values({
-			id: crypto.randomUUID(), tableName,
-			key: f.key, label: f.label, type: f.type,
-			required: f.required ?? false,
-			options: JSON.stringify(f.options ?? []),
-			refTable: f.refTable ?? null,
-			sortOrder: i
-		});
-	}
+	await db.batch([
+		db.delete(coreCustomFields).where(eq(coreCustomFields.tableName, tableName)),
+		...fields.map((f, i) =>
+			db.insert(coreCustomFields).values({
+				id: crypto.randomUUID(), tableName,
+				key: f.key, label: f.label, type: f.type,
+				required: f.required ?? false,
+				options: JSON.stringify(f.options ?? []),
+				refTable: f.refTable ?? null,
+				sortOrder: i
+			})
+		)
+	]);
 }
 
 export async function getTableInfo(db: Db, type: string): Promise<TableInfo | null> {
@@ -341,8 +349,17 @@ export async function recordActivity(
 	await db.insert(activities).values({ id: crypto.randomUUID(), customerId, type, content });
 }
 
-export async function createDealRegisteredActivity(db: Db, customerId: string, dealTitle: string): Promise<void> {
-	await recordActivity(db, customerId, 'deal_created', `案件「${dealTitle}」を登録しました`);
+/**
+ * 案件登録時の活動履歴の insert クエリを構築する（未実行）。
+ * 案件insertと合わせて `db.batch([...])` で原子的に実行するために使う。
+ */
+export function dealRegisteredActivityInsert(db: Db, customerId: string, dealTitle: string) {
+	return db.insert(activities).values({
+		id: crypto.randomUUID(),
+		customerId,
+		type: 'deal_created' as const,
+		content: `案件「${dealTitle}」を登録しました`
+	});
 }
 
 export async function createRecord(db: Db, type: string, data: Record<string, unknown>): Promise<RecordRow> {
@@ -373,13 +390,15 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 	}
 	if (type === 'deals') {
 		const customData = extractCustomData('deals', data);
-		await db.insert(deals).values({
-			id, customerId: String(data.customerId ?? ''), title: String(data.title ?? ''),
-			amount: n('amount'), status: (data.status as 'open' | 'won' | 'lost') ?? 'open',
-			plannedStart: s('plannedStart'), plannedEnd: s('plannedEnd'),
-			notes: s('notes'), custom: JSON.stringify(customData)
-		});
-		await createDealRegisteredActivity(db, String(data.customerId ?? ''), String(data.title ?? ''));
+		await db.batch([
+			db.insert(deals).values({
+				id, customerId: String(data.customerId ?? ''), title: String(data.title ?? ''),
+				amount: n('amount'), status: (data.status as 'open' | 'won' | 'lost') ?? 'open',
+				plannedStart: s('plannedStart'), plannedEnd: s('plannedEnd'),
+				notes: s('notes'), custom: JSON.stringify(customData)
+			}),
+			dealRegisteredActivityInsert(db, String(data.customerId ?? ''), String(data.title ?? ''))
+		]);
 		return (await getRecord(db, 'deals', id))!;
 	}
 	if (type === 'activities') {
@@ -496,51 +515,62 @@ export async function createEntityType(db: Db, input: EntityTypeInput): Promise<
 	}
 
 	const id = crypto.randomUUID();
-	await db.insert(entityTypes).values({ id, name: input.name, label: input.label, icon: input.icon });
-	for (let i = 0; i < input.fields.length; i++) {
-		const f = input.fields[i];
-		await db.insert(entityFields).values({
-			id: crypto.randomUUID(), entityTypeId: id,
-			key: f.key, label: f.label, type: f.type,
-			required: f.required ?? false,
-			options: JSON.stringify(f.options ?? []),
-			refTable: f.refTable ?? null,
-			sortOrder: i
-		});
-	}
+	await db.batch([
+		db.insert(entityTypes).values({ id, name: input.name, label: input.label, icon: input.icon }),
+		...input.fields.map((f, i) =>
+			db.insert(entityFields).values({
+				id: crypto.randomUUID(), entityTypeId: id,
+				key: f.key, label: f.label, type: f.type,
+				required: f.required ?? false,
+				options: JSON.stringify(f.options ?? []),
+				refTable: f.refTable ?? null,
+				sortOrder: i
+			})
+		)
+	]);
 }
 
 export async function updateEntityType(db: Db, name: string, input: Partial<EntityTypeInput>): Promise<void> {
 	const [et] = await db.select().from(entityTypes).where(eq(entityTypes.name, name));
 	if (!et) throw new Error(`Table not found: ${name}`);
 
+	const queries: BatchItem<'sqlite'>[] = [];
+
 	if (input.label != null || input.icon != null) {
-		await db.update(entityTypes).set({
-			...(input.label != null ? { label: input.label } : {}),
-			...(input.icon != null ? { icon: input.icon } : {})
-		}).where(eq(entityTypes.id, et.id));
+		queries.push(
+			db.update(entityTypes).set({
+				...(input.label != null ? { label: input.label } : {}),
+				...(input.icon != null ? { icon: input.icon } : {})
+			}).where(eq(entityTypes.id, et.id))
+		);
 	}
 
 	if (input.fields != null) {
-		await db.delete(entityFields).where(eq(entityFields.entityTypeId, et.id));
+		queries.push(db.delete(entityFields).where(eq(entityFields.entityTypeId, et.id)));
 		for (let i = 0; i < input.fields.length; i++) {
 			const f = input.fields[i];
-			await db.insert(entityFields).values({
-				id: crypto.randomUUID(), entityTypeId: et.id,
-				key: f.key, label: f.label, type: f.type,
-				required: f.required ?? false,
-				options: JSON.stringify(f.options ?? []),
-				refTable: f.refTable ?? null,
-				sortOrder: i
-			});
+			queries.push(
+				db.insert(entityFields).values({
+					id: crypto.randomUUID(), entityTypeId: et.id,
+					key: f.key, label: f.label, type: f.type,
+					required: f.required ?? false,
+					options: JSON.stringify(f.options ?? []),
+					refTable: f.refTable ?? null,
+					sortOrder: i
+				})
+			);
 		}
 	}
+
+	await batchIfNonEmpty(db, queries);
 }
 
 export async function deleteEntityType(db: Db, name: string): Promise<void> {
 	const [et] = await db.select().from(entityTypes).where(eq(entityTypes.name, name));
 	if (!et) return;
-	await db.delete(entities).where(eq(entities.entityTypeId, et.id));
-	await db.delete(entityFields).where(eq(entityFields.entityTypeId, et.id));
-	await db.delete(entityTypes).where(eq(entityTypes.id, et.id));
+	await db.batch([
+		db.delete(entities).where(eq(entities.entityTypeId, et.id)),
+		db.delete(entityFields).where(eq(entityFields.entityTypeId, et.id)),
+		db.delete(entityTypes).where(eq(entityTypes.id, et.id))
+	]);
 }
