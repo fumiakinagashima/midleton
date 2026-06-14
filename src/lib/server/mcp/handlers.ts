@@ -18,7 +18,7 @@ import {
 	updateApprovalStep,
 	cancelApproval
 } from '../db/approval-service';
-import { createDealRegisteredActivity, recordActivity, createEntityType, createRecord } from '../db/table-service';
+import { dealRegisteredActivityInsert, recordActivity, createEntityType, createRecord } from '../db/table-service';
 import { createNotification } from '../db/notification-service';
 import { createReminder, resolveChannelLabels } from '../db/reminder-service';
 import { sendEmail, getEmailSetup, type EmailEnv } from '../email';
@@ -826,29 +826,30 @@ async function handleCreateCustomerWithContact(db: Db, input: unknown) {
 	const data = createCustomerWithContactSchema.parse(input);
 
 	const customerId = crypto.randomUUID();
-	await db.insert(customers).values({
-		id: customerId,
-		name: data.name,
-		email: data.email,
-		phone: data.phone,
-		address: data.address,
-		website: data.website,
-		notes: data.notes,
-		custom: JSON.stringify(data.custom ?? {})
-	});
-
 	const contactId = crypto.randomUUID();
-	await db.insert(contacts).values({
-		id: contactId,
-		customerId,
-		name: data.contact_name,
-		nameKana: data.contact_name_kana,
-		email: data.email,
-		phone: data.phone,
-		role: data.contact_role,
-		department: data.contact_department,
-		custom: JSON.stringify({})
-	});
+	await db.batch([
+		db.insert(customers).values({
+			id: customerId,
+			name: data.name,
+			email: data.email,
+			phone: data.phone,
+			address: data.address,
+			website: data.website,
+			notes: data.notes,
+			custom: JSON.stringify(data.custom ?? {})
+		}),
+		db.insert(contacts).values({
+			id: contactId,
+			customerId,
+			name: data.contact_name,
+			nameKana: data.contact_name_kana,
+			email: data.email,
+			phone: data.phone,
+			role: data.contact_role,
+			department: data.contact_department,
+			custom: JSON.stringify({})
+		})
+	]);
 
 	const [customer] = await db.select().from(customers).where(eq(customers.id, customerId));
 	const [contact] = await db.select().from(contacts).where(eq(contacts.id, contactId));
@@ -988,16 +989,18 @@ async function handleGetDeals(db: Db, input: unknown) {
 async function handleCreateDeal(db: Db, input: unknown) {
 	const data = createDealSchema.parse(input);
 	const id = crypto.randomUUID();
-	await db.insert(deals).values({
-		id,
-		customerId: data.customer_id,
-		title: data.title,
-		amount: data.amount,
-		status: data.status,
-		notes: data.notes,
-		custom: JSON.stringify(data.custom ?? {})
-	});
-	await createDealRegisteredActivity(db, data.customer_id, data.title);
+	await db.batch([
+		db.insert(deals).values({
+			id,
+			customerId: data.customer_id,
+			title: data.title,
+			amount: data.amount,
+			status: data.status,
+			notes: data.notes,
+			custom: JSON.stringify(data.custom ?? {})
+		}),
+		dealRegisteredActivityInsert(db, data.customer_id, data.title)
+	]);
 	const [row] = await db.select().from(deals).where(eq(deals.id, id));
 	return { ...row, custom: parseJson(row.custom) };
 }
