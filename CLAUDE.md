@@ -123,13 +123,21 @@ midleton/
 - `wrangler.toml`: 実際の `wrangler dev` / `deploy` 用設定。`main = "worker.ts"`、bindings、`[triggers]` を定義
 - ビルド（`bun run build`）→ `wrangler dev` / `deploy` の順で実行する（`worker.ts` が `.svelte-kit/cloudflare/_worker.js` を相対importするため、先にビルドが必要）
 
-## 認証（フェーズ5で実装予定）
+## 認証
 
-- `accounts` テーブルに `permission`（`general | admin`）・`password_hash` を実装済み
-- 現状の `password_hash` は SHA-256（仮）。本実装時は **bcrypt または argon2 に移行**すること
-- テスト用アカウント5件のパスワードはすべて `password`
-- セッション管理は Cloudflare KV または D1 で実装予定
-- 認証実装までは全ルートが未保護。フェーズ5で SvelteKit hooks（`handle`）でガードする
+フェーズ5ステップ1でログイン・セッション・全面ルートガードを実装済み（ステップ2以降は `docs/ROADMAP.md` 参照）。
+
+- パスワードハッシュ: `src/lib/server/auth/password.ts` に抽象化レイヤー（`hashPassword`/`verifyPassword`）を置き、PBKDF2-SHA256（100,000イテレーション、フォーマット `pbkdf2:<iterations>:<saltBase64>:<hashBase64>`）で実装。将来別方式（bcrypt/argon2/AWS等）へ移行する場合はこのファイル内に閉じる
+  - 既存のSHA-256仮ハッシュ（64文字hex）はログイン成功時に自動でPBKDF2へ移行（rehash）される
+  - テスト用アカウント5件・自身のアカウント（`info@alcogy.com`）のパスワードはすべて `password`
+- セッション: Cloudflare KV（`session:<sessionId>` キー、`{ accountId }` をJSON保存、7日TTL）。`src/lib/server/auth/session.ts`
+  - TODO: 管理者がアカウントのパスワードを変更した際、該当ユーザーの既存セッションを即時破棄する仕組み（現状はKVのTTL失効まで有効なまま）
+- ルートガード: `src/hooks.server.ts` の `handle` で全ルートを保護。公開パスは `/signin` と `/api/auth/*` のみ
+  - 未ログインで `/api/*` へアクセス → 401 JSON（`{ error, code: 'UNAUTHORIZED' }`）
+  - 未ログインでページへアクセス → `/signin?redirect=<元のパス>` へ303リダイレクト
+  - ログイン済みで `/signin` へアクセス → `/` へ303リダイレクト
+- `event.locals.account`（`AccountRow`、`passwordHash` は含まない）をSSR `load` ・APIエンドポイントから参照する
+- ルートレイアウト（`+layout.svelte`）は `data.account` が `null`（`/signin` のみ到達可能）の場合サイドバーを描画しない
 
 ## Git ルール
 

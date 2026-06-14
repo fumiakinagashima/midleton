@@ -182,11 +182,16 @@
 
 ### インフラ・品質
 - [ ] 認証・認可（ログイン・セッション管理）
-  - `accounts` テーブル・`password_hash` カラムは実装済み（migration 0007-0008）
-  - 現状の `password_hash` は SHA-256（仮）→ 本実装時に bcrypt/argon2 に移行すること
-  - セッション管理は Cloudflare KV or D1 で実装予定
-  - `permission: general | admin` によるルートガード実装
-  - `submittedBy` を `accountId` FK に置き換えることも検討
+  - [x] ステップ1: ログイン画面・ログイン処理・セッション・サイドバーのログアウト
+    - `src/lib/server/auth/password.ts`: パスワードハッシュの抽象化レイヤー（`hashPassword`/`verifyPassword`）。PBKDF2-SHA256（100,000回）で実装。既存のSHA-256仮ハッシュはログイン成功時に自動でPBKDF2へ移行（rehash）
+    - `src/lib/server/auth/session.ts`: Cloudflare KVベースのセッション（`session:<id>` キー、7日TTL）
+    - `src/hooks.server.ts`: 全ルートガード。未ログイン時は `/signin` 以外アクセス不可（APIは401 JSON、ページは303リダイレクト）。公開パスは `/signin` と `/api/auth/*`
+    - `/signin` ページ、`/api/auth/signin`・`/api/auth/signout` エンドポイント、サイドバーのアカウント名表示・サインアウトボタン
+    - [ ] TODO: 管理者がアカウントのパスワードを変更した際、該当ユーザーの既存セッションを即時破棄する仕組み（現状はKVのTTL失効まで有効なまま）
+  - [ ] ステップ2: 申請・リマインダー等の登録者アカウントIDをセッション情報から取得するように修正（`submittedBy` を `accountId` FK に置き換えることも検討）
+  - [ ] ステップ3: 設定画面で自身のアカウント情報を編集できるようにする
+  - [ ] ステップ4: パスワードリセット画面・案内メール
+  - `permission: general | admin` によるルートガード実装（管理者専用ページ・操作の制限）
 - [x] レート制限（AI API の過剰コール防止）
   - Cloudflare KV ベースの固定ウィンドウ（60req/min/IP）
   - KV 未設定時は制限なしにフォールバック
