@@ -46,7 +46,7 @@ export async function resolveChannelLabels(db: Db, channels: string[]): Promise<
 	);
 }
 
-function parseChannels(raw: string): string[] {
+export function parseChannels(raw: string): string[] {
 	try {
 		const parsed = JSON.parse(raw);
 		return Array.isArray(parsed) ? (parsed as string[]) : [];

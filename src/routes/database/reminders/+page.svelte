@@ -2,8 +2,10 @@
 	import { untrack } from 'svelte';
 	import Form from '$lib/components/chat/Form.svelte';
 	import type { ReminderListRow } from '$lib/server/db/reminder-service';
+	import type { ReminderDeliveryResult } from '$lib/server/reminders/delivery';
 	import type { FormField } from '$lib/types/chat';
 	import type { PageData } from './$types';
+	import { toast } from '$lib/stores/toast.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
 	let { data }: { data: PageData } = $props();
@@ -71,6 +73,33 @@
 		await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
 		rows = rows.filter(r => r.id !== id);
 	}
+
+	let running = $state(false);
+	async function runDelivery() {
+		if (running) return;
+		running = true;
+		try {
+			const res = await fetch('/api/reminders/run', { method: 'POST' });
+			if (!res.ok) {
+				toast.error('配信の実行に失敗しました。');
+				return;
+			}
+			const { results } = (await res.json()) as { results: ReminderDeliveryResult[] };
+			if (results.length === 0) {
+				toast.info(m.reminder_run_result_none());
+			} else {
+				const sent = results.filter((r) => r.status === 'sent').length;
+				const failed = results.filter((r) => r.status === 'failed').length;
+				if (sent > 0) toast.success(m.reminder_run_result_sent({ count: sent }));
+				if (failed > 0) toast.error(m.reminder_run_result_failed({ count: failed }));
+
+				const statusById = new Map(results.map((r) => [r.id, r.status]));
+				rows = rows.map((row) => (statusById.has(row.id) ? { ...row, status: statusById.get(row.id)! } : row));
+			}
+		} finally {
+			running = false;
+		}
+	}
 </script>
 
 <div class="page">
@@ -80,6 +109,9 @@
 			<span class="sep">/</span>
 			<span>リマインダー</span>
 		</div>
+		<button class="btn-primary" onclick={runDelivery} disabled={running}>
+			{running ? m.reminder_run_running() : m.reminder_run_button()}
+		</button>
 	</header>
 
 	<section class="form-section">
@@ -155,6 +187,17 @@
 	.breadcrumb a:hover { text-decoration: underline; }
 	.sep { color: var(--color-text-muted); }
 	.breadcrumb span:last-child { font-weight: 600; }
+
+	.btn-primary {
+		padding: 7px 14px;
+		background: var(--color-primary);
+		color: #fff;
+		border: none;
+		border-radius: 6px;
+		font-size: 0.875rem;
+		cursor: pointer;
+	}
+	.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
 	.form-section {
 		display: flex;
