@@ -188,7 +188,14 @@
     - `src/hooks.server.ts`: 全ルートガード。未ログイン時は `/signin` 以外アクセス不可（APIは401 JSON、ページは303リダイレクト）。公開パスは `/signin` と `/api/auth/*`
     - `/signin` ページ、`/api/auth/signin`・`/api/auth/signout` エンドポイント、サイドバーのアカウント名表示・サインアウトボタン
     - [ ] TODO: 管理者がアカウントのパスワードを変更した際、該当ユーザーの既存セッションを即時破棄する仕組み（現状はKVのTTL失効まで有効なまま）
-  - [ ] ステップ2: 申請・リマインダー等の登録者アカウントIDをセッション情報から取得するように修正（`submittedBy` を `accountId` FK に置き換えることも検討）
+  - [x] ステップ2: 申請・リマインダー等の登録者アカウントIDをセッション情報から取得するように修正
+    - 設計方針: `accountId = null` のレコード（ログイン実装前の既存データ）は全アカウント共通として表示・操作可能。新規作成分のみ `locals.account.id` を設定し、読み取りは `accountId IS NULL OR accountId = <自分>` でフィルタする
+    - `activities.createdBy` / `dealRegisteredActivityInsert` / `recordActivity`: `env?.accountId` を設定
+    - `reminders.accountId`: 手動登録（`/database/reminders`）・チャット経由（`create_reminder`）の両方で `locals.account.id` を設定。配信時（`delivery.ts`）は `accountId` から `getAccount` でメールアドレスを解決し、未設定時のみ `REMINDER_EMAIL_TO` にフォールバック
+    - `notifications.accountId` / `chats.accountId`: 読み取り（`listNotifications`/`countUnreadNotifications`/`listChats`）にアカウントフィルタを追加。チャットのPATCH/DELETEは他アカウントのチャットを403で拒否
+    - `approvalRequests.submittedBy`: クライアントからの入力を無視し、サーバー側で `locals.account.name` を設定（`submittedBy` の型自体は表示名文字列のまま、`accountId` FKへの置き換えは見送り）
+    - 承認ステップの承認/否決ボタンは `!step.accountId || step.accountId === 自分のaccountId` の場合のみ表示
+    - `ToolEnv`（`src/lib/server/mcp/handlers.ts`）に `accountId`/`accountName` を追加し、`dispatchTool` 経由でMCPツールへセッション情報を伝達
   - [ ] ステップ3: 設定画面で自身のアカウント情報を編集できるようにする
   - [ ] ステップ4: パスワードリセット画面・案内メール
   - `permission: general | admin` によるルートガード実装（管理者専用ページ・操作の制限）

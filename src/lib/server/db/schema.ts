@@ -81,7 +81,7 @@ export const activities = sqliteTable('activities', {
 		.notNull()
 		.default('note'),
 	content: text('content').notNull(),
-	// TODO(auth): ログイン実装後、登録者の accountId を設定する（approvalRequests.submittedBy と同様の暫定パターン）
+	// 登録者の accountId（セッションから設定）。ログイン実装前の既存データは ''
 	createdBy: text('created_by').notNull().default(''),
 	custom: text('custom').default('{}'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
@@ -225,7 +225,7 @@ export const notifications = sqliteTable('notifications', {
 	title: text('title').notNull(),
 	body: text('body').notNull().default(''),
 	seedContent: text('seed_content').notNull().default('[]'),
-	// TODO(auth): 現状null=全アカウント共通。ログイン実装後にアカウント別フィルタを追加する
+	// null = 全アカウント共通（ログイン実装前の既存データ）。読み取りは accountId IS NULL OR accountId = <自分> でフィルタする
 	accountId: text('account_id'),
 	isRead: integer('is_read', { mode: 'boolean' }).notNull().default(false),
 	createdAt: integer('created_at', { mode: 'timestamp' })
@@ -240,7 +240,7 @@ export const reminders = sqliteTable('reminders', {
 	// JSON配列: 'notification' | 'email' | 'slack:<integration_id>'
 	channels: text('channels').notNull().default('[]'),
 	status: text('status', { enum: ['pending', 'sent', 'failed'] }).notNull().default('pending'),
-	// TODO(auth): 現状null=全アカウント共通。ログイン実装後にアカウント別フィルタを追加する
+	// null = 全アカウント共通（ログイン実装前の既存データ）。配信先メールは getAccount(accountId)?.email、なければ REMINDER_EMAIL_TO にフォールバック
 	accountId: text('account_id'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
@@ -250,7 +250,7 @@ export const reminders = sqliteTable('reminders', {
 export const chats = sqliteTable('chats', {
 	id: text('id').primaryKey(),
 	title: text('title').notNull().default(''),
-	// TODO(auth): 現状null=全アカウント共通。ログイン実装後にアカウント別フィルタを追加する
+	// null = 全アカウント共通（ログイン実装前の既存データ）。読み取りは accountId IS NULL OR accountId = <自分> でフィルタする
 	accountId: text('account_id'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()

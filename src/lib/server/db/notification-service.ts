@@ -1,4 +1,4 @@
-import { eq, desc, sql } from 'drizzle-orm';
+import { and, eq, desc, isNull, or, sql } from 'drizzle-orm';
 import { notifications } from './schema';
 import type { Db } from '.';
 import type { MessageContent } from '$lib/types/chat';
@@ -45,10 +45,11 @@ export async function createNotification(
 	return (await getNotification(db, id))!;
 }
 
-export async function listNotifications(db: Db, limit = 50): Promise<NotificationRow[]> {
+export async function listNotifications(db: Db, accountId?: string, limit = 50): Promise<NotificationRow[]> {
 	const rows = await db
 		.select()
 		.from(notifications)
+		.where(accountId ? or(isNull(notifications.accountId), eq(notifications.accountId, accountId)) : undefined)
 		.orderBy(desc(notifications.createdAt))
 		.limit(limit);
 	return rows.map(toRow);
@@ -64,10 +65,15 @@ export async function markNotificationRead(db: Db, id: string): Promise<Notifica
 	return getNotification(db, id);
 }
 
-export async function countUnreadNotifications(db: Db): Promise<number> {
+export async function countUnreadNotifications(db: Db, accountId?: string): Promise<number> {
 	const [row] = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(notifications)
-		.where(eq(notifications.isRead, false));
+		.where(
+			and(
+				eq(notifications.isRead, false),
+				accountId ? or(isNull(notifications.accountId), eq(notifications.accountId, accountId)) : undefined
+			)
+		);
 	return row?.count ?? 0;
 }

@@ -112,7 +112,7 @@ midleton/
 - 手動実行: `/api/reminders/run`（`/database/reminders` の「配信を実行」ボタン）
 - 自動実行: Cloudflare Cron Trigger（`wrangler.toml` の `[triggers]`、毎分実行）。ハンドラは `worker.ts` の `scheduled`
 - `channels` が `email` の場合は「システムメール」（環境変数 `EMAIL_PROVIDER` 等、`getEmailSetupFromEnv`）を使う。`/settings/email`・`send_email` MCPツールが使う DB設定（`getEmailSetup`、署名付き）とは別物
-  - TODO(auth): ログイン機能実装まで、送信先はテスト用固定アドレス（`delivery.ts` の `REMINDER_EMAIL_TO`）
+  - 送信先は `reminders.accountId` から `getAccount` で取得したアカウントの `email`。`accountId` が `null`（ログイン実装前の既存データ）または該当アカウントに `email` が未設定の場合は `delivery.ts` の `REMINDER_EMAIL_TO`（テスト用固定アドレス）にフォールバックする
 
 ### Worker エントリポイント（Cron Trigger 対応）
 
@@ -125,7 +125,9 @@ midleton/
 
 ## 認証
 
-フェーズ5ステップ1でログイン・セッション・全面ルートガードを実装済み（ステップ2以降は `docs/ROADMAP.md` 参照）。
+フェーズ5ステップ1でログイン・セッション・全面ルートガードを実装済み、ステップ2で登録者の `accountId`/`submittedBy` をセッション情報から設定するように変更済み（ステップ3以降は `docs/ROADMAP.md` 参照）。
+
+- 登録者アカウントIDの扱い: `activities.createdBy` / `reminders.accountId` / `notifications.accountId` / `chats.accountId` / `approvalRequests.route[].accountId` は新規作成時に `locals.account.id` を設定する。`accountId = null`（ログイン実装前の既存データ）は全アカウント共通として扱われ続け、読み取りフィルタは `accountId IS NULL OR accountId = <自分>`、承認ステップの操作可否は `!step.accountId || step.accountId === <自分>` で判定する。`approvalRequests.submittedBy` は表示名文字列のまま、値はサーバー側で `locals.account.name` を設定する
 
 - パスワードハッシュ: `src/lib/server/auth/password.ts` に抽象化レイヤー（`hashPassword`/`verifyPassword`）を置き、PBKDF2-SHA256（100,000イテレーション、フォーマット `pbkdf2:<iterations>:<saltBase64>:<hashBase64>`）で実装。将来別方式（bcrypt/argon2/AWS等）へ移行する場合はこのファイル内に閉じる
   - 既存のSHA-256仮ハッシュ（64文字hex）はログイン成功時に自動でPBKDF2へ移行（rehash）される

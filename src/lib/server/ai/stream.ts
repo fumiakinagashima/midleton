@@ -4,7 +4,7 @@ import { buildSystemPrompt } from './prompt';
 import { tools, dispatchTool } from '$lib/server/mcp';
 import type { Db } from '$lib/server/db';
 import type { MessageContent } from '$lib/types/chat';
-import type { EmailEnv } from '$lib/server/email';
+import type { ToolEnv } from '$lib/server/mcp';
 
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -122,7 +122,7 @@ export async function streamChat(
 	history: MessageParam[],
 	model: string | undefined,
 	emit: (event: StreamEvent) => void,
-	env?: EmailEnv,
+	env?: ToolEnv,
 	ctx?: ExecutionContext
 ): Promise<void> {
 	const anthropic = new Anthropic({ apiKey });

@@ -2,11 +2,12 @@ import { and, eq, lte } from 'drizzle-orm';
 import { reminders, type Reminder } from '../db/schema';
 import { parseChannels } from '../db/reminder-service';
 import { createNotification } from '../db/notification-service';
+import { getAccount } from '../db/account-service';
 import { getSlackIntegration, sendSlackMessage } from '../slack';
 import { getEmailSetupFromEnv, sendEmail, type EmailEnv } from '../email';
 import type { Db } from '../db';
 
-// TODO(auth): ログイン機能実装まで、リマインダーのメール通知先はテスト用の固定アドレスを使う
+// リマインダーに accountId が設定されていない場合（ログイン実装前の既存データ）のフォールバック先
 const REMINDER_EMAIL_TO = 'alcogyinc@gmail.com';
 
 export type ReminderDeliveryResult = {
@@ -28,7 +29,8 @@ async function deliverToChannel(db: Db, channel: string, reminder: Reminder, env
 			type: 'reminder',
 			title: 'リマインダー',
 			body: reminder.content,
-			seedContent: [{ type: 'text', text: `リマインダー: ${reminder.content}` }]
+			seedContent: [{ type: 'text', text: `リマインダー: ${reminder.content}` }],
+			accountId: reminder.accountId ?? undefined
 		});
 		return;
 	}
@@ -38,10 +40,12 @@ async function deliverToChannel(db: Db, channel: string, reminder: Reminder, env
 		// システムメールとして環境変数（EMAIL_PROVIDER 等）の設定を使う
 		const setup = getEmailSetupFromEnv(env ?? {});
 		if (!setup) throw new Error('システムメールが設定されていません（EMAIL_PROVIDER 等の環境変数を確認してください）');
+		const account = reminder.accountId ? await getAccount(db, reminder.accountId) : null;
+		const to = account?.email ?? REMINDER_EMAIL_TO;
 		await sendEmail(setup.providerConfig, {
 			from: setup.from,
 			fromName: setup.fromName,
-			to: REMINDER_EMAIL_TO,
+			to,
 			subject: 'リマインダー',
 			text: reminder.content
 		});

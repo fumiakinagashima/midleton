@@ -34,7 +34,13 @@ import {
 import type { LinkContent, DocumentJobContent } from '$lib/types/chat';
 import { parseJstDatetime } from '$lib/datetime';
 
-export type ToolEnv = EmailEnv & { ANTHROPIC_API_KEY?: string; R2?: R2Bucket; KV?: KVNamespace };
+export type ToolEnv = EmailEnv & {
+	ANTHROPIC_API_KEY?: string;
+	R2?: R2Bucket;
+	KV?: KVNamespace;
+	accountId?: string;
+	accountName?: string;
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -618,7 +624,8 @@ async function runDocumentJob(
 				seedContent: [
 					{ type: 'text', text: `資料「${label}」の生成が完了しました。` },
 					{ type: 'link', label: result.label, href: result.href, description: result.description }
-				]
+				],
+				accountId: env.accountId
 			});
 		} catch (e) {
 			const message = e instanceof Error ? e.message : String(e);
@@ -627,7 +634,8 @@ async function runDocumentJob(
 				type: 'document_job',
 				title: `「${label}」の生成に失敗しました`,
 				body: message,
-				seedContent: [{ type: 'text', text: `資料「${label}」の生成に失敗しました: ${message}` }]
+				seedContent: [{ type: 'text', text: `資料「${label}」の生成に失敗しました: ${message}` }],
+				accountId: env.accountId
 			});
 		}
 	};
@@ -986,7 +994,7 @@ async function handleGetDeals(db: Db, input: unknown) {
 	return result.map((r) => ({ ...r, custom: parseJson(r.custom) }));
 }
 
-async function handleCreateDeal(db: Db, input: unknown) {
+async function handleCreateDeal(db: Db, input: unknown, env?: ToolEnv) {
 	const data = createDealSchema.parse(input);
 	const id = crypto.randomUUID();
 	await db.batch([
@@ -999,7 +1007,7 @@ async function handleCreateDeal(db: Db, input: unknown) {
 			notes: data.notes,
 			custom: JSON.stringify(data.custom ?? {})
 		}),
-		dealRegisteredActivityInsert(db, data.customer_id, data.title)
+		dealRegisteredActivityInsert(db, data.customer_id, data.title, env?.accountId)
 	]);
 	const [row] = await db.select().from(deals).where(eq(deals.id, id));
 	return { ...row, custom: parseJson(row.custom) };
@@ -1057,14 +1065,15 @@ async function handleGetActivities(db: Db, input: unknown) {
 		.limit(limit);
 }
 
-async function handleCreateActivity(db: Db, input: unknown) {
+async function handleCreateActivity(db: Db, input: unknown, env?: ToolEnv) {
 	const data = createActivitySchema.parse(input);
 	const id = crypto.randomUUID();
 	await db.insert(activities).values({
 		id,
 		customerId: data.customer_id,
 		type: data.type,
-		content: data.content
+		content: data.content,
+		createdBy: env?.accountId ?? ''
 	});
 	const [row] = await db.select().from(activities).where(eq(activities.id, id));
 	return row;
@@ -1077,7 +1086,7 @@ const sendEmailSchema = z.object({
 	customer_id: z.string().optional()
 });
 
-async function handleSendEmail(db: Db, input: unknown, env?: EmailEnv) {
+async function handleSendEmail(db: Db, input: unknown, env?: ToolEnv) {
 	const data = sendEmailSchema.parse(input);
 	const setup = await getEmailSetup(db, env);
 	if (!setup) {
@@ -1092,7 +1101,7 @@ async function handleSendEmail(db: Db, input: unknown, env?: EmailEnv) {
 		text: body
 	});
 	if (data.customer_id) {
-		await recordActivity(db, data.customer_id, 'email', `メール「${data.subject}」を送信しました`);
+		await recordActivity(db, data.customer_id, 'email', `メール「${data.subject}」を送信しました`, env?.accountId);
 	}
 	return { to: data.to, subject: data.subject };
 }
@@ -1105,13 +1114,14 @@ const createReminderSchema = z.object({
 	channels: z.string().min(1)
 });
 
-async function handleCreateReminder(db: Db, input: unknown) {
+async function handleCreateReminder(db: Db, input: unknown, env?: ToolEnv) {
 	const data = createReminderSchema.parse(input);
 	const channels = data.channels.split(',').map((c) => c.trim()).filter(Boolean);
 	const reminder = await createReminder(db, {
 		remindAt: parseJstDatetime(data.remind_at),
 		content: data.content,
-		channels
+		channels,
+		accountId: env?.accountId ?? null
 	});
 
 	const channelLabels = await resolveChannelLabels(db, channels);
@@ -1322,11 +1332,11 @@ const createApprovalSchema = z.object({
 	}))
 });
 
-async function handleCreateApproval(db: Db, input: unknown) {
+async function handleCreateApproval(db: Db, input: unknown, env?: ToolEnv) {
 	const p = createApprovalSchema.parse(input);
 	return createApproval(db, {
 		title: p.title,
-		submittedBy: p.submitted_by,
+		submittedBy: p.submitted_by ?? env?.accountName ?? '',
 		content: p.content,
 		route: p.route
 	});
@@ -1432,12 +1442,12 @@ export async function dispatchTool(
 		case 'create_contact':     return handleCreateContact(db, input);
 		case 'update_contact':     return handleUpdateContact(db, input);
 		case 'get_deals':          return handleGetDeals(db, input);
-		case 'create_deal':        return handleCreateDeal(db, input);
+		case 'create_deal':        return handleCreateDeal(db, input, env);
 		case 'update_deal':        return handleUpdateDeal(db, input);
 		case 'get_activities':     return handleGetActivities(db, input);
-		case 'create_activity':    return handleCreateActivity(db, input);
+		case 'create_activity':    return handleCreateActivity(db, input, env);
 		case 'send_email':         return handleSendEmail(db, input, env);
-		case 'create_reminder':    return handleCreateReminder(db, input);
+		case 'create_reminder':    return handleCreateReminder(db, input, env);
 		case 'list_entity_types':  return handleListEntityTypes(db);
 		case 'create_app':         return handleCreateApp(db, input);
 		case 'get_entity_fields':  return handleGetEntityFields(db, input);
@@ -1448,7 +1458,7 @@ export async function dispatchTool(
 		case 'update_entity':      return handleUpdateEntity(db, input);
 		case 'list_approvals':     return handleListApprovals(db, input);
 		case 'get_approval':       return handleGetApproval(db, input);
-		case 'create_approval':    return handleCreateApproval(db, input);
+		case 'create_approval':    return handleCreateApproval(db, input, env);
 		case 'update_approval_step': return handleUpdateApprovalStep(db, input);
 		case 'cancel_approval':    return handleCancelApproval(db, input);
 		default:

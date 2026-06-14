@@ -4,7 +4,7 @@ import { createDb } from '$lib/server/db';
 import { createReminderRow } from '$lib/server/db/reminder-service';
 import { parseJstDatetime } from '$lib/datetime';
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
 	const db = createDb(platform.env.DB);
 	try {
@@ -16,7 +16,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		const row = await createReminderRow(db, {
 			remindAt: parseJstDatetime(body.remind_at),
 			content: body.content.trim(),
-			channels
+			channels,
+			accountId: locals.account!.id
 		});
 		return json(row);
 	} catch (e) {
