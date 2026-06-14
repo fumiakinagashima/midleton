@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { createReminderRow } from '$lib/server/db/reminder-service';
+import { parseJstDatetime } from '$lib/datetime';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
@@ -13,7 +14,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			return json({ error: '入力が不正です' }, { status: 400 });
 		}
 		const row = await createReminderRow(db, {
-			remindAt: new Date(body.remind_at),
+			remindAt: parseJstDatetime(body.remind_at),
 			content: body.content.trim(),
 			channels
 		});
