@@ -16,3 +16,14 @@ export async function getSlackIntegration(db: Db, id: string): Promise<SlackInte
 	const rows = await listSlackIntegrations(db);
 	return rows.find((r) => r.id === id) ?? null;
 }
+
+export async function sendSlackMessage(integration: SlackIntegration, text: string): Promise<void> {
+	const res = await fetch(integration.baseUrl, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ text })
+	});
+	if (!res.ok) {
+		throw new Error(`Slack通知の送信に失敗しました（${integration.name}）: ${res.status}`);
+	}
+}
