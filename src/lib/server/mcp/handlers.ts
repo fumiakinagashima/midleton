@@ -102,11 +102,17 @@ async function handleCallExternalApi(db: Db, input: unknown) {
 	const authConfig = parseJson(integration.authConfig);
 
 	const base = integration.baseUrl.replace(/\/$/, '');
-	const path = !p.endpoint || p.endpoint === '/'
-		? base
-		: p.endpoint.startsWith('http')
-			? p.endpoint
-			: `${base}/${p.endpoint.replace(/^\//, '')}`;
+	let path: string;
+	if (!p.endpoint || p.endpoint === '/') {
+		path = base;
+	} else if (p.endpoint.startsWith('http')) {
+		if (new URL(p.endpoint).origin !== new URL(base).origin) {
+			throw new Error('endpoint は連携先（baseUrl）と同じホストのURLのみ指定できます');
+		}
+		path = p.endpoint;
+	} else {
+		path = `${base}/${p.endpoint.replace(/^\//, '')}`;
+	}
 
 	let url = path;
 	if (p.query && Object.keys(p.query).length > 0) {
