@@ -2,13 +2,28 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { createDb } from '$lib/server/db';
 import { getAccount } from '$lib/server/db/account-service';
 import { getSessionAccountId, SESSION_COOKIE_NAME } from '$lib/server/auth/session';
+import { errors } from '$lib/server/errors';
 
 const PUBLIC_PATHS = new Set(['/signin', '/signin/forgot-password', '/signin/reset-password']);
 const PUBLIC_API_PREFIXES = ['/api/auth/'];
 
+// 認証情報・権限変更を含むページ・APIはadmin権限のみアクセス可能
+const ADMIN_ONLY_PREFIXES = [
+	'/database/accounts',
+	'/settings/integrations',
+	'/settings/email',
+	'/api/accounts',
+	'/api/integrations',
+	'/api/email/settings'
+];
+
 function isPublicPath(pathname: string): boolean {
 	if (PUBLIC_PATHS.has(pathname)) return true;
 	return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function isAdminOnlyPath(pathname: string): boolean {
+	return ADMIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -39,6 +54,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	if (event.locals.account && url.pathname === '/signin') {
+		throw redirect(303, '/');
+	}
+
+	if (event.locals.account?.permission !== 'admin' && isAdminOnlyPath(url.pathname)) {
+		if (url.pathname.startsWith('/api/')) {
+			return errors.forbidden();
+		}
 		throw redirect(303, '/');
 	}
 

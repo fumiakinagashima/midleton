@@ -81,7 +81,7 @@ midleton/
 
 - `/database` — データ管理（コアテーブル＋カスタムテーブルの CRUD、スキーマ定義）
 - `/database/approvals` — 申請管理（承認ルート・ステップ操作）
-- `/database/accounts` — アカウント管理（権限・パスワード）
+- `/database/accounts` — アカウント管理（権限・パスワード、管理者のみ）
 - `/database/reminders` — リマインダー管理（登録フォーム・一覧・削除。チャット／クイックアクションからも登録可能）
 - `/settings` — アプリ設定・外部API連携管理
 - `/settings/quick-actions` — チャット入力欄の「+」ボタンに表示するクイックアクション（最大5件）の選択
@@ -126,7 +126,7 @@ midleton/
 
 ## 認証
 
-フェーズ5ステップ1でログイン・セッション・全面ルートガードを実装済み、ステップ2で登録者の `accountId`/`submittedBy` をセッション情報から設定するように変更済み、ステップ3で `/settings/account`（自身のプロフィール・パスワード編集）、ステップ4でパスワードリセットを実装済み（ステップ5以降は `docs/ROADMAP.md` 参照）。
+フェーズ5ステップ1でログイン・セッション・全面ルートガードを実装済み、ステップ2で登録者の `accountId`/`submittedBy` をセッション情報から設定するように変更済み、ステップ3で `/settings/account`（自身のプロフィール・パスワード編集）、ステップ4でパスワードリセット、ステップ5で `permission` による管理者専用ページ・APIのアクセス制御を実装済み。
 
 - 登録者アカウントIDの扱い: `activities.createdBy` / `reminders.accountId` / `notifications.accountId` / `chats.accountId` / `approvalRequests.route[].accountId` は新規作成時に `locals.account.id` を設定する。`accountId = null`（ログイン実装前の既存データ）は全アカウント共通として扱われ続け、読み取りフィルタは `accountId IS NULL OR accountId = <自分>`、承認ステップの操作可否は `!step.accountId || step.accountId === <自分>` で判定する。`approvalRequests.submittedBy` は表示名文字列のまま、値はサーバー側で `locals.account.name` を設定する
 
@@ -139,6 +139,7 @@ midleton/
   - 未ログインで `/api/*` へアクセス → 401 JSON（`{ error, code: 'UNAUTHORIZED' }`）
   - 未ログインでページへアクセス → `/signin?redirect=<元のパス>` へ303リダイレクト
   - ログイン済みで `/signin` へアクセス → `/` へ303リダイレクト（`/signin/forgot-password`・`/signin/reset-password` はログイン中でもアクセス可能）
+- 管理者専用パス: `src/hooks.server.ts` の `ADMIN_ONLY_PREFIXES`（`/database/accounts`, `/settings/integrations`, `/settings/email`, `/api/accounts`, `/api/integrations`, `/api/email/settings`）は `event.locals.account.permission !== 'admin'` の場合にアクセスを拒否する（`/api/*` は403 `errors.forbidden()`、ページは `/` へ303リダイレクト）。`/api/email/send`（`send_email` MCPツール、全ユーザーが利用）は対象外。サイドバーの「アカウント」リンク・設定サブナビの「API連携」「メール」リンクも `data.account.permission === 'admin'` の場合のみ表示する
 - `event.locals.account`（`AccountRow`、`passwordHash` は含まない）をSSR `load` ・APIエンドポイントから参照する
 - ルートレイアウト（`+layout.svelte`）は `data.account` が `null`（`/signin` 系のみ到達可能）の場合サイドバーを描画しない
 - パスワードリセット: `/signin` の「パスワードをお忘れですか？」から `/signin/forgot-password`（メールアドレス送信）→ `/signin/reset-password?token=...`（新パスワード設定）。トークンはCloudflare KV（`src/lib/server/auth/password-reset.ts`、`password-reset:<token>` キー、TTL1時間、使用後削除）。案内メールはシステムメール（`getEmailSetupFromEnv`、リマインダーのメール通知と同じ。`/settings/email` のDB設定とは別物）。`POST /api/auth/forgot-password` はアカウント有無に関わらず常に同一レスポンスを返す（enumeration対策）。IPベースのレート制限（`src/lib/server/rate-limit.ts` の `checkRateLimit(kv, scope, ip, opts?)`、forgot-passwordは `scope: 'forgot-password'` で1時間5回）

@@ -209,7 +209,10 @@
     - `POST /api/auth/forgot-password`: アカウントの有無に関わらず常に `{ok:true}` を返す（enumeration対策）。アカウントが見つかった場合のみトークン発行・メール送信
     - `POST /api/auth/reset-password`: トークン検証 → `hashPassword` で更新 → トークン削除
     - レート制限: `src/lib/server/rate-limit.ts` の `checkRateLimit` を `(kv, scope, ip, opts?)` に汎用化（`scope` をキーに含め、`windowSeconds`/`maxRequests` を指定可能に）。既存のチャット系2箇所は `scope: 'chat'`（60秒/60回、デフォルト値）、forgot-passwordは `scope: 'forgot-password'`（1時間/5回）
-  - `permission: general | admin` によるルートガード実装（管理者専用ページ・操作の制限）
+  - [x] ステップ5: `permission: general | admin` によるルートガード実装（管理者専用ページ・操作の制限）
+    - 対象: `/database/accounts`（アカウント管理）、`/settings/integrations`（外部API連携）、`/settings/email`（メール送信設定）と各バックエンドAPI（`/api/accounts*`, `/api/integrations*`, `/api/email/settings`）を admin 専用化。`/api/email/send`（`send_email` MCPツール、全ユーザーが利用）は対象外
+    - `src/hooks.server.ts` に `ADMIN_ONLY_PREFIXES`（prefix方式）を追加し、`event.locals.account.permission !== 'admin'` の場合は `/api/*` は403（`errors.forbidden()`）、ページは `/` へ303リダイレクト
+    - サイドバーの「アカウント」リンク、設定サブナビの「API連携」「メール」リンクは `data.account.permission === 'admin'` の場合のみ表示
 - [x] レート制限（AI API の過剰コール防止）
   - Cloudflare KV ベースの固定ウィンドウ（60req/min/IP）
   - KV 未設定時は制限なしにフォールバック
