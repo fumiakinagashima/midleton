@@ -53,7 +53,8 @@ midleton/
 ├── drizzle/              # マイグレーションファイル
 ├── drizzle.local.config.ts  # ローカル D1 SQLite 向け Drizzle Studio 設定
 ├── docs/
-│   └── ROADMAP.md
+│   ├── ROADMAP.md
+│   └── DEPLOY.md         # Cloudflareデプロイ手順（GitHub連携）
 ├── worker.ts             # Cloudflare Workers エントリポイント（wrangler.toml の main）
 ├── wrangler.toml         # 本番用設定（bindings, [triggers] 等）
 ├── wrangler.build.jsonc  # ビルド時のみ使用するアダプタ向け設定
