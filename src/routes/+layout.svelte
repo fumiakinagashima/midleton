@@ -18,6 +18,7 @@
 	chatHistory.seed(untrack(() => data.chats));
 
 	async function handleSignout() {
+		if (!confirm(m.signout_confirm())) return;
 		await fetch('/api/auth/signout', { method: 'POST' });
 		window.location.href = '/signin';
 	}

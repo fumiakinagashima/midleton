@@ -196,7 +196,12 @@
     - `approvalRequests.submittedBy`: クライアントからの入力を無視し、サーバー側で `locals.account.name` を設定（`submittedBy` の型自体は表示名文字列のまま、`accountId` FKへの置き換えは見送り）
     - 承認ステップの承認/否決ボタンは `!step.accountId || step.accountId === 自分のaccountId` の場合のみ表示
     - `ToolEnv`（`src/lib/server/mcp/handlers.ts`）に `accountId`/`accountName` を追加し、`dispatchTool` 経由でMCPツールへセッション情報を伝達
-  - [ ] ステップ3: 設定画面で自身のアカウント情報を編集できるようにする
+  - [x] ステップ3: 設定画面で自身のアカウント情報を編集できるようにする
+    - `/settings/account`（プロフィール）ページを新設し、`/settings` 系ページのサブナビに追加
+    - 基本情報（名前・メール・役職）を編集。`permission` は編集不可のバッジ表示（自己昇格防止）
+    - 基本情報保存時は `PATCH /api/account`（`updateAccountSelfInputSchema`）。メール変更時は他アカウントとの重複を400で拒否。保存後 `invalidateAll()` でルートレイアウト（サイドバーの表示名）を再取得
+    - パスワード変更は `PATCH /api/account/password`（`updateAccountPasswordInputSchema`）。現在のパスワードを `verifyPassword` で検証し、`hashPassword` で更新。`account-service.ts` に `getAccountWithPasswordById` を追加
+    - 既存セッションの即時失効は対象外（ステップ1のTODOと同様、KVのTTL失効まで有効なまま）
   - [ ] ステップ4: パスワードリセット画面・案内メール
   - `permission: general | admin` によるルートガード実装（管理者専用ページ・操作の制限）
 - [x] レート制限（AI API の過剰コール防止）

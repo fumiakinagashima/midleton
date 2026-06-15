@@ -43,6 +43,15 @@ export async function getAccountByEmailWithPassword(
 	return r ? { ...toRow(r), passwordHash: r.passwordHash } : null;
 }
 
+/** パスワード変更API専用。`AccountRow` に `passwordHash` を加えて返す。 */
+export async function getAccountWithPasswordById(
+	db: Db,
+	id: string
+): Promise<(AccountRow & { passwordHash: string | null }) | null> {
+	const [r] = await db.select().from(accounts).where(eq(accounts.id, id));
+	return r ? { ...toRow(r), passwordHash: r.passwordHash } : null;
+}
+
 export async function createAccount(
 	db: Db,
 	input: { name: string; email?: string; role?: string; permission?: 'general' | 'admin'; passwordHash?: string }
