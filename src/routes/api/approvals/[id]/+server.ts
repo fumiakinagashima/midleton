@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 	return json(row);
 };
 
-export const PATCH: RequestHandler = async ({ params, request, platform }) => {
+export const PATCH: RequestHandler = async ({ params, request, platform, locals }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
 	const db = createDb(platform.env.DB);
 	try {
@@ -31,6 +31,7 @@ export const PATCH: RequestHandler = async ({ params, request, platform }) => {
 			row = await updateApprovalStep(
 				db, params.id, body.step,
 				body.action === 'approve_step' ? 'approve' : 'reject',
+				locals.account!.id,
 				body.comment
 			);
 		} else if (body.action === 'cancel') {

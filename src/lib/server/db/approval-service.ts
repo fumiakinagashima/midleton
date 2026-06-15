@@ -143,6 +143,7 @@ export async function updateApprovalStep(
 	id: string,
 	stepIndex: number,
 	action: 'approve' | 'reject',
+	accountId?: string,
 	comment?: string
 ): Promise<ApprovalRow> {
 	const existing = await getApproval(db, id);
@@ -152,8 +153,13 @@ export async function updateApprovalStep(
 	const route = [...existing.route];
 	if (stepIndex < 0 || stepIndex >= route.length) throw new Error(`ステップが存在しません: ${stepIndex}`);
 
+	const step = route[stepIndex];
+	if (step.accountId && step.accountId !== accountId) {
+		throw new Error('このステップを操作する権限がありません');
+	}
+
 	route[stepIndex] = {
-		...route[stepIndex],
+		...step,
 		status: action === 'approve' ? 'approved' : 'rejected',
 		comment: comment ?? null,
 		acted_at: new Date().toISOString()
