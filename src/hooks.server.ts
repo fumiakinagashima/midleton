@@ -3,7 +3,7 @@ import { createDb } from '$lib/server/db';
 import { getAccount } from '$lib/server/db/account-service';
 import { getSessionAccountId, SESSION_COOKIE_NAME } from '$lib/server/auth/session';
 
-const PUBLIC_PATHS = new Set(['/signin']);
+const PUBLIC_PATHS = new Set(['/signin', '/signin/forgot-password', '/signin/reset-password']);
 const PUBLIC_API_PREFIXES = ['/api/auth/'];
 
 function isPublicPath(pathname: string): boolean {

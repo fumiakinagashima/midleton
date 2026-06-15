@@ -202,7 +202,13 @@
     - 基本情報保存時は `PATCH /api/account`（`updateAccountSelfInputSchema`）。メール変更時は他アカウントとの重複を400で拒否。保存後 `invalidateAll()` でルートレイアウト（サイドバーの表示名）を再取得
     - パスワード変更は `PATCH /api/account/password`（`updateAccountPasswordInputSchema`）。現在のパスワードを `verifyPassword` で検証し、`hashPassword` で更新。`account-service.ts` に `getAccountWithPasswordById` を追加
     - 既存セッションの即時失効は対象外（ステップ1のTODOと同様、KVのTTL失効まで有効なまま）
-  - [ ] ステップ4: パスワードリセット画面・案内メール
+  - [x] ステップ4: パスワードリセット画面・案内メール
+    - `/signin` に「パスワードをお忘れですか？」リンクを追加し、`/signin/forgot-password`（メールアドレス送信）→ `/signin/reset-password?token=...`（新パスワード設定）の2画面を新設。両パスは `hooks.server.ts` の `PUBLIC_PATHS` に追加（未ログインでもアクセス可能）
+    - リセットトークンは Cloudflare KV（`src/lib/server/auth/password-reset.ts`、`password-reset:<token>` キー、`{accountId}`、TTL1時間、使用後削除）。新規DBテーブルは不要
+    - 案内メールはシステムメール（`getEmailSetupFromEnv`）を使用。`/settings/email` のDB設定・署名とは別物（リマインダーのメール通知と同じ位置付け）
+    - `POST /api/auth/forgot-password`: アカウントの有無に関わらず常に `{ok:true}` を返す（enumeration対策）。アカウントが見つかった場合のみトークン発行・メール送信
+    - `POST /api/auth/reset-password`: トークン検証 → `hashPassword` で更新 → トークン削除
+    - レート制限: `src/lib/server/rate-limit.ts` の `checkRateLimit` を `(kv, scope, ip, opts?)` に汎用化（`scope` をキーに含め、`windowSeconds`/`maxRequests` を指定可能に）。既存のチャット系2箇所は `scope: 'chat'`（60秒/60回、デフォルト値）、forgot-passwordは `scope: 'forgot-password'`（1時間/5回）
   - `permission: general | admin` によるルートガード実装（管理者専用ページ・操作の制限）
 - [x] レート制限（AI API の過剰コール防止）
   - Cloudflare KV ベースの固定ウィンドウ（60req/min/IP）

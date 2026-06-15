@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	}
 
 	const ip = request.headers.get('CF-Connecting-IP') ?? request.headers.get('X-Forwarded-For') ?? 'unknown';
-	const rl = await checkRateLimit(platform.env.KV, ip);
+	const rl = await checkRateLimit(platform.env.KV, 'chat', ip);
 	if (!rl.allowed) return errors.tooManyRequests(rl.retryAfter ?? 60);
 
 	if (!mockMode) {
