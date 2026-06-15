@@ -19,7 +19,7 @@ migrations_dir = "drizzle"
 # （ローカル開発では id はダミー値で良く、.wrangler/state にローカルKVが作成される）
 [[kv_namespaces]]
 binding = "KV"
-id = "midleton-kv-local"
+id = "7c211f829aba4616b1ff26beb3ed5835"
 
 # R2: 本番デプロイ前に `wrangler r2 bucket create midleton` を実行すること
 [[r2_buckets]]
