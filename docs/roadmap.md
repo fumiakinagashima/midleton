@@ -233,7 +233,7 @@
     - [x] 設定タブで SMTP / SES / Resend を切り替えて設定できるようにする
     - [x] 署名（フッター）設定を追加し、`send_email` 送信時に本文へ自動付与する
 - [x] `/database` 配下全ページを `+page.server.ts` のSSR `load` 関数化し、ハイドレーション時の再フェッチによる画面ちらつきを解消
-- [ ] `/settings/integrations` など他の `onMount` フェッチ画面も同様にSSR `load` 化（チャットAI（`/`）以外は原則SSR、という方針に統一）
+- [x] `/settings/integrations` など他の `onMount` フェッチ画面も同様にSSR `load` 化（チャットAI（`/`）以外は原則SSR、という方針に統一）
 
 ### モバイル対応
 - [ ] モバイル対応方針の決定（レスポンシブ CSS vs user-agent 判定でスマホ専用ビュー）
