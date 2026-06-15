@@ -5,6 +5,7 @@ import { createDb } from '$lib/server/db';
 import { getAccountByEmailWithPassword, updateAccount } from '$lib/server/db/account-service';
 import { verifyPassword } from '$lib/server/auth/password';
 import { createSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '$lib/server/auth/session';
+import { checkRateLimit } from '$lib/server/rate-limit';
 import { errors } from '$lib/server/errors';
 
 const signinSchema = z.object({
@@ -14,6 +15,10 @@ const signinSchema = z.object({
 
 export const POST: RequestHandler = async ({ request, platform, cookies, url }) => {
 	if (!platform?.env?.DB || !platform.env.KV) return errors.serviceUnavailable('利用できません');
+
+	const ip = request.headers.get('CF-Connecting-IP') ?? request.headers.get('X-Forwarded-For') ?? 'unknown';
+	const rl = await checkRateLimit(platform.env.KV, 'signin', ip, { windowSeconds: 900, maxRequests: 10 });
+	if (!rl.allowed) return errors.tooManyRequests(rl.retryAfter ?? 900);
 
 	const data = signinSchema.parse(await request.json());
 	const db = createDb(platform.env.DB);
