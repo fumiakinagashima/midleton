@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import Textbox from '$lib/components/ui/Textbox.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
 	let email = $state('');
-	let password = $state('');
 	let error = $state('');
 	let submitting = $state(false);
+	let sent = $state(false);
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
@@ -14,55 +13,44 @@
 		submitting = true;
 		error = '';
 		try {
-			const res = await fetch('/api/auth/signin', {
+			const res = await fetch('/api/auth/forgot-password', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, password })
+				body: JSON.stringify({ email })
 			});
 			if (!res.ok) {
 				const body = (await res.json()) as { error?: string };
-				error = body.error ?? m.signin_error();
-				submitting = false;
+				error = body.error ?? m.chat_error();
 				return;
 			}
-			const redirectParam = page.url.searchParams.get('redirect');
-			const redirectTo =
-				redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
-					? redirectParam
-					: '/';
-			window.location.href = redirectTo;
+			sent = true;
 		} catch {
-			error = m.signin_error();
+			error = m.chat_error();
+		} finally {
 			submitting = false;
 		}
 	}
 </script>
 
 <div class="signin-page">
-	<form class="signin-card" onsubmit={handleSubmit}>
-		<h1>{m.signin_title()}</h1>
-		<Textbox
-			label={m.signin_email()}
-			type="email"
-			bind:value={email}
-			autocomplete="email"
-			required
-		/>
-		<Textbox
-			label={m.signin_password()}
-			type="password"
-			bind:value={password}
-			autocomplete="current-password"
-			required
-		/>
-		{#if error}
-			<p class="error">{error}</p>
+	<div class="signin-card">
+		<h1>{m.forgot_password_title()}</h1>
+		{#if sent}
+			<p class="desc">{m.forgot_password_sent()}</p>
+		{:else}
+			<p class="desc">{m.forgot_password_desc()}</p>
+			<form onsubmit={handleSubmit}>
+				<Textbox label={m.signin_email()} type="email" bind:value={email} autocomplete="email" required />
+				{#if error}
+					<p class="error">{error}</p>
+				{/if}
+				<button class="submit-btn" type="submit" disabled={submitting || !email}>
+					{m.forgot_password_submit()}
+				</button>
+			</form>
 		{/if}
-		<button class="submit-btn" type="submit" disabled={submitting || !email || !password}>
-			{m.signin_submit()}
-		</button>
-		<a class="forgot-link" href="/signin/forgot-password">{m.signin_forgot_password()}</a>
-	</form>
+		<a class="back-link" href="/signin">{m.forgot_password_back_to_signin()}</a>
+	</div>
 </div>
 
 <style>
@@ -88,12 +76,25 @@
 		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 	}
 
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
 	h1 {
 		margin: 0 0 4px;
 		font-size: 1.25rem;
 		font-weight: 700;
 		text-align: center;
 		color: var(--color-text);
+	}
+
+	.desc {
+		margin: 0;
+		font-size: 0.875rem;
+		color: var(--color-text-muted);
+		line-height: 1.7;
 	}
 
 	.error {
@@ -117,13 +118,13 @@
 		cursor: not-allowed;
 	}
 
-	.forgot-link {
+	.back-link {
 		text-align: center;
 		font-size: 0.8125rem;
 		color: var(--color-text-muted);
 		text-decoration: none;
 	}
-	.forgot-link:hover {
+	.back-link:hover {
 		color: var(--color-text);
 		text-decoration: underline;
 	}

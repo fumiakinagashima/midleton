@@ -18,7 +18,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 	const mockMode = platform?.env?.MOCK_AI === 'true' || env.MOCK_AI === 'true';
 
 	const ip = request.headers.get('CF-Connecting-IP') ?? request.headers.get('X-Forwarded-For') ?? 'unknown';
-	const rl = await checkRateLimit(platform.env.KV, ip);
+	const rl = await checkRateLimit(platform.env.KV, 'chat', ip);
 	if (!rl.allowed) return errors.tooManyRequests(rl.retryAfter ?? 60);
 
 	const body = (await request.json()) as { message?: string };
