@@ -8,9 +8,12 @@
 	};
 
 	let { label, href, description, newTab, download }: Props = $props();
+
+	// アプリ内パス（"/" 始まり、"//" のプロトコル相対URLは除外）のみ許可し、javascript: 等の危険なスキームを防ぐ
+	const safeHref = $derived(/^\/(?!\/)/.test(href) ? href : undefined);
 </script>
 
-<a class="link-card" {href} target={newTab ? '_blank' : undefined} rel={newTab ? 'noopener noreferrer' : undefined}>
+<a class="link-card" href={safeHref} target={newTab ? '_blank' : undefined} rel={newTab ? 'noopener noreferrer' : undefined}>
 	<span class="label">{label}</span>
 	{#if description}
 		<span class="desc">{description}</span>
