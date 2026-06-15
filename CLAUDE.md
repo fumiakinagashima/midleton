@@ -165,7 +165,7 @@ midleton/
 
 ## ロードマップ
 
-`docs/ROADMAP.md` を参照。
+`docs/ROADMAP.md` を参照。v1（フェーズ1〜9のコア機能）は完了済み。残課題は同ファイル末尾の「v2 TODO」にまとめている。
 
 ## 参考
 

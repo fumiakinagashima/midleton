@@ -1,6 +1,16 @@
 # Midleton
 
-AIファーストなチャットベースの CRM/SFA。ユーザーはチャットで業務指示を出し、Claude AI が動的にフォームやテーブルを生成して操作を完結させる。
+AIファーストなチャットベースの CRM/SFA。ユーザーはチャットで業務指示を出し、Claude AI が MCP ツールを介して動的にフォームやテーブル・チャートなどを生成して操作を完結させる。
+
+## 主な機能
+
+- **チャットAI**（`/`）— Claude API + MCP ツールによる顧客・商談・タスク等のCRUD、検索・集計、ノーコードUI（フォーム・テーブル・チャート・ガント・カンバン等）生成、Word/Excel/PowerPoint資料生成
+- **クイックアクション** — チャット入力欄の「+」から、AIを介さず一覧・集計系ツールを即時実行（トークン消費なし）
+- **データ管理**（`/database`）— コア・カスタムテーブルのCRUD・スキーマ編集、申請（承認ルート）管理、アカウント管理、リマインダー管理
+- **名刺取り込み**（`/bizcard`）— カメラ/画像から顧客情報をAIで抽出し登録
+- **設定**（`/settings`）— 外部API連携、メール送信設定、クイックアクション選択、自身のプロフィール編集
+- **通知・リマインダー** — 通知センターと、Cron Triggerによるリマインダー自動配信（通知センター／メール／Slack）
+- **認証・権限** — ログイン必須（全ルートガード）、`general`/`admin` 権限による管理画面・APIのアクセス制御
 
 ## 技術スタック
 
@@ -12,7 +22,9 @@ AIファーストなチャットベースの CRM/SFA。ユーザーはチャッ�
 | ORM | DrizzleORM |
 | インフラ | Cloudflare (Wrangler, D1, R2, KV, Queue) |
 | AI | Claude API (Anthropic) |
+| プロトコル | MCP (Model Context Protocol) |
 | i18n | Paraglide-JS |
+| テスト | Vitest（ユニット）, Playwright（E2E） |
 
 ## 開発環境のセットアップ
 
@@ -29,6 +41,12 @@ MOCK_AI="true"   # true にするとモックレスポンスで動作確認で�
 
 ```sh
 bun dev   # Vite + platformProxy で HMR 付き起動
+```
+
+全ルートがログインを要求するため、`/signin` でログインする。マイグレーション適用時にテスト用アカウント5件・管理者アカウント（`info@alcogy.com`）が投入される（パスワードはいずれも `password`）。顧客・商談等のデモデータを投入する場合は以下を実行:
+
+```sh
+bun run db:seed:demo
 ```
 
 > **注意**: メール送信のSMTPプロバイダー（`/settings/email`）は `cloudflare:sockets`（workerdランタイム専用API）を使用するため、`bun dev`（Node.js上のVite）では動作しません。本番環境または `wrangler dev`（ビルド後）でのみ送信できます。ローカルでの動作確認には Resend または AWS SES を使用してください。
@@ -411,7 +429,7 @@ AIのタイピング中アニメーション（3点ドット）。
 
 ### チャット UI コンポーネント（`src/lib/components/chat/`）
 
-AI がレスポンスとして返す動的UIコンポーネント。システムプロンプトの仕様に従って AI が `<ui type="...">` タグを出力し、クライアント側でパースされて描画される。
+AI がレスポンスとして返す動的UIコンポーネント。システムプロンプトの仕様に従って AI が `<ui type="...">` タグを出力し、クライアント側でパースされて描画される。詳細な仕様は `src/lib/server/ai/` のシステムプロンプトで一元管理している。
 
 #### Form（チャット用）
 
@@ -441,6 +459,18 @@ AI がレスポンスとして返す動的UIコンポーネント。システム
 
 ユーザーがアクションを選択すると、そのラベルがチャット入力として送信される。
 
+#### その他のコンポーネント
+
+| コンポーネント | 用途 |
+|------|------|
+| `Values` | キー・バリュー形式のサマリー表示（健全性スコア等） |
+| `Chart` | BarChart/LineChart/PieChart を単一・複数系列（grouped/stacked）でチャット内に表示 |
+| `Gantt` | プロジェクト・タスクのガントチャート表示 |
+| `Kanban` | 商談ステータス等のカンバンボード表示 |
+| `Link` | レコードへのリンク。`newTab="true"` で別タブ表示（会話を中断させない） |
+| `Bizcard` | 名刺画像のスキャン・読取結果表示 |
+| `DocumentJob` | Word/Excel/PowerPoint資料生成ジョブの進行状況・ダウンロードリンク表示 |
+
 ---
 
 ## ディレクトリ構成
@@ -450,25 +480,48 @@ midleton/
 ├── src/
 │   ├── routes/
 │   │   ├── +layout.svelte    # サイドバー・テーマ切り替え
-│   │   ├── +page.svelte      # チャット画面
+│   │   ├── +page.svelte      # チャット画面（/）
+│   │   ├── signin/           # ログイン・パスワードリセット
 │   │   ├── ui/               # UIコンポーネントデモ（/ui）
-│   │   ├── settings/         # 設定画面
-│   │   └── api/chat/         # チャット API エンドポイント
+│   │   ├── bizcard/          # 名刺取り込み（/bizcard）
+│   │   ├── settings/         # 設定画面（/settings, /settings/integrations, /settings/quick-actions, /settings/email, /settings/account）
+│   │   ├── database/         # データ管理（/database, /database/[type], /database/approvals, /database/accounts, /database/reminders 等）
+│   │   └── api/
+│   │       ├── chat/         # チャット API エンドポイント
+│   │       ├── auth/         # ログイン・サインアウト・パスワードリセット
+│   │       ├── bizcard/      # 名刺画像 → Claude vision → JSON 抽出
+│   │       ├── integrations/ # 外部API連携 CRUD
+│   │       ├── quick-actions/# クイックアクション実行
+│   │       ├── database/     # データ管理 REST API（tables, records CRUD）
+│   │       ├── documents/    # 資料生成ジョブ
+│   │       ├── reminders/    # リマインダー配信
+│   │       ├── notifications/# 通知センター
+│   │       └── email/        # メール送信・設定
 │   └── lib/
 │       ├── components/
 │       │   ├── ui/           # アプリUIコンポーネント（デザインシステム）
-│       │   └── chat/         # AI がレスポンスとして返すコンポーネント
+│       │   ├── chat/         # AI がレスポンスとして返すコンポーネント
+│       │   ├── database/     # データ管理画面専用コンポーネント
+│       │   └── bizcard/      # 名刺スキャン専用コンポーネント
+│       ├── quick-actions/    # クイックアクションのカタログ定義
 │       ├── server/
 │       │   ├── db/           # DrizzleORM スキーマ・クエリ
 │       │   ├── mcp/          # MCP ツール定義
-│       │   └── ai/           # Claude API 連携・システムプロンプト
+│       │   ├── ai/           # Claude API 連携・システムプロンプト
+│       │   ├── auth/         # セッション・パスワードハッシュ
+│       │   ├── documents/    # Word/Excel/PowerPoint 生成（R2保存）
+│       │   ├── reminders/    # リマインダー配信
+│       │   ├── email/        # システムメール送信
+│       │   └── quick-actions/# クイックアクションの実行・整形
 │       ├── styles/           # グローバルスタイル・テーマ
 │       └── types/            # 共通型定義
 ├── messages/                 # i18n リソース（ja.json）
 ├── drizzle/                  # マイグレーションファイル
 ├── docs/
 │   └── ROADMAP.md
-└── wrangler.toml
+├── worker.ts                 # Cloudflare Workers エントリポイント（Cron Trigger対応）
+├── wrangler.toml
+└── wrangler.build.jsonc
 ```
 
 ## テーマ
@@ -478,3 +531,7 @@ midleton/
 ## i18n
 
 `messages/ja.json` に日本語リソースを定義し `m.key()` 形式で参照する（Paraglide-JS）。
+
+## ロードマップ
+
+開発の進行状況は [`docs/ROADMAP.md`](docs/ROADMAP.md) を参照。v1（コア機能）は完了済みで、残課題は同ファイル末尾の「v2 TODO」にまとめている。
