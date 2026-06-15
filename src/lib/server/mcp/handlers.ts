@@ -1355,9 +1355,9 @@ const updateApprovalStepSchema = z.object({
 	comment: z.string().optional()
 });
 
-async function handleUpdateApprovalStep(db: Db, input: unknown) {
+async function handleUpdateApprovalStep(db: Db, input: unknown, env?: ToolEnv) {
 	const p = updateApprovalStepSchema.parse(input);
-	return updateApprovalStep(db, p.id, p.step, p.action, p.comment);
+	return updateApprovalStep(db, p.id, p.step, p.action, env?.accountId, p.comment);
 }
 
 const cancelApprovalSchema = z.object({ id: z.string() });
@@ -1465,7 +1465,7 @@ export async function dispatchTool(
 		case 'list_approvals':     return handleListApprovals(db, input);
 		case 'get_approval':       return handleGetApproval(db, input);
 		case 'create_approval':    return handleCreateApproval(db, input, env);
-		case 'update_approval_step': return handleUpdateApprovalStep(db, input);
+		case 'update_approval_step': return handleUpdateApprovalStep(db, input, env);
 		case 'cancel_approval':    return handleCancelApproval(db, input);
 		default:
 			throw new Error(`Unknown tool: ${name}`);
