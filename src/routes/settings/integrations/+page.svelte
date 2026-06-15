@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Textbox from '$lib/components/ui/Textbox.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import * as m from '$lib/paraglide/messages.js';
-	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -34,7 +34,10 @@
 		{ value: 'basic', label: m.integrations_auth_basic() }
 	];
 
-	let items = $state<Integration[]>([]);
+	let items = $state<Integration[]>(untrack(() => data.items));
+	$effect(() => {
+		items = data.items;
+	});
 	let editingId = $state<string | null>(null);
 	let showForm = $state(false);
 	let saving = $state(false);
@@ -64,15 +67,6 @@
 			form.authConfig = {};
 		}
 	});
-
-	onMount(async () => {
-		await load();
-	});
-
-	async function load() {
-		const res = await fetch('/api/integrations');
-		items = await res.json();
-	}
 
 	function openAdd() {
 		editingId = null;
@@ -113,19 +107,22 @@
 				authConfig: form.authConfig
 			};
 			if (editingId) {
-				await fetch(`/api/integrations/${editingId}`, {
+				const res = await fetch(`/api/integrations/${editingId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)
 				});
+				const updated = (await res.json()) as Integration;
+				items = items.map((i) => (i.id === editingId ? updated : i));
 			} else {
-				await fetch('/api/integrations', {
+				const res = await fetch('/api/integrations', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)
 				});
+				const created = (await res.json()) as Integration;
+				items = [...items, created].sort((a, b) => a.name.localeCompare(b.name));
 			}
-			await load();
 			cancel();
 		} finally {
 			saving = false;
@@ -135,7 +132,7 @@
 	async function remove(id: string) {
 		if (!confirm(m.integrations_delete_confirm())) return;
 		await fetch(`/api/integrations/${id}`, { method: 'DELETE' });
-		await load();
+		items = items.filter((i) => i.id !== id);
 	}
 
 </script>
