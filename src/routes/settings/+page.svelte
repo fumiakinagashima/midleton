@@ -2,6 +2,9 @@
 	import Toggle from '$lib/components/ui/Toggle.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { themeStore } from '$lib/stores/theme.svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	type Theme = 'light' | 'dark' | 'system';
 
@@ -36,9 +39,13 @@
 
 	<nav class="subnav">
 		<a href="/settings" class:active={currentPath === '/settings'}>一般</a>
-		<a href="/settings/integrations" class:active={currentPath === '/settings/integrations'}>{m.integrations()}</a>
+		{#if data.account.permission === 'admin'}
+			<a href="/settings/integrations" class:active={currentPath === '/settings/integrations'}>{m.integrations()}</a>
+		{/if}
 		<a href="/settings/quick-actions" class:active={currentPath === '/settings/quick-actions'}>{m.quick_actions()}</a>
-		<a href="/settings/email" class:active={currentPath === '/settings/email'}>{m.email_settings()}</a>
+		{#if data.account.permission === 'admin'}
+			<a href="/settings/email" class:active={currentPath === '/settings/email'}>{m.email_settings()}</a>
+		{/if}
 		<a href="/settings/account" class:active={currentPath === '/settings/account'}>{m.account_settings()}</a>
 	</nav>
 

@@ -84,9 +84,13 @@
 	<h1>設定</h1>
 	<nav class="subnav">
 		<a href="/settings">一般</a>
-		<a href="/settings/integrations">{m.integrations()}</a>
+		{#if data.account.permission === 'admin'}
+			<a href="/settings/integrations">{m.integrations()}</a>
+		{/if}
 		<a href="/settings/quick-actions">{m.quick_actions()}</a>
-		<a href="/settings/email">{m.email_settings()}</a>
+		{#if data.account.permission === 'admin'}
+			<a href="/settings/email">{m.email_settings()}</a>
+		{/if}
 		<a href="/settings/account" class="active">{m.account_settings()}</a>
 	</nav>
 

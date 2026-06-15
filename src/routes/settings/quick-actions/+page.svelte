@@ -8,6 +8,9 @@
 		isQuickActionId,
 		type QuickActionId
 	} from '$lib/quick-actions/catalog';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	function loadIds(): QuickActionId[] {
 		if (typeof localStorage === 'undefined') return [...DEFAULT_QUICK_ACTION_IDS];
@@ -44,9 +47,13 @@
 
 	<nav class="subnav">
 		<a href="/settings">一般</a>
-		<a href="/settings/integrations">{m.integrations()}</a>
+		{#if data.account.permission === 'admin'}
+			<a href="/settings/integrations">{m.integrations()}</a>
+		{/if}
 		<a href="/settings/quick-actions" class="active">{m.quick_actions()}</a>
-		<a href="/settings/email">{m.email_settings()}</a>
+		{#if data.account.permission === 'admin'}
+			<a href="/settings/email">{m.email_settings()}</a>
+		{/if}
 		<a href="/settings/account">{m.account_settings()}</a>
 	</nav>
 

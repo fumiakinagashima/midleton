@@ -3,6 +3,9 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { onMount } from 'svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	type AuthType = 'none' | 'api_key' | 'bearer' | 'basic';
 
@@ -141,9 +144,13 @@
 	<h1>設定</h1>
 	<nav class="subnav">
 		<a href="/settings">一般</a>
-		<a href="/settings/integrations" class="active">{m.integrations()}</a>
+		{#if data.account.permission === 'admin'}
+			<a href="/settings/integrations" class="active">{m.integrations()}</a>
+		{/if}
 		<a href="/settings/quick-actions">{m.quick_actions()}</a>
-		<a href="/settings/email">{m.email_settings()}</a>
+		{#if data.account.permission === 'admin'}
+			<a href="/settings/email">{m.email_settings()}</a>
+		{/if}
 		<a href="/settings/account">{m.account_settings()}</a>
 	</nav>
 
