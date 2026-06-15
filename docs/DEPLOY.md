@@ -113,7 +113,6 @@ Cloudflareダッシュボード → Workers & Pages → （6章で作成したWo
 | 変数名 | 必須 | 説明 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | ◯ | Claude APIキー（`wrangler.toml` の `[vars]` は空文字のままでよい） |
-| `AI_MODEL` | - | 使用するClaudeモデルIDを上書きする場合のみ |
 | `EMAIL_PROVIDER` | - | システムメール（リマインダー通知・パスワードリセット）を使う場合: `resend` / `ses` / `smtp` |
 | `EMAIL_FROM` | △ | `EMAIL_PROVIDER` 設定時は必須。送信元アドレス |
 | `EMAIL_FROM_NAME` | - | 送信元表示名 |

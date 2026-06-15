@@ -14,7 +14,6 @@ declare global {
 				DB: D1Database;
 				ANTHROPIC_API_KEY: string;
 				MOCK_AI: string;
-				AI_MODEL?: string;
 				KV?: KVNamespace;
 				R2?: R2Bucket;
 				// email (set EMAIL_PROVIDER to 'resend' | 'ses' | 'smtp')

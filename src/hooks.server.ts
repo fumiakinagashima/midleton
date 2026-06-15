@@ -12,9 +12,11 @@ const ADMIN_ONLY_PREFIXES = [
 	'/database/accounts',
 	'/settings/integrations',
 	'/settings/email',
+	'/settings/ai',
 	'/api/accounts',
 	'/api/integrations',
 	'/api/email/settings',
+	'/api/ai/settings',
 	'/api/documents/test'
 ];
 

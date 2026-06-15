@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { env } from '$env/dynamic/private';
 import { streamChat, type StreamEvent } from '$lib/server/ai/stream';
+import { getAiModel } from '$lib/server/ai/settings';
 import { mockChat } from '$lib/server/ai/mock';
 import { createDb } from '$lib/server/db';
 import { dispatchTool, type ToolEnv } from '$lib/server/mcp';
@@ -190,7 +191,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	}
 
 	const apiKey = platform?.env?.ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY ?? '';
-	const model = platform?.env?.AI_MODEL ?? env.AI_MODEL ?? undefined;
+	const model = await getAiModel(db);
 
 	const stream = new ReadableStream({
 		async start(controller) {
