@@ -17,8 +17,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 32px;
-		height: 100%;
-		overflow-y: auto;
 	}
 
 	.header h1 {

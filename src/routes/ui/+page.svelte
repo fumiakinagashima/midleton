@@ -368,8 +368,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 48px;
-		overflow-y: auto;
-		height: 100%;
 	}
 	h1 {
 		font-size: 1.5rem;

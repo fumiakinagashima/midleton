@@ -58,8 +58,6 @@
 <style>
 	.page {
 		padding: 32px;
-		height: 100%;
-		overflow-y: auto;
 	}
 
 	.page-header {

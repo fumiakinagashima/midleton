@@ -607,7 +607,8 @@
 
 	/* ── Main ── */
 	.content {
-		overflow: hidden;
+		overflow-y: auto;
+		overflow-x: hidden;
 		display: flex;
 		flex-direction: column;
 	}
