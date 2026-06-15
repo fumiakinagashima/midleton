@@ -288,6 +288,7 @@
 				名刺取り込み
 			</a>
 
+			<!--
 			<a href="/ui" class="settings-row">
 				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<rect x="3" y="3" width="7" height="7" rx="1"/>
@@ -297,6 +298,7 @@
 				</svg>
 				{m.ui_components()}
 			</a>
+			-->
 
 			<a href="/settings" class="settings-row">
 				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
