@@ -14,6 +14,9 @@ export const load: PageServerLoad = async ({ url, platform, locals }) => {
 	if (notificationId) {
 		const notification = await getNotification(db, notificationId);
 		if (!notification) return { seedNotification: null, seedChat: null };
+		if (notification.accountId && notification.accountId !== locals.account!.id) {
+			return { seedNotification: null, seedChat: null };
+		}
 
 		if (!notification.isRead) await markNotificationRead(db, notificationId);
 
