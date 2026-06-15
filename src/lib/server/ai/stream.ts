@@ -2,11 +2,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { buildSystemPrompt } from './prompt';
 import { tools, dispatchTool } from '$lib/server/mcp';
+import { DEFAULT_AI_MODEL } from './settings';
 import type { Db } from '$lib/server/db';
 import type { MessageContent } from '$lib/types/chat';
 import type { ToolEnv } from '$lib/server/mcp';
-
-const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
 export type StreamEvent =
 	| { type: 'delta'; text: string }
@@ -136,7 +135,7 @@ export async function streamChat(
 		const turnEvents: StreamEvent[] = [];
 
 		const stream = anthropic.messages.stream({
-			model: model ?? DEFAULT_MODEL,
+			model: model ?? DEFAULT_AI_MODEL,
 			max_tokens: 8192,
 			system: buildSystemPrompt(),
 			tools,
