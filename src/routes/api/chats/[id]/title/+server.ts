@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { createDb } from '$lib/server/db';
-import { updateChatTitle } from '$lib/server/db/chat-service';
+import { getChat, updateChatTitle } from '$lib/server/db/chat-service';
 import { generateChatTitle } from '$lib/server/ai/chat-title';
 import { checkRateLimit } from '$lib/server/rate-limit';
 import { errors } from '$lib/server/errors';
@@ -12,7 +12,7 @@ function truncateTitle(message: string): string {
 	return t.length > 20 ? t.slice(0, 20) + '…' : t;
 }
 
-export const POST: RequestHandler = async ({ params, request, platform }) => {
+export const POST: RequestHandler = async ({ params, request, platform, locals }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
 
 	const mockMode = platform?.env?.MOCK_AI === 'true' || env.MOCK_AI === 'true';
@@ -26,6 +26,9 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 	if (!message) return errors.badRequest('message が空です。');
 
 	const db = createDb(platform.env.DB);
+
+	const chat = await getChat(db, params.id);
+	if (chat && chat.accountId && chat.accountId !== locals.account!.id) return errors.forbidden();
 
 	if (mockMode) {
 		const title = truncateTitle(message);
