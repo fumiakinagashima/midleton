@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { createDb } from '$lib/server/db';
 import { integrations } from '$lib/server/db/schema';
+import { maskAuthConfig } from '$lib/server/db/integration-service';
 import { eq, asc } from 'drizzle-orm';
 
 const createSchema = z.object({
@@ -17,7 +18,7 @@ export const GET: RequestHandler = async ({ platform }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB unavailable' }, { status: 500 });
 	const db = createDb(platform.env.DB);
 	const rows = await db.select().from(integrations).orderBy(asc(integrations.name));
-	return json(rows.map((r) => ({ ...r, authConfig: JSON.parse(r.authConfig ?? '{}') })));
+	return json(rows.map((r) => ({ ...r, authConfig: maskAuthConfig(JSON.parse(r.authConfig ?? '{}')) })));
 };
 
 export const POST: RequestHandler = async ({ request, platform }) => {
@@ -34,5 +35,5 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		authConfig: JSON.stringify(data.authConfig)
 	});
 	const [row] = await db.select().from(integrations).where(eq(integrations.id, id));
-	return json({ ...row, authConfig: JSON.parse(row.authConfig ?? '{}') }, { status: 201 });
+	return json({ ...row, authConfig: maskAuthConfig(JSON.parse(row.authConfig ?? '{}')) }, { status: 201 });
 };

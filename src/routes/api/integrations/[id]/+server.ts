@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { createDb } from '$lib/server/db';
 import { integrations } from '$lib/server/db/schema';
+import { maskAuthConfig, mergeAuthConfig } from '$lib/server/db/integration-service';
 import { eq } from 'drizzle-orm';
 
 const updateSchema = z.object({
@@ -17,6 +18,14 @@ export const PATCH: RequestHandler = async ({ params, request, platform }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB unavailable' }, { status: 500 });
 	const db = createDb(platform.env.DB);
 	const data = updateSchema.parse(await request.json());
+
+	const [existing] = await db.select().from(integrations).where(eq(integrations.id, params.id));
+	if (!existing) return json({ error: 'Not found' }, { status: 404 });
+
+	const authConfig = data.authConfig !== undefined
+		? mergeAuthConfig(JSON.parse(existing.authConfig ?? '{}'), data.authConfig)
+		: undefined;
+
 	await db
 		.update(integrations)
 		.set({
@@ -24,13 +33,13 @@ export const PATCH: RequestHandler = async ({ params, request, platform }) => {
 			...(data.description !== undefined && { description: data.description }),
 			...(data.baseUrl !== undefined && { baseUrl: data.baseUrl }),
 			...(data.authType !== undefined && { authType: data.authType }),
-			...(data.authConfig !== undefined && { authConfig: JSON.stringify(data.authConfig) }),
+			...(authConfig !== undefined && { authConfig: JSON.stringify(authConfig) }),
 			updatedAt: new Date()
 		})
 		.where(eq(integrations.id, params.id));
 	const [row] = await db.select().from(integrations).where(eq(integrations.id, params.id));
 	if (!row) return json({ error: 'Not found' }, { status: 404 });
-	return json({ ...row, authConfig: JSON.parse(row.authConfig ?? '{}') });
+	return json({ ...row, authConfig: maskAuthConfig(JSON.parse(row.authConfig ?? '{}')) });
 };
 
 export const DELETE: RequestHandler = async ({ params, platform }) => {
