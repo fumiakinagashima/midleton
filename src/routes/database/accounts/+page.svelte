@@ -158,8 +158,6 @@
 <style>
 	.page {
 		padding: 24px 32px;
-		height: 100%;
-		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
 		gap: 16px;

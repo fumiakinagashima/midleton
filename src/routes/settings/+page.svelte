@@ -79,8 +79,6 @@
 
 <style>
 	.page {
-		height: 100%;
-		overflow-y: auto;
 		padding: 40px 48px;
 		max-width: 640px;
 	}
