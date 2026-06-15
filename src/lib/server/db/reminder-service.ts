@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, isNull, or } from 'drizzle-orm';
 import { reminders, type Reminder } from './schema';
 import { getSlackIntegration, listSlackIntegrations } from '../slack';
 import { getEmailSetup, type EmailEnv } from '../email';
@@ -69,8 +69,12 @@ async function toListRow(db: Db, r: Reminder): Promise<ReminderListRow> {
 	};
 }
 
-export async function listReminders(db: Db): Promise<ReminderListRow[]> {
-	const rows = await db.select().from(reminders).orderBy(desc(reminders.remindAt));
+export async function listReminders(db: Db, accountId?: string): Promise<ReminderListRow[]> {
+	const rows = await db
+		.select()
+		.from(reminders)
+		.where(accountId ? or(isNull(reminders.accountId), eq(reminders.accountId, accountId)) : undefined)
+		.orderBy(desc(reminders.remindAt));
 	return Promise.all(rows.map((r) => toListRow(db, r)));
 }
 
@@ -80,6 +84,11 @@ export async function createReminderRow(
 ): Promise<ReminderListRow> {
 	const reminder = await createReminder(db, input);
 	return toListRow(db, reminder);
+}
+
+export async function getReminder(db: Db, id: string): Promise<Reminder | null> {
+	const [row] = await db.select().from(reminders).where(eq(reminders.id, id));
+	return row ?? null;
 }
 
 export async function deleteReminder(db: Db, id: string): Promise<void> {
