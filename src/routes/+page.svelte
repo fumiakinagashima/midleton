@@ -15,6 +15,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick, untrack } from 'svelte';
 	import { marked } from 'marked';
+	import { filterXSS } from 'xss';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -30,7 +31,7 @@
 	} from '$lib/quick-actions/catalog';
 
 	function renderMarkdown(text: string): string {
-		return marked.parse(text, { async: false }) as string;
+		return filterXSS(marked.parse(text, { async: false }) as string);
 	}
 
 	const ls = (key: string, def: string) =>
