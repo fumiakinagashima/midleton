@@ -47,6 +47,7 @@
 		<a href="/settings/integrations">{m.integrations()}</a>
 		<a href="/settings/quick-actions" class="active">{m.quick_actions()}</a>
 		<a href="/settings/email">{m.email_settings()}</a>
+		<a href="/settings/account">{m.account_settings()}</a>
 	</nav>
 
 	<section>

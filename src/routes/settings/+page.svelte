@@ -39,6 +39,7 @@
 		<a href="/settings/integrations" class:active={currentPath === '/settings/integrations'}>{m.integrations()}</a>
 		<a href="/settings/quick-actions" class:active={currentPath === '/settings/quick-actions'}>{m.quick_actions()}</a>
 		<a href="/settings/email" class:active={currentPath === '/settings/email'}>{m.email_settings()}</a>
+		<a href="/settings/account" class:active={currentPath === '/settings/account'}>{m.account_settings()}</a>
 	</nav>
 
 	<section>
