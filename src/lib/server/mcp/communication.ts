@@ -3,11 +3,24 @@ import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 import type { Db } from '../db';
 import { sendEmail, getEmailSetup } from '../email';
 import { recordActivity } from '../db/table-service';
-import { createReminder, listReminders, resolveChannelLabels } from '../db/reminder-service';
+import { createReminder, listReminders, resolveChannelLabels, deleteSentReminders } from '../db/reminder-service';
+import { deleteReadNotifications } from '../db/notification-service';
 import { parseJstDatetime } from '$lib/datetime';
 import type { ToolEnv } from './shared';
 
 export const tools: Tool[] = [
+	{
+		name: 'delete_sent_reminders',
+		description:
+			'送信済み（status=sent）のリマインダーをまとめて削除する。未送信（pending）のリマインダーは削除されない。自分のリマインダーのみ対象。',
+		input_schema: { type: 'object', properties: {}, required: [] }
+	},
+	{
+		name: 'delete_read_notifications',
+		description:
+			'既読済みの通知をまとめて削除する。未読の通知は削除されない。自分の通知のみ対象。',
+		input_schema: { type: 'object', properties: {}, required: [] }
+	},
 	{
 		name: 'list_reminders',
 		description:
@@ -191,4 +204,16 @@ export async function handleCreateRemindersBulk(db: Db, input: unknown, env?: To
 		channelLabels,
 		reminders: created.map((r) => ({ id: r.id, content: r.content }))
 	};
+}
+
+export async function handleDeleteSentReminders(db: Db, _input: unknown, env?: ToolEnv) {
+	if (!env?.accountId) throw new Error('ログインユーザーが特定できません。');
+	const count = await deleteSentReminders(db, env.accountId);
+	return { deleted: count };
+}
+
+export async function handleDeleteReadNotifications(db: Db, _input: unknown, env?: ToolEnv) {
+	if (!env?.accountId) throw new Error('ログインユーザーが特定できません。');
+	const count = await deleteReadNotifications(db, env.accountId);
+	return { deleted: count };
 }

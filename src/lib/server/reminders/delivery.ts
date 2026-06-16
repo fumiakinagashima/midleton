@@ -25,12 +25,14 @@ export async function getDueReminders(db: Db, now: Date = new Date()): Promise<R
 
 async function deliverToChannel(db: Db, channel: string, reminder: Reminder, env?: EmailEnv): Promise<void> {
 	if (channel === 'notification') {
+		// accountId が未設定のレガシーデータはスキップ（通知の送り先が特定できないため）
+		if (!reminder.accountId) return;
 		await createNotification(db, {
 			type: 'reminder',
 			title: 'リマインダー',
 			body: reminder.content,
 			seedContent: [{ type: 'text', text: `リマインダー: ${reminder.content}` }],
-			accountId: reminder.accountId ?? undefined
+			accountId: reminder.accountId
 		});
 		return;
 	}

@@ -246,28 +246,32 @@ async function runDocumentJob(
 		try {
 			const result = await generate();
 			await put({ status: 'done', result });
-			await createNotification(db, {
-				type: 'document_job',
-				title: `「${label}」の生成が完了しました`,
-				body: `「${label}」のダウンロード準備ができました。`,
-				seedContent: [
-					{ type: 'text', text: `資料「${label}」の生成が完了しました。` },
-					{ type: 'link', label: result.label, href: result.href, description: result.description }
-				],
-				accountId: env.accountId
-			});
+			if (env.accountId) {
+				await createNotification(db, {
+					type: 'document_job',
+					title: `「${label}」の生成が完了しました`,
+					body: `「${label}」のダウンロード準備ができました。`,
+					seedContent: [
+						{ type: 'text', text: `資料「${label}」の生成が完了しました。` },
+						{ type: 'link', label: result.label, href: result.href, description: result.description }
+					],
+					accountId: env.accountId
+				});
+			}
 		} catch (e) {
 			const message = e instanceof Error ? e.message : String(e);
 			await put({ status: 'error', error: message });
-			await createNotification(db, {
-				type: 'document_job',
-				title: `「${label}」の生成に失敗しました`,
-				body: message,
-				seedContent: [
-					{ type: 'text', text: `資料「${label}」の生成に失敗しました: ${message}` }
-				],
-				accountId: env.accountId
-			});
+			if (env.accountId) {
+				await createNotification(db, {
+					type: 'document_job',
+					title: `「${label}」の生成に失敗しました`,
+					body: message,
+					seedContent: [
+						{ type: 'text', text: `資料「${label}」の生成に失敗しました: ${message}` }
+					],
+					accountId: env.accountId
+				});
+			}
 		}
 	};
 

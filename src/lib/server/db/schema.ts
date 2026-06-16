@@ -233,8 +233,7 @@ export const notifications = sqliteTable('notifications', {
 	title: text('title').notNull(),
 	body: text('body').notNull().default(''),
 	seedContent: text('seed_content').notNull().default('[]'),
-	// null = 全アカウント共通（ログイン実装前の既存データ）。読み取りは accountId IS NULL OR accountId = <自分> でフィルタする
-	accountId: text('account_id'),
+	accountId: text('account_id').notNull(),
 	isRead: integer('is_read', { mode: 'boolean' }).notNull().default(false),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()

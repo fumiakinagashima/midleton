@@ -1,4 +1,4 @@
-import { and, eq, desc, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, desc, sql } from 'drizzle-orm';
 import { notifications } from './schema';
 import type { Db } from '.';
 import type { MessageContent } from '$lib/types/chat';
@@ -9,7 +9,7 @@ export type NotificationRow = {
 	title: string;
 	body: string;
 	seedContent: MessageContent[];
-	accountId: string | null;
+	accountId: string;
 	isRead: boolean;
 	createdAt: Date;
 };
@@ -29,7 +29,7 @@ function toRow(r: typeof notifications.$inferSelect): NotificationRow {
 
 export async function createNotification(
 	db: Db,
-	input: { type?: string; title: string; body: string; seedContent: MessageContent[]; accountId?: string }
+	input: { type?: string; title: string; body: string; seedContent: MessageContent[]; accountId: string }
 ): Promise<NotificationRow> {
 	const id = crypto.randomUUID();
 	await db.insert(notifications).values({
@@ -38,18 +38,18 @@ export async function createNotification(
 		title: input.title,
 		body: input.body,
 		seedContent: JSON.stringify(input.seedContent),
-		accountId: input.accountId ?? null,
+		accountId: input.accountId,
 		isRead: false,
 		createdAt: new Date()
 	});
 	return (await getNotification(db, id))!;
 }
 
-export async function listNotifications(db: Db, accountId?: string, limit = 50): Promise<NotificationRow[]> {
+export async function listNotifications(db: Db, accountId: string, limit = 50): Promise<NotificationRow[]> {
 	const rows = await db
 		.select()
 		.from(notifications)
-		.where(accountId ? or(isNull(notifications.accountId), eq(notifications.accountId, accountId)) : undefined)
+		.where(eq(notifications.accountId, accountId))
 		.orderBy(desc(notifications.createdAt))
 		.limit(limit);
 	return rows.map(toRow);
@@ -65,15 +65,22 @@ export async function markNotificationRead(db: Db, id: string): Promise<Notifica
 	return getNotification(db, id);
 }
 
-export async function countUnreadNotifications(db: Db, accountId?: string): Promise<number> {
+export async function countUnreadNotifications(db: Db, accountId: string): Promise<number> {
 	const [row] = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(notifications)
-		.where(
-			and(
-				eq(notifications.isRead, false),
-				accountId ? or(isNull(notifications.accountId), eq(notifications.accountId, accountId)) : undefined
-			)
-		);
+		.where(and(eq(notifications.isRead, false), eq(notifications.accountId, accountId)));
 	return row?.count ?? 0;
+}
+
+export async function deleteReadNotifications(db: Db, accountId: string): Promise<number> {
+	const [{ count }] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(notifications)
+		.where(and(eq(notifications.isRead, true), eq(notifications.accountId, accountId)));
+	if (count > 0) {
+		await db.delete(notifications)
+			.where(and(eq(notifications.isRead, true), eq(notifications.accountId, accountId)));
+	}
+	return count;
 }

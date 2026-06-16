@@ -1,4 +1,4 @@
-import { eq, desc, isNull, or } from 'drizzle-orm';
+import { and, eq, desc, isNull, or, sql } from 'drizzle-orm';
 import { reminders, type Reminder } from './schema';
 import { getSlackIntegration, listSlackIntegrations } from '../slack';
 import { getEmailSetup, type EmailEnv } from '../email';
@@ -107,6 +107,18 @@ export async function getReminder(db: Db, id: string): Promise<Reminder | null> 
 
 export async function deleteReminder(db: Db, id: string): Promise<void> {
 	await db.delete(reminders).where(eq(reminders.id, id));
+}
+
+export async function deleteSentReminders(db: Db, accountId: string): Promise<number> {
+	const [{ count }] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(reminders)
+		.where(and(eq(reminders.status, 'sent'), eq(reminders.accountId, accountId)));
+	if (count > 0) {
+		await db.delete(reminders)
+			.where(and(eq(reminders.status, 'sent'), eq(reminders.accountId, accountId)));
+	}
+	return count;
 }
 
 export async function getReminderChannelOptions(db: Db, env?: EmailEnv): Promise<ChannelOption[]> {
