@@ -10,6 +10,7 @@ import * as communication from './communication';
 import * as documents from './documents';
 import * as entities from './entities';
 import * as approvals from './approvals';
+import * as help from './help';
 
 export type { ToolEnv } from './shared';
 
@@ -57,7 +58,8 @@ export type ToolName =
 	| 'get_approval'
 	| 'create_approval'
 	| 'update_approval_step'
-	| 'cancel_approval';
+	| 'cancel_approval'
+	| 'get_help';
 
 export const tools: Tool[] = [
 	...integrations.tools,
@@ -69,7 +71,8 @@ export const tools: Tool[] = [
 	...communication.tools,
 	...documents.tools,
 	...entities.tools,
-	...approvals.tools
+	...approvals.tools,
+	...help.tools
 ];
 
 export async function dispatchTool(
@@ -124,6 +127,7 @@ export async function dispatchTool(
 		case 'create_approval':                return approvals.handleCreateApproval(db, input, env);
 		case 'update_approval_step':           return approvals.handleUpdateApprovalStep(db, input, env);
 		case 'cancel_approval':                return approvals.handleCancelApproval(db, input);
+		case 'get_help':                       return help.handleGetHelp(input);
 		default:
 			throw new Error(`Unknown tool: ${name}`);
 	}
