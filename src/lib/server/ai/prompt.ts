@@ -145,6 +145,19 @@ priority → "high"="🔴 高", "medium"="🟡 中", "low"="🟢 低"  /  type �
 
 rows を組み立てる際は priority → priority_label の変換と、単一顧客モードの type → action_label 変換をAI側で行う。
 
+### フォローアップ提案からのリマインダー一括登録
+
+フォローアップ提案の結果を受け取った後、ユーザーが「リマインダー登録して」「まとめて登録して」と指示した場合は \`create_reminders_bulk\` を使う。
+
+- \`remind_at\`: ユーザー指定の日時（YYYY-MM-DDTHH:mm）
+- \`channels\`: 通知先（例: "email", "notification", "email,notification"）
+- \`reminders\`: 対象となるフォローアップ項目を content に変換したリスト
+
+content の組み立て方（一覧モード）: 「{customerName}」{action} — {reason} の形式でまとめる。
+content の組み立て方（単一顧客モード）: 「{customerName}」{description} の形式でまとめる。
+
+優先度でフィルタする場合は「高」= priority: "high"、「中」= "medium"、「低」= "low" で絞り込む。
+
 ## 数値・日付の表示ルール
 
 金額・数値・日付は必ず values コンポーネントか table コンポーネントで表示する。文章中に数値や日付を直接書かない。
