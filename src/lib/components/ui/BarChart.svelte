@@ -39,12 +39,13 @@
 			: Math.max(...allSeries.flatMap((s) => s.data.map((d) => d.value)), 1)
 	);
 
-	const W = 420;
-	const H = 240;
-	const PL = 48;
+	const W = 680;
+	const PL = 90;
 	const PR = 16;
 	const PT = 16;
-	const PB = isMulti ? 52 : 40; // extra space for legend
+	const rotateLabs = $derived(labels.length > 10);
+	const H = $derived(rotateLabs ? 330 : 250);
+	const PB = $derived((isMulti ? 52 : 40) + (rotateLabs ? 80 : 0));
 	const plotW = $derived(W - PL - PR);
 	const plotH = $derived(H - PT - PB);
 
@@ -133,12 +134,14 @@
 
 		<!-- X-axis labels -->
 		{#each labels as label, li}
+			{@const lx = PL + li * groupW + groupW / 2}
+			{@const ly = PT + plotH + 16}
 			<text
-				x={PL + li * groupW + groupW / 2}
-				y={PT + plotH + 16}
-				text-anchor="middle"
+				x={lx} y={ly}
+				text-anchor={rotateLabs ? 'end' : 'middle'}
 				fill="var(--color-text-muted)"
 				font-size="11"
+				transform={rotateLabs ? `rotate(-45 ${lx} ${ly})` : undefined}
 			>{label}</text>
 		{/each}
 
