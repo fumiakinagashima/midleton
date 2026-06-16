@@ -12,6 +12,7 @@
 		required?: boolean;
 		disabled?: boolean;
 		error?: string;
+		onchange?: () => void;
 	};
 
 	let {
@@ -21,7 +22,8 @@
 		placeholder = '選択または検索...',
 		required = false,
 		disabled = false,
-		error
+		error,
+		onchange
 	}: Props = $props();
 
 	let open = $state(false);
@@ -52,6 +54,7 @@
 		value = opt.value;
 		query = '';
 		open = false;
+		onchange?.();
 	}
 
 	function clear(e: MouseEvent) {
