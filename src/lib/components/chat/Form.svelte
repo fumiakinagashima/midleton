@@ -17,6 +17,8 @@
 		untrack(() => Object.fromEntries(fields.map((f) => [f.key, f.value ?? ''])))
 	);
 
+	let errors = $state<Record<string, string>>({});
+
 	let recordOptions = $state<Record<string, { value: string; label: string }[]>>({});
 
 	onMount(async () => {
@@ -35,8 +37,47 @@
 		}
 	});
 
+	function validate(): boolean {
+		const newErrors: Record<string, string> = {};
+		for (const field of fields) {
+			if (field.type === 'hidden') continue;
+			const val = (values[field.key] ?? '').trim();
+
+			if (field.required) {
+				if (field.type === 'multiselect') {
+					if (val.split(',').filter(Boolean).length === 0) {
+						newErrors[field.key] = m.form_error_select_required();
+					}
+				} else if (field.type === 'select' || field.type === 'recordSelect') {
+					if (!val) newErrors[field.key] = m.form_error_select_required();
+				} else {
+					if (!val) newErrors[field.key] = m.form_error_required();
+				}
+			}
+
+			if (!newErrors[field.key] && val) {
+				if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+					newErrors[field.key] = m.form_error_email();
+				}
+				if (field.type === 'number' && isNaN(Number(val))) {
+					newErrors[field.key] = m.form_error_number();
+				}
+			}
+		}
+		errors = newErrors;
+		return Object.keys(newErrors).length === 0;
+	}
+
+	function clearError(key: string) {
+		if (errors[key]) {
+			const { [key]: _, ...rest } = errors;
+			errors = rest;
+		}
+	}
+
 	function handleSubmit(e: Event) {
 		e.preventDefault();
+		if (!validate()) return;
 		onsubmit(values);
 	}
 
@@ -49,6 +90,7 @@
 			if (idx !== -1) current.splice(idx, 1);
 		}
 		values[key] = current.join(',');
+		clearError(key);
 	}
 </script>
 
@@ -64,11 +106,13 @@
 			<SearchSelect
 				label={field.label}
 				required={field.required}
+				error={errors[field.key]}
 				bind:value={values[field.key]}
 				options={recordOptions[field.refTable ?? ''] ?? []}
+				onchange={() => clearError(field.key)}
 			/>
 		{:else if field.type === 'multiselect'}
-			<fieldset class="field">
+			<fieldset class="field" class:has-error={!!errors[field.key]}>
 				<legend>
 					{field.label}
 					{#if field.required}<span class="required">*</span>{/if}
@@ -85,9 +129,10 @@
 						</label>
 					{/each}
 				</div>
+				{#if errors[field.key]}<p class="error-msg">{errors[field.key]}</p>{/if}
 			</fieldset>
 		{:else}
-		<div class="field">
+		<div class="field" class:has-error={!!errors[field.key]}>
 			<label for={field.key}>
 				{field.label}
 				{#if field.required}<span class="required">*</span>{/if}
@@ -98,11 +143,15 @@
 					id={field.key}
 					class:large={field.key === 'body'}
 					placeholder={field.placeholder ?? ''}
-					required={field.required}
 					bind:value={values[field.key]}
+					oninput={() => clearError(field.key)}
 				></textarea>
 			{:else if field.type === 'select'}
-				<select id={field.key} required={field.required} bind:value={values[field.key]}>
+				<select
+					id={field.key}
+					bind:value={values[field.key]}
+					onchange={() => clearError(field.key)}
+				>
 					<option value="">{m.form_select_placeholder()}</option>
 					{#each field.options ?? [] as opt}
 						<option value={opt.value}>{opt.label}</option>
@@ -113,10 +162,11 @@
 					id={field.key}
 					type={field.type}
 					placeholder={field.placeholder ?? ''}
-					required={field.required}
 					bind:value={values[field.key]}
+					oninput={() => clearError(field.key)}
 				/>
 			{/if}
+			{#if errors[field.key]}<p class="error-msg">{errors[field.key]}</p>{/if}
 		</div>
 		{/if}
 	{/each}
@@ -172,7 +222,7 @@
 		gap: 6px;
 		margin-top: 4px;
 	}
-	
+
 	.checkbox-option {
 		display: flex;
 		align-items: center;
@@ -204,6 +254,18 @@
 	textarea:focus,
 	select:focus {
 		border-color: var(--color-primary);
+	}
+
+	.has-error {
+		input, textarea, select {
+			border-color: var(--color-danger);
+		}
+	}
+
+	.error-msg {
+		font-size: 0.8125rem;
+		color: var(--color-danger);
+		margin: 0;
 	}
 
 	textarea {
