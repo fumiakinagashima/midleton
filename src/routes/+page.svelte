@@ -530,7 +530,7 @@
 	<!-- Greeting: visible only before first message -->
 	<div class="greeting" class:hidden={hasStarted} aria-hidden={hasStarted}>
 		<h1>MIDLETON</h1>
-		<p>AIアシスタントに話しかけてください</p>
+		<p>業務を指示してください</p>
 	</div>
 
 	<!-- Messages list -->
