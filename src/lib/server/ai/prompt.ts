@@ -120,6 +120,31 @@ create_contact のフォームが表示され、顧客は検索付きセレク�
 
 get_help の結果を受け取ったら、見やすく整理して日本語で提示する。操作例（examples）は引用符なしの箇条書きで示す。
 
+## フォローアップ提案
+
+ユーザーが「フォローアップ」「次のアクション」「今週連絡すべき企業」などと言った場合は \`suggest_customer_followup\` ツールを呼び出す。
+
+- 顧客名・IDあり → 単一顧客の詳細提案（actions リストを返す）
+- 顧客名・IDなし → 全顧客の一覧モード（followups リストを返す）
+  - 「今週」→ period: "this_week"（デフォルト）
+  - 「来週」→ period: "next_week"
+  - 「今月」→ period: "this_month"
+
+### 結果の表示方法
+
+**単一顧客モード** — actions を優先度順に提示する。table コンポーネントを使う場合はこの形式:
+<ui type="table">
+{"columns":[{"key":"priority_label","label":"優先度"},{"key":"action_label","label":"種別"},{"key":"description","label":"内容"},{"key":"timing","label":"実施目安"},{"key":"reason","label":"理由"}],"rows":[...]}
+</ui>
+priority → "high"="🔴 高", "medium"="🟡 中", "low"="🟢 低"  /  type → "call"="架電", "email"="メール", "meeting"="訪問"
+
+**一覧モード** — followups を table コンポーネントで表示:
+<ui type="table">
+{"columns":[{"key":"priority_label","label":"優先度"},{"key":"customerName","label":"会社名"},{"key":"action","label":"アクション"},{"key":"timing","label":"実施目安"},{"key":"reason","label":"理由"}],"rows":[...]}
+</ui>
+
+rows を組み立てる際は priority → priority_label の変換と、単一顧客モードの type → action_label 変換をAI側で行う。
+
 ## 数値・日付の表示ルール
 
 金額・数値・日付は必ず values コンポーネントか table コンポーネントで表示する。文章中に数値や日付を直接書かない。
@@ -640,6 +665,129 @@ ${dealLines}
 ${activityLines}
 
 attentionItems の sourceId には、上記の「[ID: ...]」に記載されたIDをそのまま使ってください。`;
+}
+
+// ── フォローアップ提案 ────────────────────────────────────────────
+
+export const CUSTOMER_FOLLOWUP_SINGLE_SYSTEM_PROMPT = `あなたはCRM/SFAシステムのフォローアップ提案AIです。
+顧客の案件・活動履歴をもとに、次のフォローアップアクションを具体的に提案してください。
+
+## 出力ルール
+- 必ず以下のJSON形式のみを出力する。説明文・マークダウン記法・コードブロックは一切付けない
+- actions: 推奨アクション（優先度順、最大3件）
+  - type: "call"（架電）/ "email"（メール）/ "meeting"（訪問・面談）
+  - description: 具体的なアクション内容（議題・確認事項など）
+  - priority: "high"（今週中）/ "medium"（来週中）/ "low"（今月中）
+  - timing: いつまでに実施すべきか（例: "今週金曜日まで"、"来週中に"）
+  - reason: このアクションが必要な理由（簡潔に）
+- summary: 現状と最重要アクションの概要（1〜2文）
+
+{
+  "actions": [
+    {"type": "call", "description": "...", "priority": "high", "timing": "...", "reason": "..."}
+  ],
+  "summary": "..."
+}`;
+
+export const CUSTOMER_FOLLOWUP_LIST_SYSTEM_PROMPT = `あなたはCRM/SFAシステムのフォローアップ提案AIです。
+提供された顧客サマリーをもとに、フォローアップが必要な顧客を特定し優先度順にリストアップしてください。
+
+## 判断基準
+- 進行中案件あり かつ 直近活動から7日以上経過 → 原則フォローアップ対象
+- 活動内容から次のアクションが明確なもの（提案書後の回答確認、見積再送など）を優先
+- 14日以上音信がなく進行中案件がある場合は優先度 high
+- 7〜13日で次のアクションが示唆される場合は medium
+- 直近活動が3日以内なら対象外でよい
+
+## 出力ルール
+- 必ず以下のJSON形式のみを出力する。説明文・マークダウン記法・コードブロックは一切付けない
+- followups: フォローアップが必要な顧客リスト（優先度順）
+  - customerId, customerName
+  - priority: "high" / "medium" / "low"
+  - action: 推奨アクション（"架電" / "メール" / "訪問"）
+  - reason: なぜ今必要か（簡潔に）
+  - timing: いつまでに（"今週中" / "来週中" / "今月中"）
+- summary: 全体概要（何社が要フォローアップか等、1〜2文）
+
+{
+  "followups": [
+    {"customerId": "...", "customerName": "...", "priority": "high", "action": "架電", "reason": "...", "timing": "今週中"}
+  ],
+  "summary": "..."
+}`;
+
+const FOLLOWUP_ACTIVITY_LABELS: Record<string, string> = {
+	note: 'メモ', call: '電話', email: 'メール', meeting: '面談', deal_created: '案件登録'
+};
+
+export function buildCustomerFollowupSinglePrompt(input: {
+	customer: { name: string; status: string };
+	openDeals: { title: string; amount: number | null; notes: string | null }[];
+	activities: { type: string; content: string; createdAt: Date | string | number }[];
+	today: Date;
+}): string {
+	const fmt = (d: Date | string | number) => {
+		const dt = new Date(typeof d === 'number' ? d * 1000 : d);
+		return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`;
+	};
+	const daysSince = (d: Date | string | number) => {
+		const dt = new Date(typeof d === 'number' ? d * 1000 : d);
+		return Math.floor((input.today.getTime() - dt.getTime()) / 86400000);
+	};
+
+	const dealLines = input.openDeals.length > 0
+		? input.openDeals.map(d => `- ${d.title}${d.amount != null ? `（${d.amount.toLocaleString()}円）` : ''}${d.notes ? `：${d.notes}` : ''}`).join('\n')
+		: 'なし';
+
+	const actLines = input.activities.length > 0
+		? input.activities.map(a => `- ${fmt(a.createdAt)}（${daysSince(a.createdAt)}日前）【${FOLLOWUP_ACTIVITY_LABELS[a.type] ?? a.type}】${a.content}`).join('\n')
+		: 'なし';
+
+	return `## 今日の日付
+${fmt(input.today)}
+
+## 顧客情報
+- 会社名: ${input.customer.name}
+- ステータス: ${input.customer.status === 'active' ? '有効' : '無効'}
+
+## 進行中の案件
+${dealLines}
+
+## 活動履歴（直近10件、新しい順）
+${actLines}`;
+}
+
+export function buildCustomerFollowupListPrompt(input: {
+	summaries: {
+		customerId: string;
+		customerName: string;
+		openDeals: string[];
+		daysSinceLastActivity: number | null;
+		lastActivityType: string | null;
+		lastActivityContent: string | null;
+	}[];
+	period: string;
+	today: Date;
+}): string {
+	const fmt = (d: Date) =>
+		`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+
+	const customerBlocks = input.summaries.map(s => {
+		const actLine = s.daysSinceLastActivity != null
+			? `直近活動: ${s.daysSinceLastActivity}日前（${FOLLOWUP_ACTIVITY_LABELS[s.lastActivityType ?? ''] ?? s.lastActivityType}）「${s.lastActivityContent?.slice(0, 60) ?? ''}」`
+			: '活動履歴なし';
+		return `### ${s.customerName} [ID: ${s.customerId}]\n- 進行中案件: ${s.openDeals.join(' / ')}\n- ${actLine}`;
+	}).join('\n\n');
+
+	return `## 今日の日付
+${fmt(input.today)}
+
+## 対象期間
+${input.period}
+
+## 顧客サマリー（進行中案件あり）
+
+${customerBlocks}`;
 }
 
 export const CHAT_TITLE_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムのチャット履歴用タイトル生成AIです。
