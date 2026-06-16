@@ -86,6 +86,20 @@ export async function createReminderRow(
 	return toListRow(db, reminder);
 }
 
+export async function updateReminder(
+	db: Db,
+	id: string,
+	input: { remindAt: Date; content: string; channels: string[] }
+): Promise<ReminderListRow> {
+	await db.update(reminders).set({
+		remindAt: input.remindAt,
+		content: input.content,
+		channels: JSON.stringify(input.channels)
+	}).where(eq(reminders.id, id));
+	const [row] = await db.select().from(reminders).where(eq(reminders.id, id));
+	return toListRow(db, row);
+}
+
 export async function getReminder(db: Db, id: string): Promise<Reminder | null> {
 	const [row] = await db.select().from(reminders).where(eq(reminders.id, id));
 	return row ?? null;

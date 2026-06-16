@@ -33,8 +33,13 @@ export function formatJstDateTime(d: string | Date): string {
 	return `${year}/${month}/${day} ${hour}:${minute}`;
 }
 
+/** Date を `<input type="datetime-local">` 用の JST の "YYYY-MM-DDTHH:mm" 文字列に変換する。 */
+export function toJstDatetimeLocal(d: Date): string {
+	const { year, month, day, hour, minute } = getJstParts(d);
+	return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
 /** 現在時刻を `<input type="datetime-local">` 用の JST の "YYYY-MM-DDTHH:mm" 文字列に変換する。 */
 export function nowJstDatetimeLocal(): string {
-	const { year, month, day, hour, minute } = getJstParts(new Date());
-	return `${year}-${month}-${day}T${hour}:${minute}`;
+	return toJstDatetimeLocal(new Date());
 }

@@ -6,7 +6,7 @@
 	import type { FormField } from '$lib/types/chat';
 	import type { PageData } from './$types';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { formatJstDateTime, nowJstDatetimeLocal } from '$lib/datetime';
+	import { formatJstDateTime, nowJstDatetimeLocal, toJstDatetimeLocal } from '$lib/datetime';
 	import * as m from '$lib/paraglide/messages.js';
 
 	let { data }: { data: PageData } = $props();
@@ -24,12 +24,28 @@
 	};
 
 	let formKey = $state(0);
+	let editingRow = $state<ReminderListRow | null>(null);
+
 	function buildFormFields(): FormField[] {
+		const row = editingRow;
 		return [
-			{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true, value: nowJstDatetimeLocal() },
-			{ key: 'channels', label: '通知先', type: 'multiselect', required: true, value: 'notification', options: data.channelOptions },
-			{ key: 'content', label: '内容', type: 'textarea', required: true }
+			{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true,
+				value: row ? toJstDatetimeLocal(new Date(row.remindAt)) : nowJstDatetimeLocal() },
+			{ key: 'channels', label: '通知先', type: 'multiselect', required: true,
+				value: row ? row.channels.join(',') : 'notification', options: data.channelOptions },
+			{ key: 'content', label: '内容', type: 'textarea', required: true,
+				value: row ? row.content : '' }
 		];
+	}
+
+	function startEdit(row: ReminderListRow) {
+		editingRow = row;
+		formKey += 1;
+	}
+
+	function cancelEdit() {
+		editingRow = null;
+		formKey += 1;
 	}
 
 	let submitting = $state(false);
@@ -40,19 +56,37 @@
 		submitting = true;
 		formError = '';
 		try {
-			const res = await fetch('/api/reminders', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(values)
-			});
-			if (!res.ok) {
-				const err = (await res.json()) as { error?: string };
-				formError = err.error ?? '登録に失敗しました。';
-				return;
+			if (editingRow) {
+				const res = await fetch(`/api/reminders/${editingRow.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(values)
+				});
+				if (!res.ok) {
+					const err = (await res.json()) as { error?: string };
+					formError = err.error ?? '更新に失敗しました。';
+					return;
+				}
+				const updated = (await res.json()) as ReminderListRow;
+				rows = rows.map(r => r.id === updated.id ? updated : r)
+					.sort((a, b) => new Date(b.remindAt).getTime() - new Date(a.remindAt).getTime());
+				editingRow = null;
+				formKey += 1;
+			} else {
+				const res = await fetch('/api/reminders', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(values)
+				});
+				if (!res.ok) {
+					const err = (await res.json()) as { error?: string };
+					formError = err.error ?? '登録に失敗しました。';
+					return;
+				}
+				const row = (await res.json()) as ReminderListRow;
+				rows = [row, ...rows].sort((a, b) => new Date(b.remindAt).getTime() - new Date(a.remindAt).getTime());
+				formKey += 1;
 			}
-			const row = (await res.json()) as ReminderListRow;
-			rows = [row, ...rows].sort((a, b) => new Date(b.remindAt).getTime() - new Date(a.remindAt).getTime());
-			formKey += 1;
 		} finally {
 			submitting = false;
 		}
@@ -106,7 +140,13 @@
 
 	<section class="form-section">
 		{#key formKey}
-			<Form title="リマインダーを登録" fields={buildFormFields()} submitLabel="登録" onsubmit={handleSubmit} />
+			<Form
+				title={editingRow ? 'リマインダーを編集' : 'リマインダーを登録'}
+				fields={buildFormFields()}
+				submitLabel={editingRow ? '更新' : '登録'}
+				onsubmit={handleSubmit}
+				oncancel={editingRow ? cancelEdit : undefined}
+			/>
 		{/key}
 		{#if formError}
 			<p class="form-error">{formError}</p>
@@ -141,6 +181,9 @@
 								</span>
 							</td>
 							<td class="actions">
+								{#if row.status === 'pending'}
+									<button class="action-edit" onclick={() => startEdit(row)}>編集</button>
+								{/if}
 								<button class="action-del" onclick={() => deleteRow(row.id)}>削除</button>
 							</td>
 						</tr>
@@ -245,6 +288,16 @@
 	}
 
 	.actions { text-align: right; white-space: nowrap; width: 1%; }
+	.action-edit {
+		background: none;
+		border: none;
+		color: var(--color-primary);
+		font-size: 0.8125rem;
+		cursor: pointer;
+		padding: 0;
+		margin-right: 12px;
+	}
+	.action-edit:hover { text-decoration: underline; }
 	.action-del {
 		background: none;
 		border: none;
