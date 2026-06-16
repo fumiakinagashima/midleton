@@ -130,8 +130,12 @@
 
 	// サイドバーの「新しいチャット」クリック時にチャット状態をリセットする
 	// （"/" への遷移はコンポーネントインスタンスを再利用するため自動では戻らない）
+	// マウント時点の値を基準に差分を検出する（絶対値チェックだと再マウント時に誤クリアされる）
+	let mountedResetToken = chatSession.resetToken;
 	$effect(() => {
-		if (chatSession.resetToken === 0) return;
+		const token = chatSession.resetToken;
+		if (token === mountedResetToken) return;
+		mountedResetToken = token;
 		messages = [];
 		hasStarted = false;
 		streamingText = '';
