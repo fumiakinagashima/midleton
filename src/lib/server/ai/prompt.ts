@@ -45,7 +45,7 @@ export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステム�
   {"key":"postal_code","label":"郵便番号","type":"text"},
   {"key":"address","label":"住所","type":"text"},
   {"key":"website","label":"ホームページ","type":"text"},
-  {"key":"status","label":"ステータス","type":"select","options":[{"label":"アクティブ","value":"active"},{"label":"非アクティブ","value":"inactive"}]},
+  {"key":"status","label":"ステータス","type":"select","value":"active","options":[{"label":"有効","value":"active"},{"label":"無効","value":"inactive"}]},
   {"key":"notes","label":"備考","type":"textarea"}
 ]
 </ui>
@@ -69,6 +69,8 @@ export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステム�
 <ui type="table">
 {"columns":[{"key":"name","label":"会社名"},{"key":"email","label":"メール"},{"key":"status","label":"ステータス"}],"rows":[...取得したデータ...]}
 </ui>
+
+**テーブルのcolumnsには必ず日本語のlabelを指定すること。"name"/"status"/"email" などの英語フィールドキーをそのままlabelに使わない。**
 
 アクション選択の指定例（ユーザーに次の操作を選んでもらう場合）:
 <ui type="actions" title="どうしますか？">
@@ -568,7 +570,7 @@ ${fmt(new Date())}
 
 ## 顧客情報
 - 会社名: ${input.customer.name}
-- ステータス: ${input.customer.status === 'active' ? 'アクティブ' : '非アクティブ'}
+- ステータス: ${input.customer.status === 'active' ? '有効' : '無効'}
 - 登録日: ${fmt(input.customer.createdAt)}
 
 ## 案件
@@ -624,7 +626,7 @@ export function buildCustomerHandoverSummaryPrompt(input: {
 
 ## 顧客情報
 - 会社名: ${input.customer.name}
-- ステータス: ${input.customer.status === 'active' ? 'アクティブ' : '非アクティブ'}
+- ステータス: ${input.customer.status === 'active' ? '有効' : '無効'}
 - 登録日: ${fmt(input.customer.createdAt)}
 ${input.customer.notes ? `- 備考: ${input.customer.notes}` : ''}
 

@@ -105,7 +105,7 @@ export const tools: Tool[] = [
 	{
 		name: 'summarize_customers',
 		description:
-			'顧客数をステータス別（active/inactive）に集計する。「顧客数は何社？」「アクティブな顧客は？」などに使う。',
+			'顧客数をステータス別（active/inactive）に集計する。「顧客数は何社？」「有効な顧客は？」などに使う。',
 		input_schema: {
 			type: 'object',
 			properties: {
