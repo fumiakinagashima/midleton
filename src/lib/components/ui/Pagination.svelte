@@ -1,4 +1,7 @@
 <script lang="ts">
+	import ChevronLeft from '$lib/components/icon/ChevronLeft.svelte';
+	import ChevronRight from '$lib/components/icon/ChevronRight.svelte';
+
 	type Props = {
 		page: number;
 		totalPages: number;
@@ -31,9 +34,7 @@
 
 <nav class="pagination" aria-label="ページナビゲーション">
 	<button class="nav" onclick={() => go(page - 1)} disabled={page <= 1} aria-label="前のページ">
-		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-			<polyline points="15 18 9 12 15 6" />
-		</svg>
+		<ChevronLeft size={14} />
 	</button>
 
 	{#each pages as p}
@@ -45,18 +46,17 @@
 	{/each}
 
 	<button class="nav" onclick={() => go(page + 1)} disabled={page >= totalPages} aria-label="次のページ">
-		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-			<polyline points="9 18 15 12 9 6" />
-		</svg>
+		<ChevronRight size={14} />
 	</button>
 </nav>
 
-<style>
+<style lang="scss">
 	.pagination {
 		display: flex;
 		align-items: center;
 		gap: 4px;
 	}
+
 	button {
 		min-width: 32px;
 		height: 32px;
@@ -71,21 +71,24 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+
+		&:hover:not(:disabled):not(.active) {
+			background: var(--color-surface);
+			border-color: var(--color-primary);
+		}
+
+		&.active {
+			background: var(--color-primary);
+			border-color: var(--color-primary);
+			color: #fff;
+		}
+
+		&:disabled {
+			opacity: 0.35;
+			cursor: not-allowed;
+		}
 	}
-	button:hover:not(:disabled):not(.active) {
-		background: var(--color-surface);
-		border-color: var(--color-primary);
-	}
-	button.active {
-		background: var(--color-primary);
-		border-color: var(--color-primary);
-		color: #fff;
-	}
-	button:disabled {
-		opacity: 0.35;
-		cursor: not-allowed;
-	}
-	.nav svg { width: 14px; height: 14px; }
+
 	.ellipsis {
 		min-width: 32px;
 		height: 32px;

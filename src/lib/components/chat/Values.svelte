@@ -53,7 +53,7 @@
 	</dl>
 </div>
 
-<style>
+<style lang="scss">
 	.values {
 		padding: 14px 16px;
 		background: var(--color-surface);

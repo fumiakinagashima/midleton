@@ -234,11 +234,11 @@
 		<h2>拡張入力コントロール</h2>
 		<div class="grid2">
 			<SearchSelect label="国（検索付きSelect）" bind:value={searchSelectVal} options={searchOptions} />
-			<p class="val" style="align-self:end; padding-bottom:10px">選択: {searchSelectVal || 'なし'}</p>
+			<p class="val val-bottom">選択: {searchSelectVal || 'なし'}</p>
 			<TimePicker label="時刻" bind:value={timeVal} />
 			<DateTimePicker label="日時" bind:value={datetimeVal} />
 			<NumberInput label="数量" bind:value={numVal} min={0} max={100} step={5} suffix="個" />
-			<p class="val" style="align-self:end; padding-bottom:10px">値: {numVal}</p>
+			<p class="val val-bottom">値: {numVal}</p>
 		</div>
 	</section>
 
@@ -252,7 +252,7 @@
 	<!-- ファイルアップロード -->
 	<section>
 		<h2>ファイルアップロード</h2>
-		<div style="max-width: 480px">
+		<div class="upload-wrap">
 			<FileUpload label="添付ファイル" accept=".pdf,.xlsx,.csv" multiple />
 		</div>
 	</section>
@@ -308,7 +308,7 @@
 			<BarChart title="月別売上（万円）" data={barData} />
 			<LineChart title="四半期推移（万円）" data={lineData} color="var(--chart-3)" />
 		</div>
-		<div style="max-width: 420px; margin-top: 24px">
+		<div class="pie-wrap">
 			<PieChart title="顧客ステータス分布" data={pieData} />
 		</div>
 	</section>
@@ -320,7 +320,7 @@
 			<BarChart title="月別売上 グループ比較" series={multiBarSeries} mode="grouped" />
 			<BarChart title="月別売上 積み上げ" series={multiBarSeries} mode="stacked" />
 		</div>
-		<div style="margin-top: 24px">
+		<div class="chart-spacer">
 			<LineChart title="四半期推移 複数系列" series={multiLineSeries} />
 		</div>
 	</section>
@@ -361,7 +361,7 @@
 	</section>
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 32px 40px;
 		max-width: 960px;
@@ -390,6 +390,10 @@
 	.row { display: flex; gap: 12px; }
 	.val { font-size: 0.8125rem; color: var(--color-text-muted); }
 	.val.error { color: var(--color-danger); }
+	.val-bottom { align-self: end; padding-bottom: 10px; }
+	.upload-wrap { max-width: 480px; }
+	.pie-wrap { max-width: 420px; margin-top: 24px; }
+	.chart-spacer { margin-top: 24px; }
 	.btn-primary {
 		padding: 7px 14px;
 		background: var(--color-primary);

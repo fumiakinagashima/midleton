@@ -123,7 +123,7 @@
 	</div>
 </div>
 
-<style>
+<style lang="scss">
 	.kanban-wrap {
 		width: 100%;
 		overflow: hidden;

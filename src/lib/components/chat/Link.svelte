@@ -1,4 +1,7 @@
 <script lang="ts">
+	import ChevronRight from '$lib/components/icon/ChevronRight.svelte';
+	import Download from '$lib/components/icon/Download.svelte';
+
 	type Props = {
 		label: string;
 		href: string;
@@ -19,19 +22,13 @@
 		<span class="desc">{description}</span>
 	{/if}
 	{#if download}
-		<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-			<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-linecap="round" stroke-linejoin="round" />
-			<polyline points="7 10 12 15 17 10" stroke-linecap="round" stroke-linejoin="round" />
-			<line x1="12" y1="15" x2="12" y2="3" stroke-linecap="round" stroke-linejoin="round" />
-		</svg>
+		<Download size={16} class="icon" />
 	{:else}
-		<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-			<path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
-		</svg>
+		<ChevronRight size={16} class="icon" />
 	{/if}
 </a>
 
-<style>
+<style lang="scss">
 	.link-card {
 		position: relative;
 		display: flex;
@@ -45,11 +42,11 @@
 		background: var(--color-surface);
 		text-decoration: none;
 		transition: border-color 0.15s, background 0.15s;
-	}
 
-	.link-card:hover {
-		border-color: var(--color-primary);
-		background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+		&:hover {
+			border-color: var(--color-primary);
+			background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+		}
 	}
 
 	.label {
@@ -63,13 +60,11 @@
 		color: var(--color-text-muted);
 	}
 
-	.icon {
+	:global(.icon) {
 		position: absolute;
 		right: 12px;
 		top: 50%;
 		transform: translateY(-50%);
-		width: 16px;
-		height: 16px;
 		color: var(--color-text-muted);
 		flex-shrink: 0;
 	}

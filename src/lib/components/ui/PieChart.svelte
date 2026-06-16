@@ -56,7 +56,7 @@
 		<ul class="legend">
 			{#each slices as s}
 				<li>
-					<span class="dot" style="background:{s.color}"></span>
+					<span class="dot" style:background={s.color}></span>
 					<span class="lbl">{s.label}</span>
 					<span class="pct">{s.pct}</span>
 				</li>
@@ -65,7 +65,7 @@
 	</div>
 </figure>
 
-<style>
+<style lang="scss">
 	.chart { display: flex; flex-direction: column; gap: 6px; margin: 0; }
 	figcaption { font-size: 0.9375rem; font-weight: 600; color: var(--color-text); }
 	.wrap { display: flex; align-items: center; gap: 20px; }

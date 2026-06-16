@@ -29,6 +29,9 @@
 		isQuickActionId,
 		type QuickActionDef
 	} from '$lib/quick-actions/catalog';
+	import Plus from '$lib/components/icon/Plus.svelte';
+	import ArrowUp from '$lib/components/icon/ArrowUp.svelte';
+	import { CHAT_TITLE_MAX_LENGTH, CHAT_TEXTAREA_MAX_HEIGHT_PX, DEAL_STATUS_IDS } from '$lib/constants';
 
 	function renderMarkdown(text: string): string {
 		return filterXSS(marked.parse(text, { async: false }) as string);
@@ -186,8 +189,8 @@
 		if (!textareaEl) return;
 		textareaEl.style.height = 'auto';
 		const sh = textareaEl.scrollHeight;
-		if (sh >= 192) {
-			textareaEl.style.height = '192px';
+		if (sh >= CHAT_TEXTAREA_MAX_HEIGHT_PX) {
+			textareaEl.style.height = `${CHAT_TEXTAREA_MAX_HEIGHT_PX}px`;
 			textareaEl.style.overflowY = 'auto';
 		} else {
 			textareaEl.style.height = sh + 'px';
@@ -231,7 +234,7 @@
 
 	function chatTitleFrom(text: string): string {
 		const t = text.trim().replace(/\s+/g, ' ');
-		return t.length > 24 ? t.slice(0, 24) + '…' : t;
+		return t.length > CHAT_TITLE_MAX_LENGTH ? t.slice(0, CHAT_TITLE_MAX_LENGTH) + '…' : t;
 	}
 
 	async function persistMessage(message: Message, firstMessageText?: string) {
@@ -306,7 +309,7 @@
 	}
 
 	// 案件のステータス（進行中/受注/失注）をそのまま列にしたカンバン。ドラッグ&ドロップで status を更新できる。
-	const DEAL_KANBAN_STATUS_IDS = ['open', 'won', 'lost'];
+	const DEAL_KANBAN_STATUS_IDS = DEAL_STATUS_IDS;
 
 	function isDealStatusKanban(content: KanbanContent): boolean {
 		const ids = content.columns.map((c) => c.id);
@@ -627,14 +630,7 @@
 							aria-label="クイックアクション"
 							aria-expanded={quickActionMenuOpen}
 						>
-							<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-								<path
-									d="M8 2.5V13.5M2.5 8H13.5"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-								/>
-							</svg>
+							<Plus size={16} />
 						</button>
 						{#if quickActionMenuOpen}
 							<div class="quick-action-menu">
@@ -663,22 +659,14 @@
 					disabled={loading || !input.trim()}
 					aria-label="送信"
 				>
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-						<path
-							d="M8 13V3M8 3L3.5 7.5M8 3L12.5 7.5"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
+					<ArrowUp size={16} />
 				</button>
 			</div>
 		</div>
 	</div>
 </div>
 
-<style>
+<style lang="scss">
 	.chat {
 		position: relative;
 		display: flex;
@@ -942,7 +930,7 @@
 		resize: none;
 		overflow-y: hidden;
 		min-height: 26px;
-		max-height: 192px;
+		max-height: 192px; /* matches CHAT_TEXTAREA_MAX_HEIGHT_PX */
 		padding: 0;
 	}
 

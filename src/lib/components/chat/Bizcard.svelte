@@ -78,7 +78,7 @@
 	<Form title="担当者登録" fields={existingContactFields} onsubmit={handleSubmitExisting} />
 {/if}
 
-<style>
+<style lang="scss">
 	.bizcard-title {
 		font-size: 0.875rem;
 		font-weight: 600;

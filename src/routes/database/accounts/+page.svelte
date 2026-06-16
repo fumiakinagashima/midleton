@@ -121,8 +121,8 @@
 								<td><input type="text" bind:value={editName} class="edit-input" /></td>
 								<td><input type="text" bind:value={editRole} placeholder="役職" class="edit-input" /></td>
 								<td><input type="email" bind:value={editEmail} placeholder="メール" class="edit-input" /></td>
-								<td style="white-space: nowrap; width: 1%;">
-									<select bind:value={editPermission} class="edit-input" style="width: auto;">
+								<td class="perm-cell">
+									<select bind:value={editPermission} class="edit-input edit-select">
 										<option value="general">一般</option>
 										<option value="admin">管理者</option>
 									</select>
@@ -137,7 +137,7 @@
 								<td class="name-cell">{row.name}</td>
 								<td class="muted">{row.role ?? '—'}</td>
 								<td class="muted">{row.email ?? '—'}</td>
-								<td style="white-space: nowrap; width: 1%;">
+								<td class="perm-cell">
 									<span class="perm-badge" class:perm-admin={row.permission === 'admin'}>
 										{row.permission === 'admin' ? '管理者' : '一般'}
 									</span>
@@ -155,7 +155,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 24px 32px;
 		display: flex;
@@ -270,6 +270,8 @@
 	.name-cell { font-weight: 500; }
 	.muted { color: var(--color-text-muted); font-size: 0.875rem; }
 
+	.perm-cell { white-space: nowrap; width: 1%; }
+
 	.edit-row td { padding: 6px 8px; }
 	.edit-input {
 		width: 100%;
@@ -281,8 +283,9 @@
 		font-size: 0.875rem;
 		font-family: inherit;
 		box-sizing: border-box;
+		&:focus { outline: none; }
 	}
-	.edit-input:focus { outline: none; }
+	.edit-select { width: auto; }
 
 	.actions { text-align: right; white-space: nowrap; width: 1%; }
 	.action-link, .action-save {

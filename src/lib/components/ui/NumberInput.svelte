@@ -67,7 +67,7 @@
 	{#if error}<p class="err">{error}</p>{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.field { display: flex; flex-direction: column; gap: 4px; }
 	label { font-size: 0.875rem; color: var(--color-text-muted); }
 	.req { color: var(--color-danger); margin-left: 2px; }

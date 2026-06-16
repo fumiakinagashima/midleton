@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { toast } from '$lib/stores/toast.svelte';
+	import Check from '$lib/components/icon/Check.svelte';
+	import AlertCircle from '$lib/components/icon/AlertCircle.svelte';
+	import InfoCircle from '$lib/components/icon/InfoCircle.svelte';
 </script>
 
 {#if toast.items.length > 0}
@@ -7,17 +10,11 @@
 		{#each toast.items as item (item.id)}
 			<div class="toast" class:toast-success={item.type === 'success'} class:toast-error={item.type === 'error'} class:toast-info={item.type === 'info'}>
 				{#if item.type === 'success'}
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-						<polyline points="20 6 9 17 4 12"/>
-					</svg>
+					<Check size={16} />
 				{:else if item.type === 'error'}
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-					</svg>
+					<AlertCircle size={16} />
 				{:else}
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-					</svg>
+					<InfoCircle size={16} />
 				{/if}
 				<span>{item.message}</span>
 			</div>
@@ -25,7 +22,7 @@
 	</div>
 {/if}
 
-<style>
+<style lang="scss">
 	.toast-container {
 		position: fixed;
 		bottom: 24px;
@@ -49,22 +46,14 @@
 		max-width: 380px;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		animation: slideIn 0.2s ease;
-	}
 
-	.toast-success {
-		background: #16a34a;
-		color: #fff;
-	}
-
-	.toast-error {
-		background: #dc2626;
-		color: #fff;
-	}
-
-	.toast-info {
-		background: var(--color-surface, #fff);
-		color: var(--color-text, #111);
-		border: 1px solid var(--color-border, #e5e7eb);
+		&.toast-success { background: #16a34a; color: #fff; }
+		&.toast-error { background: #dc2626; color: #fff; }
+		&.toast-info {
+			background: var(--color-surface, #fff);
+			color: var(--color-text, #111);
+			border: 1px solid var(--color-border, #e5e7eb);
+		}
 	}
 
 	@keyframes slideIn {

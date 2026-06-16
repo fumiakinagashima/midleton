@@ -124,7 +124,7 @@
 	<button type="submit">{submitLabel ?? m.form_submit()}</button>
 </form>
 
-<style>
+<style lang="scss">
 	.form {
 		display: flex;
 		flex-direction: column;

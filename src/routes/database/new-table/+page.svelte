@@ -91,7 +91,7 @@
 	</form>
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 24px 32px;
 		display: flex;

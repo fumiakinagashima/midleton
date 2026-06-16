@@ -119,7 +119,7 @@
 		<div class="summary-card">
 			<div class="summary-head">
 				<h1 class="title">{row.title}</h1>
-				<span class="status-badge" style="color:{STATUS_COLORS[row.status]};border-color:{STATUS_COLORS[row.status]}">
+				<span class="status-badge status-{row.status}">
 					{STATUS_LABELS[row.status] ?? row.status}
 				</span>
 			</div>
@@ -160,7 +160,7 @@
 				{/if}
 				{#if aiReview}
 					<div class="ai-review-box">
-						<span class="risk-badge" style="color:{RISK_COLORS[aiReview.riskLevel]};border-color:{RISK_COLORS[aiReview.riskLevel]}">
+						<span class="risk-badge risk-{aiReview.riskLevel}">
 							リスク: {RISK_LABELS[aiReview.riskLevel] ?? aiReview.riskLevel}
 						</span>
 						<p class="ai-review-summary">{aiReview.summary}</p>
@@ -224,9 +224,8 @@
 			{:else}
 				<div class="route-list">
 					{#each row.route as step, i}
-						{@const color = STATUS_COLORS[step.status] ?? '#6b7280'}
 						<div class="step-card" class:step-active={step.status === 'pending' && row.status === 'pending'}>
-							<div class="step-icon" style="color:{color};border-color:{color}">
+							<div class="step-icon step-icon-{step.status}">
 								{STEP_ICONS[step.status] ?? '○'}
 							</div>
 							<div class="step-body">
@@ -235,7 +234,7 @@
 									<span class="step-approver">{step.approver}</span>
 									{#if step.role}<span class="step-meta">{step.role}</span>{/if}
 									{#if step.email}<span class="step-meta">{step.email}</span>{/if}
-									<span class="step-status" style="color:{color}">{STATUS_LABELS[step.status] ?? step.status}</span>
+									<span class="step-status step-status-{step.status}">{STATUS_LABELS[step.status] ?? step.status}</span>
 								</div>
 								{#if step.comment}
 									<p class="step-comment">"{step.comment}"</p>
@@ -269,7 +268,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 24px 32px;
 		display: flex;
@@ -316,6 +315,11 @@
 		border: 1px solid;
 		font-weight: 600;
 		white-space: nowrap;
+
+		&.status-pending { color: #ca8a04; border-color: #ca8a04; }
+		&.status-approved { color: #16a34a; border-color: #16a34a; }
+		&.status-rejected { color: #dc2626; border-color: #dc2626; }
+		&.status-cancelled { color: #6b7280; border-color: #6b7280; }
 	}
 	.meta-row { display: flex; flex-wrap: wrap; gap: 16px; }
 	.meta-item { display: flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--color-text-muted); }
@@ -374,6 +378,10 @@
 		border: 1px solid;
 		font-weight: 600;
 		white-space: nowrap;
+
+		&.risk-low { color: #16a34a; border-color: #16a34a; }
+		&.risk-medium { color: #ca8a04; border-color: #ca8a04; }
+		&.risk-high { color: #dc2626; border-color: #dc2626; }
 	}
 	.ai-review-summary { margin: 0; font-size: 0.9375rem; line-height: 1.7; }
 	.ai-review-group { display: flex; flex-direction: column; gap: 6px; }
@@ -439,19 +447,38 @@
 	}
 	.step-connector { width: 2px; height: 12px; background: var(--color-border); margin-left: 23px; }
 	.step-icon {
-		width: 28px; height: 28px;
+		width: 28px;
+		height: 28px;
 		border: 2px solid;
 		border-radius: 50%;
-		display: flex; align-items: center; justify-content: center;
-		font-size: 0.875rem; font-weight: 700;
-		flex-shrink: 0; margin-top: 2px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.875rem;
+		font-weight: 700;
+		flex-shrink: 0;
+		margin-top: 2px;
+
+		&.step-icon-pending { color: #ca8a04; border-color: #ca8a04; }
+		&.step-icon-approved { color: #16a34a; border-color: #16a34a; }
+		&.step-icon-rejected { color: #dc2626; border-color: #dc2626; }
+	}
+
+	.step-status {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		margin-left: auto;
+
+		&.step-status-pending { color: #ca8a04; }
+		&.step-status-approved { color: #16a34a; }
+		&.step-status-rejected { color: #dc2626; }
+		&.step-status-cancelled { color: #6b7280; }
 	}
 	.step-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 	.step-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 	.step-num { font-size: 0.75rem; color: var(--color-text-muted); }
 	.step-approver { font-weight: 600; font-size: 0.9375rem; }
 	.step-meta { font-size: 0.8125rem; color: var(--color-text-muted); }
-	.step-status { font-size: 0.8125rem; font-weight: 600; margin-left: auto; }
 	.step-comment { font-size: 0.875rem; color: var(--color-text-muted); font-style: italic; margin: 0; }
 	.step-date { font-size: 0.8125rem; color: var(--color-text-muted); margin: 0; }
 

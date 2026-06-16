@@ -55,7 +55,7 @@
 	</section>
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 32px;
 	}

@@ -53,7 +53,7 @@
 	</div>
 </div>
 
-<style>
+<style lang="scss">
 	.signin-page {
 		display: flex;
 		align-items: center;

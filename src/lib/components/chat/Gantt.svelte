@@ -80,7 +80,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.gantt-card {
 		border: 1px solid var(--color-border);
 		border-radius: 10px;

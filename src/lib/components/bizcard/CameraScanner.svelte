@@ -235,7 +235,7 @@
 	<canvas bind:this={workingCanvas} hidden></canvas>
 </div>
 
-<style>
+<style lang="scss">
 	.scanner {
 		width: 100%;
 		height: 100%;

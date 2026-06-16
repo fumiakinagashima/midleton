@@ -63,7 +63,7 @@
 	<p class="job-error">資料の生成に失敗しました: {job.error}</p>
 {/if}
 
-<style>
+<style lang="scss">
 	.job-pending {
 		display: flex;
 		align-items: center;

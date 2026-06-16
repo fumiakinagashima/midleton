@@ -20,7 +20,7 @@ SvelteKit + Claude AI + MCP サーバー構成。ユーザーはチャットで�
 midleton/
 ├── src/
 │   ├── routes/
-│   │   ├── +layout.svelte    # サイドバー・テーマ切り替え
+│   │   ├── +layout.svelte    # テーマ切り替え・通知ポーリング（サイドバーは Sidebar.svelte へ抽出済み）
 │   │   ├── +page.svelte      # チャット画面（/）
 │   │   ├── ui/               # UIコンポーネントデモ（/ui）
 │   │   ├── bizcard/          # 名刺取り込み（/bizcard）
@@ -33,16 +33,19 @@ midleton/
 │   │       ├── quick-actions/# クイックアクション実行 API（AIを介さず dispatchTool を直接呼び出し）
 │   │       └── database/     # データ管理 REST API（tables, records CRUD）
 │   ├── lib/
+│   │   ├── constants.ts  # ハードコーディングを避けるための定数集約（poll interval, max lengths, status colors 等）
 │   │   ├── components/
+│   │   │   ├── Sidebar.svelte  # サイドバー（チャット履歴・通知・ナビ。+layout.svelte から抽出）
 │   │   │   ├── ui/       # アプリUIコンポーネント（デザインシステム: Textbox, Select, Table, DataGrid, BarChart, LineChart 等）
 │   │   │   │               BarChart / LineChart は単一・複数系列（grouped / stacked）に対応
 │   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values, Gantt, Chart, Kanban, Link, Bizcard）
 │   │   │   ├── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor）
+│   │   │   ├── icon/     # SVGアイコンコンポーネント（Plus, X, ChevronDown, Bell, Settings 等）
 │   │   │   └── bizcard/  # 名刺スキャン専用コンポーネント（CameraScanner, cardDetector）
 │   │   ├── quick-actions/ # クイックアクションのカタログ定義（クライアント・サーバー共有、catalog.ts）
 │   │   ├── server/       # サーバーサイドロジック
 │   │   │   ├── db/       # DrizzleORM スキーマ・クエリ（schema.ts, table-service.ts）
-│   │   │   ├── mcp/      # MCPサーバー・ツール定義
+│   │   │   ├── mcp/      # MCPサーバー・ツール定義（ドメイン別ファイルに分割: customers, contacts, deals, activities, communication, documents, approvals, entities, search, integrations）
 │   │   │   ├── ai/       # Claude API 連携・システムプロンプト・モック
 │   │   │   ├── documents/ # Word/Excel/PowerPoint生成（docx, exceljs, pptxgenjs、日本語フォント対応）・R2保存とダウンロードリンク生成
 │   │   │   └── quick-actions/ # クイックアクションのツール実行・結果整形レジストリ（registry.ts）
@@ -154,7 +157,10 @@ midleton/
 
 ## 開発ルール
 
-- UIコンポーネントは `src/lib/components/` に集約する。アプリUI（デザインシステム）は `ui/`、AIがノーコードとしてレスポンスに返すコンポーネント（Form, Table, Values 等）は `chat/`、データ管理ページ専用コンポーネント（RecordForm, FieldEditor）は `database/` に配置する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
+- UIコンポーネントは `src/lib/components/` に集約する。アプリUI（デザインシステム）は `ui/`、AIがノーコードとしてレスポンスに返すコンポーネント（Form, Table, Values 等）は `chat/`、データ管理ページ専用コンポーネント（RecordForm, FieldEditor）は `database/`、SVGアイコンは `icon/` に配置する。AIが参照するコンポーネント仕様はシステムプロンプトで管理する。
+- SVGアイコンを新規追加する場合は `src/lib/components/icon/` に Svelte コンポーネントとして作成する（Props: `size?: number; class?: string`、`aria-hidden="true"`）。テンプレートに SVG を直書きしない。
+- コンポーネントの CSS は `<style lang="scss">` で記述する。SCSS ネスティングを活用してよい。動的な値は `style:property={value}` Svelte ディレクティブを使い、`style="..."` 属性は使わない。ステータス別の色など静的に定義できるものは CSS クラスで表現する（例: `class="status-badge status-{status}"`）。
+- ハードコードされた定数（ポーリング間隔・最大長・デフォルト件数等）は `src/lib/constants.ts` に集約する。
 - chat の `link` コンポーネントは `newTab="true"` 属性で別タブ表示（`target="_blank" rel="noopener noreferrer"`）に対応する。参照元レコードへのリンクなど、チャットの会話を中断させたくない場合に使う。
 - DBスキーマ変更は必ず Drizzle マイグレーションを通す。直接 D1 を操作しない。将来のインフラ移行を考慮し、D1 固有 API への直接依存を避ける（DrizzleORM 経由を徹底）。
 - 複数テーブル・複数レコードを同時に更新（登録・編集・削除）する場合は `db.batch([...])` で原子的に実行する。DrizzleORM の D1 ドライバの `db.transaction()`（BEGIN/COMMIT）はローカル（Miniflare）では動くが本番の D1 ではエラーになるため使用しない。`batch()` は実行前にクエリを全て組み立てる必要があり、前段の結果を読んで後続クエリの内容を分岐するような処理には使えない点に注意する。

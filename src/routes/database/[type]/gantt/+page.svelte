@@ -53,7 +53,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 0;
 		height: 100%;
