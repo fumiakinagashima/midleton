@@ -1,16 +1,16 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
 	import type { PageData } from './$types';
+	import Building from '$lib/components/icon/Building.svelte';
+	import User from '$lib/components/icon/User.svelte';
+	import Briefcase from '$lib/components/icon/Briefcase.svelte';
+	import Clipboard from '$lib/components/icon/Clipboard.svelte';
+	import Table from '$lib/components/icon/Table.svelte';
 
 	let { data }: { data: PageData } = $props();
 	const tables = $derived(data.tables);
 
-	const ICONS: Record<string, string> = {
-		building: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21h18M4 21V7l8-4 8 4v14M9 21v-5h6v5M9 9h1M14 9h1M9 13h1M14 13h1"/></svg>`,
-		user: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`,
-		briefcase: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M12 12v4M10 14h4"/></svg>`,
-		clipboard: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>`,
-		table: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>`
-	};
+	const ICON_MAP: Record<string, Component> = { building: Building, user: User, briefcase: Briefcase, clipboard: Clipboard, table: Table };
 </script>
 
 <div class="page">
@@ -22,8 +22,9 @@
 		<h2 class="section-title">コアテーブル</h2>
 		<div class="grid">
 			{#each tables.filter(t => t.isCore) as table}
+				{@const Icon = ICON_MAP[table.icon] ?? ICON_MAP.table}
 				<a href="/database/{table.id}" class="card">
-					<span class="card-icon">{@html ICONS[table.icon] ?? ICONS.table}</span>
+					<span class="card-icon"><Icon size={28} /></span>
 					<span class="card-label">{table.label}</span>
 					<span class="card-count">{table.count} 件</span>
 				</a>
@@ -44,8 +45,9 @@
 		{:else}
 			<div class="grid">
 				{#each tables.filter(t => !t.isCore) as table}
+					{@const Icon = ICON_MAP[table.icon] ?? ICON_MAP.table}
 					<a href="/database/{table.id}" class="card">
-						<span class="card-icon">{@html ICONS[table.icon] ?? ICONS.table}</span>
+						<span class="card-icon"><Icon size={28} /></span>
 						<span class="card-label">{table.label}</span>
 						<span class="card-count">{table.count} 件</span>
 					</a>
@@ -116,14 +118,8 @@
 	}
 
 	.card-icon {
-		width: 28px;
-		height: 28px;
 		color: var(--color-primary);
-	}
-
-	.card-icon :global(svg) {
-		width: 100%;
-		height: 100%;
+		display: flex;
 	}
 
 	.card-label {
