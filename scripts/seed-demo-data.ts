@@ -30,9 +30,12 @@ async function main() {
 	for (const deal of data.deals) {
 		await db.insert(deals).values(deal);
 	}
+	for (const activity of data.activities) {
+		await db.insert(activities).values(activity);
+	}
 
 	console.log(
-		`完了: 顧客 ${data.customers.length}件 / 担当者 ${data.contacts.length}件 / 案件 ${data.deals.length}件`
+		`完了: 顧客 ${data.customers.length}件 / 担当者 ${data.contacts.length}件 / 案件 ${data.deals.length}件 / 活動履歴 ${data.activities.length}件`
 	);
 	client.close();
 }

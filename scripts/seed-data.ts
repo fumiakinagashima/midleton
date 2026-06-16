@@ -36,13 +36,23 @@ export type DealSeed = {
 	notes: string;
 };
 
+export type ActivitySeed = {
+	id: string;
+	customerId: string;
+	type: 'note' | 'call' | 'email' | 'meeting';
+	content: string;
+	createdBy: string;
+	createdAt: Date;
+};
+
 export type SeedData = {
 	customers: CustomerSeed[];
 	contacts: ContactSeed[];
 	deals: DealSeed[];
+	activities: ActivitySeed[];
 };
 
-const TODAY = new Date(2026, 5, 12); // 2026-06-12
+const TODAY = new Date(2026, 5, 16); // 2026-06-16
 
 function fmtDate(d: Date): string {
 	const y = d.getFullYear();
@@ -198,10 +208,88 @@ const dealNotesByStatus: Record<'open' | 'won' | 'lost', string[]> = {
 	]
 };
 
+type ActivityTemplate = {
+	type: 'note' | 'call' | 'email' | 'meeting';
+	content: string;
+};
+
+// 顧客との商談進捗に沿った活動履歴テンプレート（時系列順）
+const activitySequences: ActivityTemplate[][] = [
+	// パターンA: メール → 架電 → 訪問 → 提案 → フォロー
+	[
+		{ type: 'email', content: '問い合わせへの返信メールを送付。サービス概要資料を添付。' },
+		{ type: 'call', content: '担当者と電話。現状の課題と導入時期の意向を確認。来週のオンライン打ち合わせを設定。' },
+		{ type: 'meeting', content: 'オンラインデモ実施。操作性について高評価をいただいた。詳細要件のヒアリングを次回実施予定。' },
+		{ type: 'email', content: '提案書・見積書を送付。2週間以内に社内検討の上、回答いただく予定。' },
+		{ type: 'call', content: '進捗確認の架電。担当者より「上長に確認中」との回答。来月上旬に再度連絡もらう予定。' },
+	],
+	// パターンB: 訪問 → 資料送付 → 再訪問 → 価格交渉 → メモ
+	[
+		{ type: 'meeting', content: '初回訪問。担当部長・システム担当と面談。現行システムの課題を詳しくヒアリングできた。' },
+		{ type: 'email', content: 'ヒアリング内容をまとめた課題整理シートと提案書の第一稿を送付。' },
+		{ type: 'meeting', content: '提案説明の訪問。導入効果のシミュレーション資料を使って説明。競合との比較質問あり。' },
+		{ type: 'call', content: '価格交渉の連絡。初期費用の削減希望あり。社内で検討の上、修正見積もりを提出予定。' },
+		{ type: 'note', content: '先方の決裁権限は部長まで。金額が500万円を超える場合は取締役承認が必要とのこと。' },
+	],
+	// パターンC: 架電 → メール → 会議 → ノート → 架電
+	[
+		{ type: 'call', content: '新規開拓の架電。担当者不在のため折り返し依頼。名刺交換済みの紹介経由。' },
+		{ type: 'email', content: '後日改めてサービス紹介メールを送付。資料ダウンロードリンクを案内。' },
+		{ type: 'meeting', content: '要件ヒアリング実施。現在Excelで管理している工程表のデジタル化ニーズが強い。カスタムテーブルでの対応可否を持ち帰り。' },
+		{ type: 'note', content: '競合はkintoneを検討中とのこと。価格よりも使い勝手・サポート体制が重視される傾向。' },
+		{ type: 'call', content: 'カスタマイズ可否の確認電話。対応可能な旨を伝え、詳細仕様書を来週中に送付予定。' },
+	],
+	// パターンD: 会議 → ノート → メール → 架電 → 会議
+	[
+		{ type: 'meeting', content: '展示会で名刺交換後のフォローアップ訪問。担当者の課題感が明確で、早期導入意向あり。' },
+		{ type: 'note', content: '年度末（3月）までの導入を希望。予算は既に確保済みとのこと。スピード重視で進める。' },
+		{ type: 'email', content: '標準導入スケジュール案と初期設定サポートの概要を送付。' },
+		{ type: 'call', content: 'スケジュール確認の架電。来月中旬の契約を目処に進めることで合意。' },
+		{ type: 'meeting', content: '契約前の最終確認MTG。追加要望として既存CSVデータの移行支援を依頼された。対応方針を検討中。' },
+	],
+	// パターンE: メール → ノート → 架電 → メール → ノート
+	[
+		{ type: 'email', content: 'Webお問い合わせフォームからの反応に返信。資料一式を送付。' },
+		{ type: 'note', content: '問い合わせ内容：「現在のCRMが使いにくく、AIで自動化できる部分を増やしたい」。ニーズ合致度が高い。' },
+		{ type: 'call', content: '担当者と初回通話。AIチャットでの操作方法に強い興味。来週のデモ日程を調整。' },
+		{ type: 'email', content: 'デモ前の事前アンケートを送付。業種・規模・現状ツールを確認予定。' },
+		{ type: 'note', content: 'アンケート回答確認。ユーザー数15名、Excelと別システムを併用中。移行コストの懸念あり。' },
+	],
+	// パターンF: 架電 → 会議 → ノート → 架電 → メール
+	[
+		{ type: 'call', content: '既存顧客からの紹介で架電。担当者は以前別会社でSFA導入経験あり、話が早かった。' },
+		{ type: 'meeting', content: '対面デモ実施。AIがフォームを動的生成するデモに驚いていた。その場で上長への社内展開を約束。' },
+		{ type: 'note', content: '意思決定者：情報システム部長（野村氏）。部長は来月まで海外出張中のため判断は来月以降。' },
+		{ type: 'call', content: '部長帰国後のフォロー架電。デモ資料を部長と共有済みとのこと。来週回答予定。' },
+		{ type: 'email', content: '改めてROI計算シートと導入事例資料を送付。部長向けの説明補足として。' },
+	],
+];
+
+function generateActivitiesForCustomer(customerId: string, contactName: string, daysAgo: number): ActivitySeed[] {
+	const sequence = pick(activitySequences);
+	const count = randInt(4, 6);
+	const selected = sequence.slice(0, count);
+
+	return selected.map((tmpl, i) => {
+		const daysOffset = daysAgo - Math.floor((daysAgo / count) * (count - 1 - i));
+		const jitter = randInt(-3, 3);
+		const createdAt = addDays(TODAY, -(daysOffset + jitter));
+		return {
+			id: crypto.randomUUID(),
+			customerId,
+			type: tmpl.type,
+			content: tmpl.content,
+			createdBy: '',
+			createdAt: createdAt < TODAY ? createdAt : addDays(TODAY, -1)
+		};
+	});
+}
+
 export function generateSeedData(): SeedData {
 	const customersOut: CustomerSeed[] = [];
 	const contactsOut: ContactSeed[] = [];
 	const dealsOut: DealSeed[] = [];
+	const activitiesOut: ActivitySeed[] = [];
 
 	for (const company of companies) {
 		const customerId = crypto.randomUUID();
@@ -218,6 +306,7 @@ export function generateSeedData(): SeedData {
 		});
 
 		const people = pickMany(peoplePool, randInt(1, 3));
+		const primaryContact = people[0];
 		for (const person of people) {
 			const { role, department } = pick(rolePool);
 			contactsOut.push({
@@ -231,6 +320,10 @@ export function generateSeedData(): SeedData {
 				department
 			});
 		}
+
+		const daysAgo = randInt(30, 150);
+		const acts = generateActivitiesForCustomer(customerId, primaryContact.name, daysAgo);
+		activitiesOut.push(...acts);
 
 		const titles = pickMany(dealTitles, randInt(3, 5));
 		for (const title of titles) {
@@ -264,5 +357,5 @@ export function generateSeedData(): SeedData {
 		}
 	}
 
-	return { customers: customersOut, contacts: contactsOut, deals: dealsOut };
+	return { customers: customersOut, contacts: contactsOut, deals: dealsOut, activities: activitiesOut };
 }
