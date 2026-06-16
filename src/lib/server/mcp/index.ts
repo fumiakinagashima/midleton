@@ -47,6 +47,7 @@ export type ToolName =
 	| 'create_activity'
 	| 'send_email'
 	| 'create_reminder'
+	| 'create_reminders_bulk'
 	| 'list_entity_types'
 	| 'create_app'
 	| 'get_entity_fields'
@@ -117,6 +118,7 @@ export async function dispatchTool(
 		case 'create_activity':                return activities.handleCreateActivity(db, input, env);
 		case 'send_email':                     return communication.handleSendEmail(db, input, env);
 		case 'create_reminder':                return communication.handleCreateReminder(db, input, env);
+		case 'create_reminders_bulk':          return communication.handleCreateRemindersBulk(db, input, env);
 		case 'list_entity_types':              return entities.handleListEntityTypes(db);
 		case 'create_app':                     return entities.handleCreateApp(db, input);
 		case 'get_entity_fields':              return entities.handleGetEntityFields(db, input);

@@ -42,6 +42,34 @@ export const tools: Tool[] = [
 			},
 			required: ['remind_at', 'content', 'channels']
 		}
+	},
+	{
+		name: 'create_reminders_bulk',
+		description:
+			'複数のリマインダーを一括登録する。フォローアップ提案などの一覧からまとめて登録する場合に使う。' +
+			'remind_at・channels は全件共通。内容（content）のみ件ごとに指定する。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				remind_at: { type: 'string', description: '共通の通知日時（YYYY-MM-DDTHH:mm形式）' },
+				channels: {
+					type: 'string',
+					description: '共通の通知先（カンマ区切り）。notification / email / slack:<integration_id>'
+				},
+				reminders: {
+					type: 'array',
+					description: '登録するリマインダーのリスト',
+					items: {
+						type: 'object',
+						properties: {
+							content: { type: 'string', description: 'リマインダーの内容' }
+						},
+						required: ['content']
+					}
+				}
+			},
+			required: ['remind_at', 'channels', 'reminders']
+		}
 	}
 ];
 
@@ -102,4 +130,32 @@ export async function handleCreateReminder(db: Db, input: unknown, env?: ToolEnv
 	const channelLabels = await resolveChannelLabels(db, channels);
 
 	return { ...reminder, channelLabels };
+}
+
+const createRemindersBulkSchema = z.object({
+	remind_at: z.string().min(1),
+	channels: z.string().min(1),
+	reminders: z.array(z.object({ content: z.string().min(1) })).min(1)
+});
+
+export async function handleCreateRemindersBulk(db: Db, input: unknown, env?: ToolEnv) {
+	const data = createRemindersBulkSchema.parse(input);
+	const channels = data.channels.split(',').map((c) => c.trim()).filter(Boolean);
+	const remindAt = parseJstDatetime(data.remind_at);
+	const accountId = env?.accountId ?? null;
+
+	const created = [];
+	for (const item of data.reminders) {
+		const reminder = await createReminder(db, { remindAt, content: item.content, channels, accountId });
+		created.push(reminder);
+	}
+
+	const channelLabels = await resolveChannelLabels(db, channels);
+
+	return {
+		count: created.length,
+		remind_at: data.remind_at,
+		channelLabels,
+		reminders: created.map((r) => ({ id: r.id, content: r.content }))
+	};
 }
