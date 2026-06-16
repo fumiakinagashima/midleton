@@ -1,4 +1,6 @@
 <script lang="ts">
+	import X from '$lib/components/icon/X.svelte';
+	import Plus from '$lib/components/icon/Plus.svelte';
 	import type { CustomFieldType, EditableField } from '$lib/server/db/table-service';
 
 	type LocalField = EditableField & { _id: string };
@@ -93,9 +95,7 @@
 							必須
 						</label>
 						<button type="button" class="remove-btn" onclick={() => removeField(field._id)} aria-label="フィールドを削除">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-							</svg>
+							<X size={14} />
 						</button>
 					</div>
 					{#if field.type === 'select'}
@@ -132,14 +132,12 @@
 	{/if}
 
 	<button type="button" class="add-btn" onclick={addField}>
-		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-		</svg>
+		<Plus size={14} />
 		フィールドを追加
 	</button>
 </div>
 
-<style>
+<style lang="scss">
 	.editor {
 		display: flex;
 		flex-direction: column;
@@ -176,11 +174,11 @@
 		font-size: 0.8125rem;
 	}
 
-	.input-label {
-		flex: 1;
-	}
+	.input-label { flex: 1; }
 
-	input[type="text"], select, textarea {
+	input[type="text"],
+	select,
+	textarea {
 		padding: 6px 10px;
 		border: 1px solid var(--color-border);
 		border-radius: 5px;
@@ -189,10 +187,8 @@
 		font-size: 0.875rem;
 		font-family: inherit;
 		outline: none;
-	}
 
-	input[type="text"]:focus, select:focus, textarea:focus {
-		border-color: var(--color-primary);
+		&:focus { border-color: var(--color-primary); }
 	}
 
 	select { padding: 6px 8px; min-width: 120px; }
@@ -218,10 +214,12 @@
 		border-radius: 4px;
 		flex-shrink: 0;
 		transition: color 0.15s, background 0.15s;
-	}
 
-	.remove-btn:hover { color: var(--color-danger, #dc2626); background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent); }
-	.remove-btn svg { width: 14px; height: 14px; }
+		&:hover {
+			color: var(--color-danger, #dc2626);
+			background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent);
+		}
+	}
 
 	.options-row {
 		display: flex;
@@ -260,8 +258,10 @@
 		transition: background 0.15s, color 0.15s;
 		width: 100%;
 		text-align: left;
-	}
 
-	.add-btn:hover { background: var(--color-border); color: var(--color-text); }
-	.add-btn svg { width: 14px; height: 14px; }
+		&:hover {
+			background: var(--color-border);
+			color: var(--color-text);
+		}
+	}
 </style>

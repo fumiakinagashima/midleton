@@ -38,7 +38,7 @@
 	{#if error}<p class="err">{error}</p>{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.field { display: flex; flex-direction: column; gap: 6px; }
 	.label { font-size: 0.875rem; color: var(--color-text-muted); }
 	.group { display: flex; flex-wrap: wrap; gap: 6px; }

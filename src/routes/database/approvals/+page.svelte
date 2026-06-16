@@ -69,7 +69,7 @@
 						<tr onclick={() => location.href = `/database/approvals/${row.id}`} class="clickable-row">
 							<td class="title-cell">{row.title}</td>
 							<td>
-								<span class="status-badge" style="color:{STATUS_COLORS[row.status]};border-color:{STATUS_COLORS[row.status]}">
+								<span class="status-badge status-{row.status}">
 									{STATUS_LABELS[row.status] ?? row.status}
 								</span>
 							</td>
@@ -88,7 +88,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 24px 32px;
 		display: flex;
@@ -107,11 +107,12 @@
 		align-items: center;
 		gap: 8px;
 		font-size: 0.9375rem;
+
+		a { color: var(--color-primary); text-decoration: none; &:hover { text-decoration: underline; } }
+		span:last-child { font-weight: 600; }
 	}
-	.breadcrumb a { color: var(--color-primary); text-decoration: none; }
-	.breadcrumb a:hover { text-decoration: underline; }
+
 	.sep { color: var(--color-text-muted); }
-	.breadcrumb span:last-child { font-weight: 600; }
 
 	.btn-primary {
 		padding: 7px 14px;
@@ -134,6 +135,7 @@
 
 	table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
 	thead { background: var(--color-surface); }
+
 	th {
 		padding: 9px 14px;
 		text-align: left;
@@ -143,6 +145,7 @@
 		border-bottom: 1px solid var(--color-border);
 		white-space: nowrap;
 	}
+
 	td {
 		padding: 10px 14px;
 		border-bottom: 1px solid var(--color-border);
@@ -151,10 +154,14 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+
 	tbody tr:last-child td { border-bottom: none; }
 
-	.clickable-row { cursor: pointer; transition: background 0.1s; }
-	.clickable-row:hover { background: var(--color-surface); }
+	.clickable-row {
+		cursor: pointer;
+		transition: background 0.1s;
+		&:hover { background: var(--color-surface); }
+	}
 
 	.title-cell { font-weight: 500; }
 
@@ -165,16 +172,23 @@
 		border: 1px solid;
 		font-weight: 500;
 		white-space: nowrap;
+
+		&.status-pending { color: #ca8a04; border-color: #ca8a04; }
+		&.status-approved { color: #16a34a; border-color: #16a34a; }
+		&.status-rejected { color: #dc2626; border-color: #dc2626; }
+		&.status-cancelled { color: #6b7280; border-color: #6b7280; }
 	}
 
 	.actions { text-align: right; white-space: nowrap; width: 1%; }
+
 	.action-link {
 		color: var(--color-primary);
 		text-decoration: none;
 		font-size: 0.8125rem;
 		margin-right: 10px;
+		&:hover { text-decoration: underline; }
 	}
-	.action-link:hover { text-decoration: underline; }
+
 	.action-del {
 		background: none;
 		border: none;
@@ -182,8 +196,8 @@
 		font-size: 0.8125rem;
 		cursor: pointer;
 		padding: 0;
+		&:hover { text-decoration: underline; }
 	}
-	.action-del:hover { text-decoration: underline; }
 
 	.empty {
 		display: flex;

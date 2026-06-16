@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Check from '$lib/components/icon/Check.svelte';
 	import type { ActionItem } from '$lib/types/chat';
 
 	type Props = {
@@ -36,31 +37,32 @@
 					<span class="desc">{action.description}</span>
 				{/if}
 				{#if selected === action.id}
-					<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-						<polyline points="20 6 9 17 4 12" />
-					</svg>
+					<Check size={16} class="check" />
 				{/if}
 			</button>
 		{/each}
 	</div>
 </div>
 
-<style>
+<style lang="scss">
 	.selector {
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
 		max-width: 420px;
 	}
+
 	.title {
 		font-size: 0.875rem;
 		color: var(--color-text-muted);
 	}
+
 	.actions {
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
 	}
+
 	button {
 		position: relative;
 		display: flex;
@@ -74,33 +76,37 @@
 		text-align: left;
 		cursor: pointer;
 		transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+
+		&:hover:not(:disabled) {
+			border-color: var(--color-primary);
+			background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+		}
+
+		&.selected {
+			border-color: var(--color-primary);
+			background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+		}
+
+		&.dimmed { opacity: 0.4; }
+		&:disabled { cursor: default; }
 	}
-	button:hover:not(:disabled) {
-		border-color: var(--color-primary);
-		background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
-	}
-	button.selected {
-		border-color: var(--color-primary);
-		background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
-	}
-	button.dimmed { opacity: 0.4; }
-	button:disabled { cursor: default; }
+
 	.label {
 		font-size: 0.9375rem;
 		font-weight: 500;
 		color: var(--color-text);
 	}
+
 	.desc {
 		font-size: 0.8125rem;
 		color: var(--color-text-muted);
 	}
-	.check {
+
+	:global(.check) {
 		position: absolute;
 		right: 12px;
 		top: 50%;
 		transform: translateY(-50%);
-		width: 16px;
-		height: 16px;
 		color: var(--color-primary);
 		flex-shrink: 0;
 	}

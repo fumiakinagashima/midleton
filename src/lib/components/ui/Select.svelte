@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ChevronDown from '$lib/components/icon/ChevronDown.svelte';
+
 	type Option = { value: string; label: string };
 
 	type Props = {
@@ -35,18 +37,34 @@
 				<option value={opt.value}>{opt.label}</option>
 			{/each}
 		</select>
-		<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<polyline points="6 9 12 15 18 9" />
-		</svg>
+		<ChevronDown size={14} class="arrow" />
 	</div>
 	{#if error}<p class="err">{error}</p>{/if}
 </div>
 
-<style>
-	.field { display: flex; flex-direction: column; gap: 4px; }
-	label { font-size: 0.875rem; color: var(--color-text-muted); }
-	.req { color: var(--color-danger); margin-left: 2px; }
-	.wrap { position: relative; display: flex; align-items: center; }
+<style lang="scss">
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	label {
+		font-size: 0.875rem;
+		color: var(--color-text-muted);
+	}
+
+	.req {
+		color: var(--color-danger);
+		margin-left: 2px;
+	}
+
+	.wrap {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
 	select {
 		width: 100%;
 		padding: 8px 32px 8px 10px;
@@ -59,17 +77,19 @@
 		appearance: none;
 		cursor: pointer;
 		transition: border-color 0.15s;
+
+		&:focus { border-color: var(--color-primary); }
+		&:disabled { opacity: 0.5; cursor: not-allowed; }
 	}
-	select:focus { border-color: var(--color-primary); }
-	select:disabled { opacity: 0.5; cursor: not-allowed; }
+
 	.has-error select { border-color: var(--color-danger); }
-	.arrow {
+
+	:global(.arrow) {
 		position: absolute;
 		right: 10px;
-		width: 14px;
-		height: 14px;
 		color: var(--color-text-muted);
 		pointer-events: none;
 	}
+
 	.err { font-size: 0.75rem; color: var(--color-danger); }
 </style>

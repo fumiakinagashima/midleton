@@ -24,7 +24,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.row { display: flex; align-items: center; gap: 10px; }
 	.row.disabled { opacity: 0.5; }
 	.sr-only {

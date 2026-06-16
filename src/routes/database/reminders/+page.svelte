@@ -136,7 +136,7 @@
 							<td class="content-cell">{row.content}</td>
 							<td class="muted">{row.channelLabels.join(' / ')}</td>
 							<td>
-								<span class="status-badge" style="color:{STATUS_COLORS[row.status]};border-color:{STATUS_COLORS[row.status]}">
+								<span class="status-badge status-{row.status}">
 									{STATUS_LABELS[row.status] ?? row.status}
 								</span>
 							</td>
@@ -151,7 +151,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 24px 32px;
 		display: flex;
@@ -238,6 +238,10 @@
 		border: 1px solid;
 		font-weight: 500;
 		white-space: nowrap;
+
+		&.status-pending { color: #ca8a04; border-color: #ca8a04; }
+		&.status-sent { color: #16a34a; border-color: #16a34a; }
+		&.status-failed { color: #dc2626; border-color: #dc2626; }
 	}
 
 	.actions { text-align: right; white-space: nowrap; width: 1%; }

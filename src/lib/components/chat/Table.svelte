@@ -38,7 +38,7 @@
 	<p class="count">{m.table_count({ count: rows.length })}</p>
 </div>
 
-<style>
+<style lang="scss">
 	.table-wrapper {
 		overflow-x: auto;
 	}

@@ -94,7 +94,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.container { display: flex; flex-direction: column; gap: 12px; }
 	.wrap {
 		overflow-x: auto;

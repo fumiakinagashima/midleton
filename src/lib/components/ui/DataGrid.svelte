@@ -201,7 +201,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.grid-wrap { display: flex; flex-direction: column; gap: 0; }
 
 	.scroll {

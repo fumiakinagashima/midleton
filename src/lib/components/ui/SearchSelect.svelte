@@ -1,4 +1,7 @@
 <script lang="ts">
+	import X from '$lib/components/icon/X.svelte';
+	import ChevronDown from '$lib/components/icon/ChevronDown.svelte';
+
 	type Option = { value: string; label: string };
 
 	type Props = {
@@ -116,16 +119,12 @@
 		{/if}
 
 		{#if value && !open}
-			<button type="button" class="icon-btn" onclick={clear} tabindex="-1" aria-label="クリア">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-					<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-				</svg>
+			<button type="button" class="icon-btn clear-btn" onclick={clear} tabindex="-1" aria-label="クリア">
+				<X size={14} />
 			</button>
 		{:else}
 			<span class="icon-btn" aria-hidden="true">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<polyline points="6 9 12 15 18 9" />
-				</svg>
+				<ChevronDown size={14} />
 			</span>
 		{/if}
 	</div>
@@ -151,8 +150,14 @@
 	{#if error}<p class="err">{error}</p>{/if}
 </div>
 
-<style>
-	.field { display: flex; flex-direction: column; gap: 4px; position: relative; }
+<style lang="scss">
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		position: relative;
+	}
+
 	.label { font-size: 0.875rem; color: var(--color-text-muted); }
 	.req { color: var(--color-danger); margin-left: 2px; }
 
@@ -164,9 +169,13 @@
 		border-radius: 6px;
 		background: var(--color-background);
 		transition: border-color 0.15s;
+
+		&.open,
+		&:focus-within { border-color: var(--color-primary); }
+
+		&.disabled { opacity: 0.5; pointer-events: none; }
 	}
-	.trigger.open, .trigger:focus-within { border-color: var(--color-primary); }
-	.trigger.disabled { opacity: 0.5; pointer-events: none; }
+
 	.has-error .trigger { border-color: var(--color-danger); }
 
 	.display {
@@ -179,8 +188,9 @@
 		text-align: left;
 		cursor: pointer;
 		min-width: 0;
+
+		.muted { color: var(--color-text-muted); }
 	}
-	.display .muted { color: var(--color-text-muted); }
 
 	.search {
 		flex: 1;
@@ -205,13 +215,14 @@
 		color: var(--color-text-muted);
 		flex-shrink: 0;
 	}
-	button.icon-btn:hover { color: var(--color-danger); }
-	.icon-btn svg { width: 14px; height: 14px; }
+
+	button.clear-btn:hover { color: var(--color-danger); }
 
 	.dropdown {
 		position: absolute;
 		top: calc(100% + 4px);
-		left: 0; right: 0;
+		left: 0;
+		right: 0;
 		list-style: none;
 		background: var(--color-background);
 		border: 1px solid var(--color-border);
@@ -219,20 +230,25 @@
 		max-height: 220px;
 		overflow-y: auto;
 		z-index: 50;
-		box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+
+		li {
+			padding: 8px 12px;
+			font-size: 0.9375rem;
+			cursor: pointer;
+			color: var(--color-text);
+
+			&.hl { background: var(--color-surface); }
+
+			&.selected {
+				color: var(--color-primary);
+				font-weight: 500;
+				background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+			}
+
+			&.empty { color: var(--color-text-muted); cursor: default; }
+		}
 	}
-	.dropdown li {
-		padding: 8px 12px;
-		font-size: 0.9375rem;
-		cursor: pointer;
-		color: var(--color-text);
-	}
-	.dropdown li.hl { background: var(--color-surface); }
-	.dropdown li.selected {
-		color: var(--color-primary);
-		font-weight: 500;
-		background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-	}
-	.dropdown li.empty { color: var(--color-text-muted); cursor: default; }
+
 	.err { font-size: 0.75rem; color: var(--color-danger); }
 </style>

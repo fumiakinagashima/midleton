@@ -176,10 +176,10 @@
 			{#if healthScore}
 				<div class="ai-review-box">
 					<div class="health-score-row">
-						<span class="health-score-value" style="color:{HEALTH_LEVEL_COLORS[healthScore.level]}">
+						<span class="health-score-value health-level-{healthScore.level}">
 							{healthScore.score}<span class="health-score-max">/100</span>
 						</span>
-						<span class="risk-badge" style="color:{HEALTH_LEVEL_COLORS[healthScore.level]};border-color:{HEALTH_LEVEL_COLORS[healthScore.level]}">
+						<span class="risk-badge health-level-{healthScore.level}">
 							{HEALTH_LEVEL_LABELS[healthScore.level] ?? healthScore.level}
 						</span>
 					</div>
@@ -254,7 +254,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 24px 32px;
 		display: flex;
@@ -432,6 +432,11 @@
 		font-weight: 600;
 		white-space: nowrap;
 	}
+
+	.health-level-excellent { color: #16a34a; border-color: #16a34a; }
+	.health-level-good { color: #2563eb; border-color: #2563eb; }
+	.health-level-fair { color: #d97706; border-color: #d97706; }
+	.health-level-poor { color: #dc2626; border-color: #dc2626; }
 
 	.ai-review-summary { margin: 0; font-size: 0.9375rem; line-height: 1.7; }
 	.health-score-updated { margin: 0; font-size: 0.75rem; color: var(--color-text-muted); }

@@ -14,7 +14,7 @@
 {#if items.length === 0}
 	<p class="empty">{empty}</p>
 {:else}
-	<div class="grid" style="--cols: {columns}">
+	<div class="grid" style:--cols={columns}>
 		{#each items as item}
 			<div class="card">
 				{@render card(item)}
@@ -23,7 +23,7 @@
 	</div>
 {/if}
 
-<style>
+<style lang="scss">
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(var(--cols, 3), 1fr);

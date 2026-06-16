@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import * as m from '$lib/paraglide/messages.js';
 	import { notificationCenter, type NotificationItem } from '$lib/stores/notifications.svelte';
+	import X from '$lib/components/icon/X.svelte';
 
 	type Props = {
 		open: boolean;
@@ -35,9 +36,7 @@
 	<div class="drawer-header">
 		<h2>{m.notifications()}</h2>
 		<button class="close-btn" onclick={onclose} aria-label="閉じる">
-			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<path d="M18 6L6 18M6 6l12 12" />
-			</svg>
+			<X size={16} />
 		</button>
 	</div>
 
@@ -59,7 +58,7 @@
 	</div>
 </aside>
 
-<style>
+<style lang="scss">
 	.overlay {
 		position: fixed;
 		inset: 0;
@@ -68,11 +67,11 @@
 		opacity: 0;
 		pointer-events: none;
 		transition: opacity 0.25s ease;
-	}
 
-	.overlay.open {
-		opacity: 1;
-		pointer-events: auto;
+		&.open {
+			opacity: 1;
+			pointer-events: auto;
+		}
 	}
 
 	.drawer {
@@ -90,10 +89,8 @@
 		flex-direction: column;
 		transform: translateX(-100%);
 		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	}
 
-	.drawer.open {
-		transform: translateX(0);
+		&.open { transform: translateX(0); }
 	}
 
 	.drawer-header {
@@ -102,13 +99,13 @@
 		justify-content: space-between;
 		padding: 16px 16px 12px;
 		border-bottom: 1px solid var(--color-border);
-	}
 
-	.drawer-header h2 {
-		margin: 0;
-		font-size: 1rem;
-		font-weight: 600;
-		color: var(--color-text);
+		h2 {
+			margin: 0;
+			font-size: 1rem;
+			font-weight: 600;
+			color: var(--color-text);
+		}
 	}
 
 	.close-btn {
@@ -123,11 +120,11 @@
 		color: var(--color-text-muted);
 		cursor: pointer;
 		transition: background 0.15s, color 0.15s;
-	}
 
-	.close-btn:hover {
-		background: var(--color-background);
-		color: var(--color-text);
+		&:hover {
+			background: var(--color-background);
+			color: var(--color-text);
+		}
 	}
 
 	.drawer-body {
@@ -158,10 +155,8 @@
 		text-align: left;
 		cursor: pointer;
 		transition: background 0.12s ease;
-	}
 
-	.notification-item:hover {
-		background: var(--color-background);
+		&:hover { background: var(--color-background); }
 	}
 
 	.unread-dot {
@@ -174,8 +169,9 @@
 		visibility: hidden;
 	}
 
-	.notification-item.unread .unread-dot {
-		visibility: visible;
+	.notification-item.unread {
+		.unread-dot { visibility: visible; }
+		.notification-title { font-weight: 700; }
 	}
 
 	.notification-content {
@@ -190,10 +186,6 @@
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: var(--color-text);
-	}
-
-	.notification-item.unread .notification-title {
-		font-weight: 700;
 	}
 
 	.notification-body {

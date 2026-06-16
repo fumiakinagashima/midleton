@@ -288,14 +288,13 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.scanner {
 		display: flex;
 		flex-direction: column;
 		gap: 24px;
 	}
 
-	/* ---- Capture area ---- */
 	.capture-area {
 		display: flex;
 		flex-direction: column;
@@ -312,11 +311,10 @@
 		cursor: pointer;
 		text-decoration: underline;
 		padding: 0;
+
+		&:hover { color: var(--color-text); }
 	}
 
-	.mode-link:hover { color: var(--color-text); }
-
-	/* ---- Upload zone ---- */
 	.upload-zone {
 		max-width: 480px;
 		min-height: 220px;
@@ -330,20 +328,18 @@
 		overflow: hidden;
 		transition: border-color 0.15s, background 0.15s;
 		cursor: pointer;
-	}
 
-	.upload-zone.dragging {
-		border-color: var(--color-primary);
-		background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
-	}
+		&.dragging {
+			border-color: var(--color-primary);
+			background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+		}
 
-	.upload-zone.has-preview {
-		min-height: 220px;
-		cursor: default;
-	}
+		&.has-preview {
+			min-height: 220px;
+			cursor: default;
+		}
 
-	.camera-zone {
-		display: block;
+		&.camera-zone { display: block; }
 	}
 
 	.capture-overlay {
@@ -369,12 +365,12 @@
 		align-items: center;
 		justify-content: center;
 		gap: 14px;
-	}
 
-	.overlay p {
-		font-size: 0.9375rem;
-		color: var(--color-text-muted);
-		margin: 0;
+		p {
+			font-size: 0.9375rem;
+			color: var(--color-text-muted);
+			margin: 0;
+		}
 	}
 
 	.placeholder {
@@ -384,13 +380,13 @@
 		gap: 10px;
 		padding: 32px;
 		text-align: center;
-	}
 
-	.placeholder svg {
-		width: 48px;
-		height: 48px;
-		color: var(--color-text-muted);
-		opacity: 0.5;
+		svg {
+			width: 48px;
+			height: 48px;
+			color: var(--color-text-muted);
+			opacity: 0.5;
+		}
 	}
 
 	.ph-title {
@@ -422,15 +418,12 @@
 		font-weight: 500;
 		cursor: pointer;
 		transition: opacity 0.15s;
+
+		&:hover { opacity: 0.88; }
+
+		input { display: none; }
 	}
 
-	.upload-btn:hover { opacity: 0.88; }
-
-	.upload-btn input {
-		display: none;
-	}
-
-	/* ---- Spinner ---- */
 	.spinner {
 		width: 36px;
 		height: 36px;
@@ -444,7 +437,6 @@
 		to { transform: rotate(360deg); }
 	}
 
-	/* ---- Results ---- */
 	.results-wrap {
 		display: flex;
 		flex-direction: column;
@@ -477,9 +469,9 @@
 		cursor: pointer;
 		text-decoration: underline;
 		padding: 0;
-	}
 
-	.reset-btn:hover { color: var(--color-text); }
+		&:hover { color: var(--color-text); }
+	}
 
 	.fields {
 		display: flex;
@@ -496,10 +488,8 @@
 		gap: 12px;
 		padding: 12px 16px;
 		border-bottom: 1px solid var(--color-border);
-	}
 
-	.field-row:last-child {
-		border-bottom: none;
+		&:last-child { border-bottom: none; }
 	}
 
 	.field-icon {
@@ -507,11 +497,8 @@
 		width: 18px;
 		height: 18px;
 		color: var(--color-text-muted);
-	}
 
-	.field-icon svg {
-		width: 18px;
-		height: 18px;
+		svg { width: 18px; height: 18px; }
 	}
 
 	.field-label {
@@ -562,22 +549,18 @@
 		border: none;
 		cursor: pointer;
 		transition: opacity 0.15s;
+
+		&.primary { background: var(--color-primary); color: #fff; }
+
+		&.secondary {
+			background: var(--color-surface);
+			border: 1px solid var(--color-border);
+			color: var(--color-text);
+		}
+
+		&:hover { opacity: 0.88; }
 	}
 
-	.action-btn.primary {
-		background: var(--color-primary);
-		color: #fff;
-	}
-
-	.action-btn.secondary {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		color: var(--color-text);
-	}
-
-	.action-btn:hover { opacity: 0.88; }
-
-	/* ---- Error ---- */
 	.error-box {
 		max-width: 480px;
 		background: color-mix(in srgb, var(--color-danger) 8%, transparent);
@@ -588,22 +571,22 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
-	}
 
-	.error-box p {
-		margin: 0;
-		font-size: 0.9375rem;
-		color: var(--color-danger);
-	}
+		p {
+			margin: 0;
+			font-size: 0.9375rem;
+			color: var(--color-danger);
+		}
 
-	.error-box button {
-		font-size: 0.875rem;
-		background: none;
-		border: 1px solid var(--color-danger);
-		color: var(--color-danger);
-		border-radius: 6px;
-		padding: 5px 14px;
-		cursor: pointer;
-		white-space: nowrap;
+		button {
+			font-size: 0.875rem;
+			background: none;
+			border: 1px solid var(--color-danger);
+			color: var(--color-danger);
+			border-radius: 6px;
+			padding: 5px 14px;
+			cursor: pointer;
+			white-space: nowrap;
+		}
 	}
 </style>

@@ -11,7 +11,7 @@
 	<BizcardScanner />
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 40px;
 		display: flex;

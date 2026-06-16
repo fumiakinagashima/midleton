@@ -172,13 +172,13 @@
 		}))
 	);
 
-	function barStyle(deal: (typeof displayDeals)[0]): string | null {
+	function barStyle(deal: (typeof displayDeals)[0]): { x: number; width: number; bg: string; border: string } | null {
 		if (!deal.plannedStart || !deal.plannedEnd) return null;
 		const x = msToX(new Date(deal.plannedStart).getTime());
 		const endX = msToX(new Date(deal.plannedEnd).getTime() + 86400000);
 		const width = Math.max(endX - x, pxPerDay);
 		const s = STATUS[deal.status] ?? STATUS.open;
-		return `left:${x}px;width:${width}px;background:${s.bg};border-color:${s.border}`;
+		return { x, width, bg: s.bg, border: s.border };
 	}
 
 	function getHandleSize(barWidth: number): number {
@@ -290,7 +290,7 @@
 
 <svelte:window onmousemove={onMouseMove} onmouseup={onMouseUp} />
 
-<div class="gantt" bind:this={ganttEl} style="cursor:{cursor}">
+<div class="gantt" bind:this={ganttEl} style:cursor={cursor}>
 	<!-- ── Controls ──────────────────────────────────────────────────────── -->
 	<div class="controls">
 		<span class="zoom-label">ズーム</span>
@@ -302,17 +302,17 @@
 
 	<!-- ── Header ────────────────────────────────────────────────────────── -->
 	<div class="gantt-head">
-		<div class="left-head" style="width:{LEFT_W}px">
+		<div class="left-head" style:width="{LEFT_W}px">
 			<div class="lh-col title">案件名</div>
 			{#if showCustomer}<div class="lh-col customer">顧客</div>{/if}
 			{#if showDates}<div class="lh-col dates">期間</div>{/if}
 			{#if showStatus}<div class="lh-col status">状況</div>{/if}
 		</div>
 		<div class="right-head" bind:this={rightHeadEl}>
-			<div class="rh-inner" style="width:{chartWidth}px">
+			<div class="rh-inner" style:width="{chartWidth}px">
 				<div class="rh-row months">
 					{#each months as mo}
-						<div class="rh-month" style="left:{mo.x}px;width:{mo.width}px">{mo.label}</div>
+						<div class="rh-month" style:left="{mo.x}px" style:width="{mo.width}px">{mo.label}</div>
 					{/each}
 				</div>
 				{#if zoom > 0}
@@ -321,7 +321,8 @@
 							<div
 								class="rh-sub"
 								class:weekend={zoom === 3 && s.isWeekend}
-								style="left:{s.x}px;width:{pxPerDay * (zoom === 3 ? 1 : 7)}px"
+								style:left="{s.x}px"
+								style:width="{pxPerDay * (zoom === 3 ? 1 : 7)}px"
 							>{s.label}</div>
 						{/each}
 					</div>
@@ -333,9 +334,9 @@
 	<!-- ── Body ──────────────────────────────────────────────────────────── -->
 	<div class="gantt-body">
 		<!-- Left panel -->
-		<div class="left-body" style="width:{LEFT_W}px">
+		<div class="left-body" style:width="{LEFT_W}px">
 			{#each displayDeals as deal}
-				<div class="left-row" style="height:{ROW_H}px">
+				<div class="left-row" style:height="{ROW_H}px">
 					<a class="col title" href="/database/deals/{deal.id}">{deal.title}</a>
 					{#if showCustomer}
 						<span class="col customer">{customerMap[deal.customerId] ?? '—'}</span>
@@ -351,7 +352,7 @@
 					{/if}
 					{#if showStatus}
 						<span class="col status">
-							<span class="status-badge" style="border-color:{STATUS[deal.status]?.border ?? '#888'};color:{STATUS[deal.status]?.border ?? '#888'}">
+							<span class="status-badge status-{deal.status}">
 								{STATUS[deal.status]?.label ?? deal.status}
 							</span>
 						</span>
@@ -362,45 +363,56 @@
 
 		<!-- Right panel (chart) -->
 		<div class="right-body" bind:this={rightBodyEl} onscroll={onBodyScroll}>
-			<div class="chart-inner" style="width:{chartWidth}px">
+			<div class="chart-inner" style:width="{chartWidth}px">
 				<!-- Weekend backgrounds -->
 				{#each weekendRanges as wr}
-					<div class="weekend-bg" style="left:{wr.x}px;width:{wr.width}px;height:{ROW_H * displayDeals.length}px"></div>
+					<div class="weekend-bg"
+						style:left="{wr.x}px"
+						style:width="{wr.width}px"
+						style:height="{ROW_H * displayDeals.length}px"
+					></div>
 				{/each}
 				<!-- Month grid lines -->
 				{#each months as mo}
-					<div class="grid-line" style="left:{mo.x}px;height:{ROW_H * displayDeals.length}px"></div>
+					<div class="grid-line"
+						style:left="{mo.x}px"
+						style:height="{ROW_H * displayDeals.length}px"
+					></div>
 				{/each}
 				<!-- Today line -->
 				{#if todayX >= 0 && todayX <= chartWidth}
-					<div class="today-line" style="left:{todayX}px;height:{ROW_H * displayDeals.length}px"></div>
+					<div class="today-line"
+						style:left="{todayX}px"
+						style:height="{ROW_H * displayDeals.length}px"
+					></div>
 				{/if}
 
 				<!-- Deal rows -->
 				{#each displayDeals as deal}
-					{@const style = barStyle(deal)}
-					{@const barW = style ? (() => {
-						const x = msToX(new Date(deal.plannedStart!).getTime());
-						const endX = msToX(new Date(deal.plannedEnd!).getTime() + 86400000);
-						return Math.max(endX - x, pxPerDay);
-					})() : 0}
-					{@const handleSz = getHandleSize(barW)}
+					{@const bar = barStyle(deal)}
+					{@const handleSz = getHandleSize(bar?.width ?? 0)}
 
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
 						class="chart-row"
-						class:empty-row={!style}
-						style="height:{ROW_H}px"
-						onmousedown={!style ? (e) => startCreate(e, deal) : undefined}
+						class:empty-row={!bar}
+						style:height="{ROW_H}px"
+						onmousedown={!bar ? (e) => startCreate(e, deal) : undefined}
 					>
-						{#if style}
+						{#if bar}
 							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<div class="bar" style={style} onmousedown={(e) => startDrag(e, deal, 'move')}>
+							<div class="bar"
+								style:left="{bar.x}px"
+								style:width="{bar.width}px"
+								style:background={bar.bg}
+								style:border-color={bar.border}
+								onmousedown={(e) => startDrag(e, deal, 'move')}
+							>
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<div class="bar-handle left" style="width:{handleSz}px" onmousedown={(e) => startDrag(e, deal, 'left')}></div>
+								<div class="bar-handle left" style:width="{handleSz}px" onmousedown={(e) => startDrag(e, deal, 'left')}></div>
 								<span class="bar-label">{deal.title}</span>
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<div class="bar-handle right" style="width:{handleSz}px" onmousedown={(e) => startDrag(e, deal, 'right')}></div>
+								<div class="bar-handle right" style:width="{handleSz}px" onmousedown={(e) => startDrag(e, deal, 'right')}></div>
 							</div>
 						{/if}
 					</div>
@@ -410,10 +422,10 @@
 	</div>
 	<!-- ── Resize handle ─────────────────────────────────────────────────── -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="resize-handle" class:active={resizing} style="left:{LEFT_W}px" onmousedown={startResize}></div>
+	<div class="resize-handle" class:active={resizing} style:left="{LEFT_W}px" onmousedown={startResize}></div>
 </div>
 
-<style>
+<style lang="scss">
 	.gantt {
 		position: relative;
 		display: flex;
@@ -533,6 +545,10 @@
 		border: 1px solid;
 		border-radius: 20px;
 		white-space: nowrap;
+
+		&.status-open { color: var(--color-primary); border-color: var(--color-primary); }
+		&.status-won { color: #16a34a; border-color: #16a34a; }
+		&.status-lost { color: #dc2626; border-color: #dc2626; }
 	}
 
 	/* Left column widths */

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Upload from '$lib/components/icon/Upload.svelte';
+
 	type Props = {
 		label?: string;
 		accept?: string;
@@ -57,11 +59,7 @@
 		ondragleave={() => dragging = false}
 		ondrop={handleDrop}
 	>
-		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-			<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-			<polyline points="17 8 12 3 7 8"/>
-			<line x1="12" y1="3" x2="12" y2="15"/>
-		</svg>
+		<Upload size={28} />
 		<p>クリックまたはドラッグ＆ドロップ</p>
 		{#if accept}<span class="hint">{accept}</span>{/if}
 		<input
@@ -90,9 +88,18 @@
 	{#if error}<p class="err">{error}</p>{/if}
 </div>
 
-<style>
-	.field { display: flex; flex-direction: column; gap: 8px; }
-	.label { font-size: 0.875rem; color: var(--color-text-muted); }
+<style lang="scss">
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.label {
+		font-size: 0.875rem;
+		color: var(--color-text-muted);
+	}
+
 	.zone {
 		display: flex;
 		flex-direction: column;
@@ -105,35 +112,54 @@
 		transition: border-color 0.15s, background 0.15s;
 		user-select: none;
 		text-align: center;
+		color: var(--color-text-muted);
+
+		&:hover:not(.disabled),
+		&.dragging {
+			border-color: var(--color-primary);
+			background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+		}
+
+		&.disabled { opacity: 0.5; cursor: not-allowed; }
+
+		p { font-size: 0.875rem; }
 	}
-	.zone:hover:not(.disabled), .zone.dragging {
-		border-color: var(--color-primary);
-		background: color-mix(in srgb, var(--color-primary) 6%, transparent);
-	}
-	.zone.disabled { opacity: 0.5; cursor: not-allowed; }
-	.zone svg { width: 28px; height: 28px; color: var(--color-text-muted); }
-	.zone p { font-size: 0.875rem; color: var(--color-text-muted); }
+
 	.hint { font-size: 0.75rem; color: var(--color-text-muted); }
 	.hidden { display: none; }
-	.list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-	.list li {
+
+	.list {
+		list-style: none;
 		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 6px 10px;
-		background: var(--color-surface);
-		border-radius: 6px;
-		font-size: 0.875rem;
+		flex-direction: column;
+		gap: 4px;
+
+		li {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 6px 10px;
+			background: var(--color-surface);
+			border-radius: 6px;
+			font-size: 0.875rem;
+		}
 	}
+
 	.name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.size { color: var(--color-text-muted); flex-shrink: 0; }
+
 	.list button {
-		background: none; border: none;
+		background: none;
+		border: none;
 		color: var(--color-text-muted);
-		cursor: pointer; padding: 0 4px;
-		font-size: 1rem; line-height: 1;
+		cursor: pointer;
+		padding: 0 4px;
+		font-size: 1rem;
+		line-height: 1;
+
+		&:hover { color: var(--color-danger); }
 	}
-	.list button:hover { color: var(--color-danger); }
+
 	.has-error .zone { border-color: var(--color-danger); }
 	.err { font-size: 0.75rem; color: var(--color-danger); }
 </style>

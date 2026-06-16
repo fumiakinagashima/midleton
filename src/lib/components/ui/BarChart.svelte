@@ -161,7 +161,7 @@
 	</svg>
 </figure>
 
-<style>
+<style lang="scss">
 	.chart { display: flex; flex-direction: column; gap: 6px; margin: 0; }
 	figcaption { font-size: 0.9375rem; font-weight: 600; color: var(--color-text); }
 	svg { width: 100%; height: auto; }

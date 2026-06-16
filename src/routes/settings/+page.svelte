@@ -77,7 +77,7 @@
 	</section>
 </div>
 
-<style>
+<style lang="scss">
 	.page {
 		padding: 40px 48px;
 		max-width: 640px;

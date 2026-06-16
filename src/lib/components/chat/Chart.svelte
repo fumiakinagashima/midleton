@@ -15,11 +15,11 @@
 	{:else if chartType === 'line'}
 		<LineChart {data} {series} {title} />
 	{:else}
-		<PieChart {data} {title} />
+		<PieChart data={data ?? []} {title} />
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
 	.chart-wrap {
 		width: 100%;
 		max-width: 520px;
