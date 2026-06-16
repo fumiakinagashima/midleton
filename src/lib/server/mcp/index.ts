@@ -45,6 +45,7 @@ export type ToolName =
 	| 'update_deal'
 	| 'get_activities'
 	| 'create_activity'
+	| 'list_reminders'
 	| 'send_email'
 	| 'create_reminder'
 	| 'create_reminders_bulk'
@@ -116,6 +117,7 @@ export async function dispatchTool(
 		case 'update_deal':                    return deals.handleUpdateDeal(db, input);
 		case 'get_activities':                 return activities.handleGetActivities(db, input);
 		case 'create_activity':                return activities.handleCreateActivity(db, input, env);
+		case 'list_reminders':                 return communication.handleListReminders(db, input, env);
 		case 'send_email':                     return communication.handleSendEmail(db, input, env);
 		case 'create_reminder':                return communication.handleCreateReminder(db, input, env);
 		case 'create_reminders_bulk':          return communication.handleCreateRemindersBulk(db, input, env);

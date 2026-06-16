@@ -3,11 +3,27 @@ import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 import type { Db } from '../db';
 import { sendEmail, getEmailSetup } from '../email';
 import { recordActivity } from '../db/table-service';
-import { createReminder, resolveChannelLabels } from '../db/reminder-service';
+import { createReminder, listReminders, resolveChannelLabels } from '../db/reminder-service';
 import { parseJstDatetime } from '$lib/datetime';
 import type { ToolEnv } from './shared';
 
 export const tools: Tool[] = [
+	{
+		name: 'list_reminders',
+		description:
+			'登録済みリマインダーの一覧を取得する。「リマインダーを見せて」「登録したリマインダーは？」などに使う。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				status: {
+					type: 'string',
+					enum: ['pending', 'sent', 'failed'],
+					description: 'ステータスで絞り込む（省略時は全件）'
+				}
+			},
+			required: []
+		}
+	},
 	{
 		name: 'send_email',
 		description:
@@ -72,6 +88,23 @@ export const tools: Tool[] = [
 		}
 	}
 ];
+
+const listRemindersSchema = z.object({
+	status: z.enum(['pending', 'sent', 'failed']).optional()
+});
+
+export async function handleListReminders(db: Db, input: unknown, env?: ToolEnv) {
+	const { status } = listRemindersSchema.parse(input);
+	const rows = await listReminders(db, env?.accountId);
+	const filtered = status ? rows.filter((r) => r.status === status) : rows;
+	return filtered.map((r) => ({
+		id: r.id,
+		content: r.content,
+		remindAt: r.remindAt.toISOString(),
+		channels: r.channelLabels.join('、'),
+		status: r.status
+	}));
+}
 
 const sendEmailSchema = z.object({
 	to: z.string().email(),
