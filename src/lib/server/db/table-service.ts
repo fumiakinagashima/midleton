@@ -64,7 +64,7 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 			{ key: 'website', label: 'ホームページ', type: 'text' },
 			{
 				key: 'status', label: 'ステータス', type: 'select', listable: true,
-				options: [{ label: 'アクティブ', value: 'active' }, { label: '非アクティブ', value: 'inactive' }]
+				options: [{ label: '有効', value: 'active' }, { label: '無効', value: 'inactive' }]
 			},
 			{ key: 'notes', label: '備考', type: 'textarea' }
 		]

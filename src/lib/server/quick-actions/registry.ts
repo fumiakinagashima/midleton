@@ -5,7 +5,7 @@ import type { MessageContent } from '$lib/types/chat';
 import type { QuickActionId } from '$lib/quick-actions/catalog';
 
 const DEAL_STATUS_LABEL: Record<string, string> = { open: '進行中', won: '受注', lost: '失注' };
-const CUSTOMER_STATUS_LABEL: Record<string, string> = { active: 'アクティブ', inactive: '非アクティブ' };
+const CUSTOMER_STATUS_LABEL: Record<string, string> = { active: '有効', inactive: '無効' };
 const ACTIVITY_TYPE_LABEL: Record<string, string> = {
 	note: 'メモ',
 	call: '通話',
@@ -270,9 +270,10 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 						key: 'status',
 						label: 'ステータス',
 						type: 'select',
+						value: 'active',
 						options: [
-							{ label: 'アクティブ', value: 'active' },
-							{ label: '非アクティブ', value: 'inactive' }
+							{ label: '有効', value: 'active' },
+							{ label: '無効', value: 'inactive' }
 						]
 					},
 					{ key: 'notes', label: '備考', type: 'textarea' }

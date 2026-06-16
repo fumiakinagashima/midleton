@@ -20,8 +20,8 @@ const MOCK_RESPONSES: MessageContent[][] = [
 					type: 'select',
 					options: [
 						{ value: 'lead', label: 'リード' },
-						{ value: 'active', label: 'アクティブ' },
-						{ value: 'inactive', label: '非アクティブ' }
+						{ value: 'active', label: '有効' },
+						{ value: 'inactive', label: '無効' }
 					]
 				},
 				{ key: 'notes', label: 'メモ', type: 'textarea', placeholder: '自由記述' }
