@@ -22,6 +22,5 @@
 <style lang="scss">
 	.chart-wrap {
 		width: 100%;
-		max-width: 520px;
 	}
 </style>
