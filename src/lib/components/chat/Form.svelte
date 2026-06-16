@@ -9,9 +9,10 @@
 		fields: FormField[];
 		submitLabel?: string;
 		onsubmit: (data: Record<string, string>) => void;
+		oncancel?: () => void;
 	};
 
-	let { title, fields, submitLabel, onsubmit }: Props = $props();
+	let { title, fields, submitLabel, onsubmit, oncancel }: Props = $props();
 
 	let values = $state<Record<string, string>>(
 		untrack(() => Object.fromEntries(fields.map((f) => [f.key, f.value ?? ''])))
@@ -171,7 +172,12 @@
 		{/if}
 	{/each}
 
-	<button type="submit">{submitLabel ?? m.form_submit()}</button>
+	<div class="form-actions">
+		{#if oncancel}
+			<button type="button" class="btn-cancel" onclick={oncancel}>{m.form_cancel()}</button>
+		{/if}
+		<button type="submit">{submitLabel ?? m.form_submit()}</button>
+	</div>
 </form>
 
 <style lang="scss">
@@ -277,8 +283,14 @@
 		min-height: 240px;
 	}
 
-	button {
+	.form-actions {
 		align-self: flex-end;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	button[type='submit'] {
 		padding: 8px 20px;
 		background: var(--color-primary);
 		color: #fff;
@@ -286,9 +298,17 @@
 		border-radius: 6px;
 		font-size: 0.9375rem;
 		cursor: pointer;
+		&:hover { opacity: 0.88; }
 	}
 
-	button:hover {
-		opacity: 0.88;
+	.btn-cancel {
+		padding: 8px 20px;
+		background: none;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		font-size: 0.9375rem;
+		color: var(--color-text-muted);
+		cursor: pointer;
+		&:hover { background: var(--color-background); }
 	}
 </style>
