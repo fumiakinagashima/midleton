@@ -1,4 +1,7 @@
+/// <reference types="vite/client" />
 import type { CV } from '@techstark/opencv-js';
+import opencvScriptUrl from '@techstark/opencv-js/dist/opencv.js?url';
+import { OPENCV_LOAD_TIMEOUT_MS } from '$lib/constants';
 
 export type Point = { x: number; y: number };
 export type Quad = [Point, Point, Point, Point];
@@ -29,22 +32,48 @@ function withMats<T>(fn: (track: <M extends Disposable>(m: M) => M) => T): T {
 }
 
 type CvModule = CV & { onRuntimeInitialized?: () => void; Mat?: unknown };
-type CvImport = { default: CvModule | Promise<CvModule> };
+
+declare global {
+	interface Window {
+		cv?: CvModule;
+	}
+}
 
 let cvPromise: Promise<CV> | null = null;
 
-/** Lazily loads `@techstark/opencv-js`, caching the resolved module. */
+/**
+ * Lazily loads `@techstark/opencv-js` via a classic `<script>` tag, caching the
+ * resolved module. Loading it through `import('@techstark/opencv-js')` instead
+ * makes Vite/Rollup wrap the CommonJS export in an ESM-interop snapshot taken
+ * before the WASM runtime finishes initializing in production builds; the real
+ * Emscripten runtime then fires `onRuntimeInitialized` on the original object,
+ * never on that snapshot, so a listener attached to it hangs forever. A classic
+ * script avoids the interop step and exposes the live object as `window.cv`.
+ */
 export function loadOpenCv(): Promise<CV> {
 	if (!cvPromise) {
-		cvPromise = (async () => {
-			const mod = (await import('@techstark/opencv-js')) as unknown as CvImport;
-			const resolved = await mod.default;
-			if (resolved.Mat) return resolved as CV;
-			await new Promise<void>((resolve) => {
-				resolved.onRuntimeInitialized = resolve;
-			});
-			return resolved as CV;
-		})();
+		const load = new Promise<CV>((resolve, reject) => {
+			const script = document.createElement('script');
+			script.src = opencvScriptUrl;
+			script.onload = () => {
+				const cv = window.cv;
+				if (!cv) {
+					reject(new Error('OpenCV script loaded but window.cv is missing.'));
+					return;
+				}
+				if (cv.Mat) {
+					resolve(cv as CV);
+					return;
+				}
+				cv.onRuntimeInitialized = () => resolve(cv as CV);
+			};
+			script.onerror = () => reject(new Error('Failed to load OpenCV script.'));
+			document.head.appendChild(script);
+		});
+		const timeout = new Promise<CV>((_, reject) => {
+			setTimeout(() => reject(new Error('OpenCV の読み込みがタイムアウトしました。')), OPENCV_LOAD_TIMEOUT_MS);
+		});
+		cvPromise = Promise.race([load, timeout]);
 	}
 	return cvPromise;
 }
