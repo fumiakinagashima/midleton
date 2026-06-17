@@ -10,9 +10,11 @@
 		submitLabel?: string;
 		onsubmit: (data: Record<string, string>) => void;
 		oncancel?: () => void;
+		hideActions?: boolean;
+		formRef?: HTMLFormElement | null;
 	};
 
-	let { title, fields, submitLabel, onsubmit, oncancel }: Props = $props();
+	let { title, fields, submitLabel, onsubmit, oncancel, hideActions = false, formRef = $bindable(null) }: Props = $props();
 
 	let values = $state<Record<string, string>>(
 		untrack(() => Object.fromEntries(fields.map((f) => [f.key, f.value ?? ''])))
@@ -95,7 +97,7 @@
 	}
 </script>
 
-<form class="form" onsubmit={handleSubmit}>
+<form class="form" onsubmit={handleSubmit} bind:this={formRef}>
 	{#if title}
 		<p class="form-title">{title}</p>
 	{/if}
@@ -172,12 +174,14 @@
 		{/if}
 	{/each}
 
-	<div class="form-actions">
-		{#if oncancel}
-			<button type="button" class="btn-cancel" onclick={oncancel}>{m.form_cancel()}</button>
-		{/if}
-		<button type="submit">{submitLabel ?? m.form_submit()}</button>
-	</div>
+	{#if !hideActions}
+		<div class="form-actions">
+			{#if oncancel}
+				<button type="button" class="btn-cancel" onclick={oncancel}>{m.form_cancel()}</button>
+			{/if}
+			<button type="submit">{submitLabel ?? m.form_submit()}</button>
+		</div>
+	{/if}
 </form>
 
 <style lang="scss">

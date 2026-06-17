@@ -29,6 +29,10 @@
 	let chatLoading = $state(false);
 	let chatListEl = $state<HTMLElement | null>(null);
 
+	// フォーム外部送信用
+	let formRef = $state<HTMLFormElement | null>(null);
+	let submitLabel = $derived(form.submitLabel ?? '登録');
+
 	// サーバー定義フォームを取得し、AIプリフィル値を適用
 	$effect(() => {
 		const tool = form.tool;
@@ -161,22 +165,7 @@
 	</div>
 
 	<div class="dialog-body">
-		<!-- フォーム側 -->
-		<div class="form-side">
-			{#if formLoading}
-				<div class="form-loading"><span class="spinner"></span></div>
-			{:else}
-				{#key formKey}
-					<Form
-						{fields}
-						submitLabel={form.submitLabel}
-						onsubmit={(data) => onsubmit(form.tool, data)}
-					/>
-				{/key}
-			{/if}
-		</div>
-
-		<!-- チャット側 -->
+		<!-- チャット側（左） -->
 		<div class="chat-side">
 			<div class="chat-header">AI アシスタント</div>
 			<div class="chat-messages" bind:this={chatListEl}>
@@ -215,10 +204,27 @@
 				</button>
 			</div>
 		</div>
+
+		<!-- フォーム側（右） -->
+		<div class="form-side">
+			{#if formLoading}
+				<div class="form-loading"><span class="spinner"></span></div>
+			{:else}
+				{#key formKey}
+					<Form
+						{fields}
+						hideActions
+						bind:formRef
+						onsubmit={(data) => onsubmit(form.tool, data)}
+					/>
+				{/key}
+			{/if}
+		</div>
 	</div>
 
 	<div class="dialog-footer">
 		<button class="footer-cancel" onclick={oncancel}>キャンセル</button>
+		<button class="footer-submit" onclick={() => formRef?.requestSubmit()}>{submitLabel}</button>
 	</div>
 </div>
 
@@ -292,13 +298,13 @@
 		overflow: hidden;
 	}
 
-	/* フォーム側 */
+	/* フォーム側（右） */
 	.form-side {
 		flex: 1;
 		min-width: 0;
 		overflow-y: auto;
 		padding: 24px 20px;
-		border-right: 1px solid var(--color-border);
+		border-left: 1px solid var(--color-border);
 	}
 
 	.form-loading {
@@ -316,9 +322,9 @@
 		animation: spin 0.6s linear infinite;
 	}
 
-	/* チャット側 */
+	/* チャット側（左） */
 	.chat-side {
-		width: 320px;
+		width: 300px;
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
@@ -473,6 +479,8 @@
 	.dialog-footer {
 		display: flex;
 		justify-content: flex-end;
+		align-items: center;
+		gap: 8px;
 		padding: 12px 20px;
 		border-top: 1px solid var(--color-border);
 		flex-shrink: 0;
@@ -492,6 +500,20 @@
 			border-color: var(--color-text);
 			color: var(--color-text);
 		}
+	}
+
+	.footer-submit {
+		padding: 7px 20px;
+		border: none;
+		border-radius: 8px;
+		background: var(--color-primary);
+		color: #fff;
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: opacity 0.15s;
+
+		&:hover { opacity: 0.88; }
+		&:active { opacity: 0.75; }
 	}
 
 	/* ---- アニメーション ---- */
