@@ -2,6 +2,7 @@ import type { Db } from '../db';
 import type { ToolEnv } from '../mcp/shared';
 import { dispatchTool, type ToolName } from '../mcp';
 import { getEnabledWorkflows } from '../db/workflow-service';
+import { recordWorkflowRun } from '../db/workflow-run-service';
 import { getAccount } from '../db/account-service';
 import { getJstHourMinute } from '$lib/datetime';
 import { getWorkflowActionTool, parseStepRef } from '$lib/workflow-tools';
@@ -53,11 +54,12 @@ async function runAction(
 	const toolDef = getWorkflowActionTool(step.tool);
 	if (!toolDef) throw new WorkflowAbortError(`未対応のツールです: ${step.tool}`);
 
-	const resolvedParams: Record<string, string> = {};
+	const resolvedParams: Record<string, string | number> = {};
 	for (const field of toolDef.params) {
 		const raw = step.params?.[field.key];
 		if (!raw) continue;
-		resolvedParams[field.key] = String(resolveOperand(raw, results).value);
+		const value = resolveOperand(raw, results).value;
+		resolvedParams[field.key] = field.type === 'number' ? Number(value) : String(value);
 	}
 
 	let input: Record<string, unknown> = resolvedParams;
@@ -108,16 +110,26 @@ export async function processDueWorkflows(
 
 	const results: WorkflowRunResult[] = [];
 	for (const workflow of due) {
+		const startedAt = new Date();
 		try {
 			const account = workflow.accountId ? await getAccount(db, workflow.accountId) : null;
 			await runSteps(db, workflow.steps, new Map(), env, account?.email ?? null);
 			results.push({ id: workflow.id, name: workflow.name, ok: true });
+			await recordWorkflowRun(db, {
+				workflowId: workflow.id,
+				ok: true,
+				startedAt,
+				finishedAt: new Date()
+			});
 		} catch (e) {
-			results.push({
-				id: workflow.id,
-				name: workflow.name,
+			const error = e instanceof Error ? e.message : String(e);
+			results.push({ id: workflow.id, name: workflow.name, ok: false, error });
+			await recordWorkflowRun(db, {
+				workflowId: workflow.id,
 				ok: false,
-				error: e instanceof Error ? e.message : String(e)
+				error,
+				startedAt,
+				finishedAt: new Date()
 			});
 		}
 	}

@@ -14,4 +14,5 @@
 	initialTriggerMinute={data.workflow.triggerMinute}
 	initialSteps={data.workflow.steps}
 	initialEnabled={data.workflow.enabled}
+	runs={data.runs}
 />

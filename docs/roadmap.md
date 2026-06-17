@@ -428,8 +428,8 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [ ] **foreach（v2、配列型の変数のみに適用、無限ループ回避のためwhileは提供しない）**: 「先日登録された顧客一覧に処理を繰り返す」等のユースケース。ループ本体専用の変数スコープ設計が必要
 - [ ] **AIレビュー機能（v2）**: 保存済みワークフローの構成をAIがレビュー（コードレビュー的UX）し、未到達ステップ・条件の論理的な誤りなどを指摘する。既存の承認申請レビュー・ヘルススコアと同じ「ボタン押下でAI分析」パターンを再利用
 - [ ] `get_workflow` MCPツール（チャットから既存ワークフローを呼び出してインライン編集）・チャット完結フロー
-- [ ] アクションツールカタログの拡充（現状`send_email`/`summarize_customers`のみ。`search_customers`等パラメータが必要なツールへの対応）
-- [ ] 実行ログ・`workflow_runs`テーブル（現状は実行失敗時もDBに記録されず、ログはWorkers上のconsole出力のみ）
+- [x] アクションツールカタログの拡充（`WorkflowParamField`に`select`/`number`型を追加し、`search_customers`（件数）・`summarize_deals`・`summarize_activities`を追加。enumパラメータはセレクト、数値パラメータは`run.ts`実行時に数値変換してから`dispatchTool`へ渡す）
+- [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する
 
 ### 資料生成
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）

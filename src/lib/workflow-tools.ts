@@ -5,8 +5,10 @@ import type { WorkflowResultType } from './types/chat';
 export type WorkflowParamField = {
 	key: string;
 	label: string;
-	type: 'text' | 'textarea';
+	type: 'text' | 'textarea' | 'number' | 'select';
 	required?: boolean;
+	/** type: 'select' の場合の選択肢 */
+	options?: { value: string; label: string }[];
 };
 
 export type WorkflowActionToolDef = {
@@ -36,6 +38,58 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		params: [],
 		resultType: 'number',
 		resultDesc: '顧客の総数',
+		extractResult: (raw) => (raw as { total: number }).total
+	},
+	{
+		value: 'search_customers',
+		label: '顧客を検索',
+		params: [
+			{ key: 'name', label: '顧客名（部分一致）', type: 'text' },
+			{
+				key: 'status',
+				label: 'ステータス',
+				type: 'select',
+				options: [
+					{ value: '', label: '指定しない' },
+					{ value: 'active', label: '有効' },
+					{ value: 'inactive', label: '無効' }
+				]
+			},
+			{ key: 'limit', label: '取得件数の上限', type: 'number' }
+		],
+		resultType: 'number',
+		resultDesc: '該当する顧客の件数',
+		extractResult: (raw) => (Array.isArray(raw) ? raw.length : 0)
+	},
+	{
+		value: 'summarize_deals',
+		label: '案件を集計',
+		params: [
+			{ key: 'since', label: '集計開始日（ISO 8601）', type: 'text' },
+			{ key: 'until', label: '集計終了日（ISO 8601）', type: 'text' },
+			{
+				key: 'date_field',
+				label: '期間の基準日',
+				type: 'select',
+				options: [
+					{ value: 'created_at', label: '登録日' },
+					{ value: 'closed_at', label: '成約/失注日' }
+				]
+			}
+		],
+		resultType: 'number',
+		resultDesc: '該当する案件の総件数',
+		extractResult: (raw) => (raw as { total: { count: number } }).total.count
+	},
+	{
+		value: 'summarize_activities',
+		label: '活動履歴を集計',
+		params: [
+			{ key: 'since', label: '集計開始日（ISO 8601）', type: 'text' },
+			{ key: 'until', label: '集計終了日（ISO 8601）', type: 'text' }
+		],
+		resultType: 'number',
+		resultDesc: '該当する活動履歴の総件数',
 		extractResult: (raw) => (raw as { total: number }).total
 	}
 ];

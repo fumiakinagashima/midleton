@@ -321,5 +321,16 @@ export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 export type Reminder = typeof reminders.$inferSelect;
 export type NewReminder = typeof reminders.$inferInsert;
+export const workflowRuns = sqliteTable('workflow_runs', {
+	id: text('id').primaryKey(),
+	workflowId: text('workflow_id').notNull(),
+	ok: integer('ok', { mode: 'boolean' }).notNull(),
+	error: text('error'),
+	startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
+	finishedAt: integer('finished_at', { mode: 'timestamp' }).notNull()
+});
+
 export type Workflow = typeof workflows.$inferSelect;
 export type NewWorkflow = typeof workflows.$inferInsert;
+export type WorkflowRun = typeof workflowRuns.$inferSelect;
+export type NewWorkflowRun = typeof workflowRuns.$inferInsert;
