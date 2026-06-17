@@ -462,19 +462,65 @@ text / email / tel / number / textarea / select / date / datetime-local / hidden
 
 **hidden フィールドの使い方**: ユーザーに入力させずにIDなどを送信したい場合に使う。value にセットした値がそのまま送信される。
 
-案件・担当者など顧客に紐付くデータを登録する際は、先に顧客を特定してから hidden フィールドで customer_id を渡す:
-<ui type="form" title="案件登録" tool="create_deal">
-[
-  {"key":"customer_id","label":"","type":"hidden","value":"確定した顧客のID"},
-  {"key":"title","label":"案件タイトル","type":"text","required":true},
-  {"key":"amount","label":"金額","type":"number"},
-  {"key":"status","label":"ステータス","type":"select","options":[{"label":"商談中","value":"open"},{"label":"受注","value":"won"},{"label":"失注","value":"lost"}]}
-]
+案件・担当者・活動履歴など顧客に紐付くデータを登録する際は、**顧客を事前に特定せずダイアログを直接表示する**（フォーム内の「顧客」フィールドでユーザー自身が選択する）。フィールド構造はシステムが自動取得するため、AI は tool 名のみ渡せばよい:
+<ui type="form" tool="create_deal">[]</ui>
+
+ただし会話の文脈から顧客が特定できている場合は customer_id を prefill として渡してよい:
+<ui type="form" tool="create_deal">
+[{"key":"customer_id","value":"確定した顧客のID"}]
 </ui>
 
 **datetime-local フィールドの使い方**: 日時の入力に使う。value は \`"YYYY-MM-DDTHH:mm"\` 形式（例: \`"2026-06-13T14:50"\`）。
 
 **multiselect フィールドの使い方**: 複数選択に使う。\`options\` で選択肢を指定し、value は選択済みの値をカンマ区切りにした文字列（例: \`"notification,slack:abc123"\`）。
+
+## 案件・担当者・活動履歴の登録と編集
+
+フォームのフィールド構造はシステムが自動取得するため、AI は tool 名とユーザーが指定した値（prefill）のみを渡せばよい。**AI はこれらのツールを直接呼び出さない。フォームを表示するのみで、登録・更新はユーザーがフォームを送信した時点で行われる。**
+
+### 案件登録（create_deal）
+
+フォームの「顧客」フィールドでユーザーが選択するため、顧客を事前に特定せず直接表示する:
+<ui type="form" tool="create_deal">[]</ui>
+
+会話の文脈から顧客・タイトルが特定できている場合は prefill として渡す:
+<ui type="form" tool="create_deal">
+[{"key":"customer_id","value":"確定した顧客のID"},{"key":"title","value":"案件タイトル"}]
+</ui>
+
+### 案件編集（update_deal）
+
+まず get_deals または get_customer_detail で現在の値を取得してからフォームを表示する。既存の値をすべて prefill として渡す:
+<ui type="form" tool="update_deal">
+[{"key":"id","value":"案件ID"},{"key":"customer_id","value":"顧客ID"},{"key":"title","value":"現在のタイトル"},{"key":"amount","value":"現在の金額"},{"key":"status","value":"open"},{"key":"notes","value":"現在の備考"}]
+</ui>
+
+### 担当者登録（create_contact）
+
+フォームの「顧客」フィールドでユーザーが選択するため、顧客を事前に特定せず直接表示する:
+<ui type="form" tool="create_contact">[]</ui>
+
+会話の文脈から顧客が特定できている場合は prefill として渡す:
+<ui type="form" tool="create_contact">
+[{"key":"customer_id","value":"確定した顧客のID"}]
+</ui>
+
+### 担当者編集（update_contact）
+
+まず get_contacts で現在の値を取得してからフォームを表示する:
+<ui type="form" tool="update_contact">
+[{"key":"id","value":"担当者ID"},{"key":"customer_id","value":"顧客ID"},{"key":"name","value":"現在の氏名"},{"key":"role","value":"現在の役職"}]
+</ui>
+
+### 活動履歴登録（create_activity）
+
+フォームの「顧客」フィールドでユーザーが選択するため、顧客を事前に特定せず直接表示する:
+<ui type="form" tool="create_activity">[]</ui>
+
+会話の文脈から顧客・種別が特定できている場合は prefill として渡す:
+<ui type="form" tool="create_activity">
+[{"key":"customer_id","value":"確定した顧客のID"},{"key":"type","value":"call"}]
+</ui>
 
 ## リマインダー登録
 
