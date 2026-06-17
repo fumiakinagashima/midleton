@@ -257,6 +257,7 @@
 - [x] チャット上に名刺スキャナーを直接表示（`bizcard` コンポーネント追加、`BizcardScanner` を `/bizcard` ページとチャットで共有、システムプロンプトに「名刺取り込み」意図のルールを追加）
 - [x] チャット上の名刺読み取り結果から、別画面に遷移せずチャット内フォームで顧客・担当者登録（`create_customer_with_contact` MCPツール追加、「顧客・担当者を登録」「既存の顧客に担当者を追加」の2導線）
 - [x] チャット名刺登録フォームの新規担当者フィールドに「部署」を追加（`contacts.department` と整合）
+- [x] ~~ファイルアップロード（ドラッグ&ドロップ・ファイル選択・HEIC検出・クライアント側リサイズ）~~ → 2026-06-17 削除。カメラ撮影のみで十分と判断し撤去（下記⑤のOpenCV撤去と同時）
 
 ### ⑤ クイックアクション（AIを介さない定型操作）
 - [x] 入力欄左下に「+」アイコンボタン → ポップアップメニュー（Gemini風、クリックで登録済みアクション一覧を表示）
@@ -267,12 +268,9 @@
 - [x] `/settings/quick-actions`: 10件から最大5件を選択するチェックリストUI（localStorage に保存、設定変更がチャットの「+」メニューへ即時反映）
 - [x] 案件サマリ・顧客数サマリ・活動サマリで `rows.reduce is not a function` が発生するバグを修正（`summarize_*` ツールの戻り値が配列でなく集計済みオブジェクトであることに対応）
 - [x] Haiku vs Sonnet の精度比較・モデル選定（現状 Haiku、日本語名刺の精度は要検証）
-- [x] Webカメラでの名刺スキャン機能（QRスキャナー風 UI、`CameraScanner.svelte`）
-- [x] OpenCV.js（`@techstark/opencv-js`、動的 import で遅延ロード）によるリアルタイム名刺枠検出（`cardDetector.ts`）
-- [x] 検出枠が安定したら自動撮影 → 透視変換で歪み補正・トリミング → `/api/bizcard` に送信
-- [x] 手動シャッターボタン（自動検出が機能しない場合のフォールバック）
-- [x] カメラ権限拒否・カメラ非搭載・OpenCV読み込み失敗時はファイルアップロードへの切替導線を表示（エラー画面の「ファイル選択に戻る」、モード切替リンク）
+- [x] Webカメラでの名刺スキャン機能（`CameraScanner.svelte`）。手動シャッター（Space キー対応）でフルフレームを撮影し `/api/bizcard` に送信
 - [x] 連続スキャン対応（撮影後にカメラビューへ復帰、ストリーム再利用）
+- [x] ~~OpenCV.js（`@techstark/opencv-js`）によるリアルタイム名刺枠検出・安定検出での自動撮影・透視変換補正~~ → 2026-06-17 削除。`await import('@techstark/opencv-js')` がVite/Rollupの本番ビルドでESM-interopスナップショットを作ってしまい`onRuntimeInitialized`が永久に発火せず、カメラ画面がフリーズするバグの調査過程で「自動シャッターは実運用でほぼ発火していなかった」「Claudeの読み取り精度はOpenCVの自動検出・補正なしでも十分」と判明したため撤去。10MB超のWASMバンドルも削減（クライアントバンドル 12MB+ → 800KB）
 
 ### ⑥ チャット履歴のサーバー永続化
 - [x] D1に`chats`（id, title, accountId, createdAt, updatedAt）・`chat_messages`（id, chatId, role, contents, createdAt）テーブルを追加（1:N、`src/lib/server/db/chat-service.ts`）

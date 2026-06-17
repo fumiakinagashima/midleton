@@ -41,7 +41,7 @@ midleton/
 │   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values, Gantt, Chart, Kanban, Link, Bizcard）
 │   │   │   ├── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor）
 │   │   │   ├── icon/     # SVGアイコンコンポーネント（Plus, X, ChevronDown, Bell, Settings 等）
-│   │   │   └── bizcard/  # 名刺スキャン専用コンポーネント（CameraScanner, cardDetector）
+│   │   │   └── bizcard/  # 名刺スキャン専用コンポーネント（BizcardScanner, CameraScanner）
 │   │   ├── quick-actions/ # クイックアクションのカタログ定義（クライアント・サーバー共有、catalog.ts）
 │   │   ├── server/       # サーバーサイドロジック
 │   │   │   ├── db/       # DrizzleORM スキーマ・クエリ（schema.ts, table-service.ts）
