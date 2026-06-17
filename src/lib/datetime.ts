@@ -43,3 +43,9 @@ export function toJstDatetimeLocal(d: Date): string {
 export function nowJstDatetimeLocal(): string {
 	return toJstDatetimeLocal(new Date());
 }
+
+/** Date を JST の時・分（0-23 / 0-59）に変換する。ワークフローのトリガー時刻判定に使う。 */
+export function getJstHourMinute(d: Date): { hour: number; minute: number } {
+	const { hour, minute } = getJstParts(d);
+	return { hour: Number(hour), minute: Number(minute) };
+}

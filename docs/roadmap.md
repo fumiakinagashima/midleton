@@ -417,12 +417,21 @@ v1リリース時点で未着手・保留となっている項目を集約する
 
 **Why:** ユーザーから、CRUD生成だけでは一般的なノーコードツールの体験に対して片手落ちという指摘。まずCRUD生成を作り、ワークフローは設計・実装をTODOとして残す（2026-06-12）。
 
-- [ ] 実行可能オペレーションの定義（メール送信・データ集計・データ更新・APIコール）
-- [ ] JSON スキーマによるバリデーション
-- [ ] ワークフロー定義の構造設計（トリガー種別・アクション種別・条件分岐）
-- [ ] AIによるワークフロー構成案の生成（チャットでの要求 → ノード構成案を提案 → 確認 → 保存）・ノード設定サポート
-- [ ] Cloudflare Queue への登録・実行
-- [ ] ワークフロー実行・管理用の非AI画面（`/database/workflows` 等）
+v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実装したが、汎用パラメータ・データフロー設計の難所に直面し設計をやり直した（`feature/workflow`ブランチを`main`から再作成、2026-06-17）。代わりにインデント付きステップリスト（トリガー→action/condition→…）+ ステップidによる結果参照（`@step:<id>`）方式を採用。
+
+- [x] ワークフロー定義の構造設計: `WorkflowActionStep` / `WorkflowConditionStep`（`then`はYesのみ、elseは別ステップとして定義）、トリガーは毎日の時・分のみ（`src/lib/types/chat.ts`）
+- [x] アクションツールのカタログ（`src/lib/workflow-tools.ts`）: v1は `send_email`（宛先は自動で自分）・`summarize_customers`（数値結果を条件で参照可能）の2種のみ
+- [x] バリデーション（`src/lib/workflow-validation.ts`）: 必須パラメータ・条件のスカラー型チェック・ステップ参照の可視性（`then`内で作られた結果はその外から参照不可）
+- [x] DB保存（`workflows`テーブル + マイグレーション`0022_workflows.sql`、`src/lib/server/db/workflow-service.ts`、MCP tools `save_workflow`/`list_workflows`、`/api/workflows`・`/api/workflows/[id]`）
+- [x] 実行エンジン（`src/lib/server/workflow/run.ts`の`processDueWorkflows`）: 毎分のCron Trigger（`worker.ts`の`scheduled`）でJST時刻が一致する有効なワークフローを実行。未定義の変数参照時は即中断
+- [x] ステップリスト編集UI（`src/lib/components/chat/Workflow.svelte` / `WorkflowStepList.svelte`、再帰的なインデント表示。キャンバス・ドラッグ&ドロップは廃止）
+- [x] ワークフロー管理用の非AI画面（`/database/workflows`・`/new`・`/[id]`、有効化トグル）+ サイドバーリンク
+- [x] AIによるワークフロー構成案の生成（チャット → `workflow`コンポーネントとしてステップ構成を提案、システムプロンプトに`@step:<id>`参照記法を案内）
+- [ ] **foreach（v2、配列型の変数のみに適用、無限ループ回避のためwhileは提供しない）**: 「先日登録された顧客一覧に処理を繰り返す」等のユースケース。ループ本体専用の変数スコープ設計が必要
+- [ ] **AIレビュー機能（v2）**: 保存済みワークフローの構成をAIがレビュー（コードレビュー的UX）し、未到達ステップ・条件の論理的な誤りなどを指摘する。既存の承認申請レビュー・ヘルススコアと同じ「ボタン押下でAI分析」パターンを再利用
+- [ ] `get_workflow` MCPツール（チャットから既存ワークフローを呼び出してインライン編集）・チャット完結フロー
+- [ ] アクションツールカタログの拡充（現状`send_email`/`summarize_customers`のみ。`search_customers`等パラメータが必要なツールへの対応）
+- [ ] 実行ログ・`workflow_runs`テーブル（現状は実行失敗時もDBに記録されず、ログはWorkers上のconsole出力のみ）
 
 ### 資料生成
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）

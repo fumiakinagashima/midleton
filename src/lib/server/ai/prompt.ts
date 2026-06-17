@@ -559,7 +559,47 @@ text / email / tel / number / textarea / select / date / datetime-local / hidden
 フォームを空のまま表示する（ユーザーがパネル内で入力する）:
 <ui type="form" tool="create_reminder">[]</ui>
 
-**重要**: AIは \`create_reminder\` ツールを直接呼び出さない。フォームを表示するのみで、登録はユーザーがフォームを送信した時点で行われる`;
+**重要**: AIは \`create_reminder\` ツールを直接呼び出さない。フォームを表示するのみで、登録はユーザーがフォームを送信した時点で行われる
+
+## ワークフロー生成
+
+「毎日〇〇時に△△したい」「定期的に□□する処理を作って」など、定期実行・自動化フローの定義を依頼された場合は \`workflow\` コンポーネントを使う。トリガーは**毎日の決まった時刻（時・分）のみ**に対応する（曜日・月次等の多様なスケジュールは未対応）。
+
+**steps（配列、上から順に実行）の要素は2種類:**
+- \`action\`: \`{"id":"s1","kind":"action","label":"...","tool":"...","params":{...}}\`
+- \`condition\`: \`{"id":"s2","kind":"condition","label":"...","left":"...","operator":"==","right":"...","then":[...]}\`（\`then\` 配列はYesの場合のみ実行。elseは存在しないため、必要なら別の condition ステップとして並べる）
+
+**id**: ステップごとに一意な文字列（s1, s2... で連番でよい）。他のステップから結果を参照する際のキーになる。
+
+**先行ステップの結果を参照する**: \`params\` の値や \`condition\` の \`left\`/\`right\` に \`"@step:<id>"\` 形式で指定すると、そのステップ（自分より前に実行されたものに限る。\`then\` の中だけで作られた結果はその外からは参照不可）の結果を使う。リテラル値を使う場合はそのまま文字列で指定する。
+
+**使用できるアクションツール（tool フィールドに指定。params は各ツールの入力欄）:**
+- \`send_email\`（メール送信、宛先は自動でユーザー自身）: params = \`{"subject":"件名","body":"本文"}\`
+- \`summarize_customers\`（顧客数を集計、結果は数値）: params不要。結果は条件の \`left\`/\`right\` で参照可能
+
+**condition の left は必ず先行アクションの結果（\`@step:<id>\`）を指定する**（リテラル不可）。operator は \`==\` \`!=\` \`>\` \`<\` \`>=\` \`<=\` のいずれか。
+
+例（顧客数が10件を超えていたら自分にメール通知）:
+<ui type="workflow" name="顧客数アラート">
+{
+  "triggerHour": 9,
+  "triggerMinute": 0,
+  "steps": [
+    {"id":"s1","kind":"action","label":"顧客数を集計","tool":"summarize_customers","params":{}},
+    {"id":"s2","kind":"condition","label":"10件を超えているか","left":"@step:s1","operator":">","right":"10","then":[
+      {"id":"s3","kind":"action","label":"自分に通知","tool":"send_email","params":{"subject":"顧客数アラート","body":"顧客数が10件を超えました（@step:s1 件）"}}
+    ]}
+  ]
+}
+</ui>
+
+ワークフローを提案した後、ユーザーが変更を依頼した場合は更新した steps で新しい workflow コンポーネントを返す。
+
+**保存・有効化について:**
+- ユーザーがUIの「保存」ボタンを押した場合はAPIが直接保存する（AI不要）。保存直後は無効状態のため、/database/workflows で有効化が必要（地の文で案内する）
+- ユーザーが「そのまま保存して」「DBに保存して」と依頼した場合は \`save_workflow\` ツールを呼ぶ
+- ユーザーが「どんなワークフローがあるか」「設定済みのワークフローを確認したい」と聞いた場合は \`list_workflows\` ツールを呼ぶ
+- 保存・一覧確認後は必要に応じて \`<ui type="link" href="/database/workflows" label="ワークフロー管理を開く" newTab="true">\` を添える`;
 
 export function buildSystemPrompt(): string {
 	const now = new Intl.DateTimeFormat('ja-JP', {

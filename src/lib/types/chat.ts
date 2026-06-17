@@ -200,6 +200,45 @@ export type CustomerDetailContent = {
 	activities: CustomerDetailActivity[];
 };
 
+export type WorkflowResultType = 'boolean' | 'number' | 'string';
+
+/**
+ * パラメータ・条件のオペランド値。文字列リテラルそのもの、または `@step:<id>` 形式で
+ * 同じワークフロー内の先行ステップ（WorkflowActionStep）の結果を参照する。
+ */
+export type WorkflowOperand = string;
+
+export type WorkflowActionStep = {
+	id: string;
+	kind: 'action';
+	label: string;
+	tool: string;
+	params?: Record<string, WorkflowOperand>;
+};
+
+export type WorkflowConditionOperator = '==' | '!=' | '>' | '<' | '>=' | '<=';
+
+export type WorkflowConditionStep = {
+	id: string;
+	kind: 'condition';
+	label: string;
+	left: WorkflowOperand;
+	operator: WorkflowConditionOperator;
+	right: WorkflowOperand;
+	then: WorkflowStep[];
+};
+
+export type WorkflowStep = WorkflowActionStep | WorkflowConditionStep;
+
+export type WorkflowContent = {
+	type: 'workflow';
+	id?: string;
+	name: string;
+	triggerHour: number;
+	triggerMinute: number;
+	steps: WorkflowStep[];
+};
+
 export type MessageContent =
 	| TextContent
 	| FormContent
@@ -213,7 +252,8 @@ export type MessageContent =
 	| BizcardContent
 	| DocumentJobContent
 	| ReplyContent
-	| CustomerDetailContent;
+	| CustomerDetailContent
+	| WorkflowContent;
 
 export type Message = {
 	id: string;
