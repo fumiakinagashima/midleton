@@ -78,7 +78,7 @@ function parseUITag(tag: string): MessageContent | null {
 
 	try {
 		if (type === 'form' && tool) {
-			return { type: 'form', title, fields: JSON.parse(body), tool, submitLabel };
+			return { type: 'form', title, fields: body ? JSON.parse(body) : [], tool, submitLabel };
 		} else if (type === 'table') {
 			const { columns, rows } = JSON.parse(body);
 			return { type: 'table', columns, rows };
@@ -108,6 +108,8 @@ function parseUITag(tag: string): MessageContent | null {
 			return { type: 'bizcard', title };
 		} else if (type === 'document_job' && jobId && label) {
 			return { type: 'document_job', jobId, label };
+		} else if (type === 'reply') {
+			return { type: 'reply', title, fields: JSON.parse(body), submitLabel };
 		}
 	} catch {
 		// malformed JSON in UI tag

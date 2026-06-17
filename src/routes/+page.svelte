@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Form from '$lib/components/chat/Form.svelte';
 	import Table from '$lib/components/chat/Table.svelte';
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
@@ -9,8 +8,10 @@
 	import Link from '$lib/components/chat/Link.svelte';
 	import Bizcard from '$lib/components/chat/Bizcard.svelte';
 	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
+	import Reply from '$lib/components/chat/Reply.svelte';
+	import FormDialog from '$lib/components/chat/FormDialog.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent } from '$lib/types/chat';
+	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick, untrack } from 'svelte';
@@ -84,6 +85,7 @@
 	let currentChatId: string | null = untrack(() => data.seedChat?.id ?? null);
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
+	let panelForm = $state<FormContent | null>(null);
 
 	let streamingText = $state('');
 	let streamingUIContents = $state<MessageContent[]>([]);
@@ -287,28 +289,51 @@
 	}
 
 	function finalizeStreamingMessage() {
+		let nextPanelForm: FormContent | null = null;
 		const contents: MessageContent[] = [];
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
-		contents.push(...streamingUIContents);
-		if (contents.length === 0) contents.push({ type: 'text', text: m.chat_error() });
+		for (const c of streamingUIContents) {
+			if (c.type === 'form') {
+				nextPanelForm = c as FormContent;
+			} else {
+				contents.push(c);
+			}
+		}
+		if (contents.length === 0 && !nextPanelForm) contents.push({ type: 'text', text: m.chat_error() });
 		hidePreviousDealKanban(contents);
-		const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() };
-		messages = [...messages, message];
-		persistMessage(message);
+		if (contents.length > 0) {
+			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() };
+			messages = [...messages, message];
+			persistMessage(message);
+		}
+		if (nextPanelForm) panelForm = nextPanelForm;
 		streamingText = '';
 		streamingUIContents = [];
 	}
 
-	function hideRegistrationUI() {
-		for (const msg of messages) {
-			let changed = false;
-			for (const content of msg.contents) {
-				if ((content.type === 'form' || content.type === 'bizcard') && !content.completed) {
-					content.completed = true;
-					changed = true;
-				}
-			}
-			if (changed) persistMessage(msg);
+	async function submitToChat(tool: string, data: Record<string, string>) {
+		loading = true;
+		try {
+			const res = await fetch('/api/chat', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tool, data, history: messages })
+			});
+			const result = (await res.json()) as { contents: MessageContent[] };
+			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() };
+			messages = [...messages, message];
+			persistMessage(message);
+		} catch {
+			const message: Message = {
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				contents: [{ type: 'text', text: m.chat_error() }],
+				createdAt: new Date()
+			};
+			messages = [...messages, message];
+			persistMessage(message);
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -354,7 +379,6 @@
 	}
 
 	async function sendMessage(text: string, isFirst = false) {
-		hideRegistrationUI();
 		addUserMessage(text, isFirst);
 		loading = true;
 		streamingText = '';
@@ -454,37 +478,44 @@
 		await sendMessage(action.label, isFirst);
 	}
 
-	async function handleFormSubmit(tool: string, data: Record<string, string>) {
-		hideRegistrationUI();
-		loading = true;
-		try {
-			const res = await fetch('/api/chat', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ tool, data, history: messages })
-			});
-			const result = (await res.json()) as { contents: MessageContent[] };
-			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() };
-			messages = [...messages, message];
-			persistMessage(message);
-		} catch {
-			const message: Message = {
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				contents: [{ type: 'text', text: m.chat_error() }],
-				createdAt: new Date()
-			};
-			messages = [...messages, message];
-			persistMessage(message);
-		} finally {
-			loading = false;
+	async function handleReplySubmit(msg: Message, content: ReplyContent, answer: string) {
+		if (loading) return;
+		const isFirst = !hasStarted;
+		if (isFirst) {
+			hasStarted = true;
+			assignChatId();
 		}
+		content.completed = true;
+		persistMessage(msg);
+		await sendMessage(answer, isFirst);
+	}
+
+	async function handlePanelSubmit(tool: string, data: Record<string, string>) {
+		panelForm = null;
+		await submitToChat(tool, data);
+	}
+
+	function handlePanelCancel() {
+		panelForm = null;
+		const message: Message = {
+			id: crypto.randomUUID(),
+			role: 'assistant',
+			contents: [{ type: 'text', text: 'キャンセルしました。' }],
+			createdAt: new Date()
+		};
+		messages = [...messages, message];
+		persistMessage(message);
+	}
+
+	async function handleBizcardFormSubmit(msg: Message, bizcardContent: BizcardContent, tool: string, data: Record<string, string>) {
+		bizcardContent.completed = true;
+		persistMessage(msg);
+		await submitToChat(tool, data);
 	}
 
 	async function runQuickAction(action: QuickActionDef) {
 		quickActionMenuOpen = false;
 		if (loading) return;
-		hideRegistrationUI();
 		const isFirst = !hasStarted;
 		if (isFirst) {
 			hasStarted = true;
@@ -500,10 +531,15 @@
 				body: JSON.stringify({ id: action.id })
 			});
 			const result = (await res.json()) as { contents: MessageContent[] };
-			hidePreviousDealKanban(result.contents);
-			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents: result.contents, createdAt: new Date() };
-			messages = [...messages, message];
-			persistMessage(message);
+			const nextPanelForm = result.contents.find((c) => c.type === 'form') as FormContent | undefined;
+			const otherContents = result.contents.filter((c) => c.type !== 'form');
+			if (otherContents.length > 0) {
+				hidePreviousDealKanban(otherContents);
+				const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents: otherContents, createdAt: new Date() };
+				messages = [...messages, message];
+				persistMessage(message);
+			}
+			if (nextPanelForm) panelForm = nextPanelForm;
 		} catch {
 			const message: Message = {
 				id: crypto.randomUUID(),
@@ -550,14 +586,7 @@
 								{#if content.type === 'text'}
 									<div class="assistant-text">{@html renderMarkdown(content.text)}</div>
 								{:else if content.type === 'form'}
-									{#if !content.completed}
-										<Form
-											title={content.title}
-											fields={content.fields}
-											submitLabel={content.submitLabel}
-											onsubmit={(data) => handleFormSubmit(content.tool, data)}
-										/>
-									{/if}
+									<!-- フォームはパネルで表示 -->
 								{:else if content.type === 'table'}
 									<Table columns={content.columns} rows={content.rows} />
 								{:else if content.type === 'actions'}
@@ -567,7 +596,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent}
+									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -587,10 +616,19 @@
 										<Link label={extra.label} href={extra.href} description={extra.description} newTab={extra.newTab} />
 									{:else if extra.type === 'bizcard'}
 										{#if !extra.completed}
-											<Bizcard title={extra.title} onSubmitForm={handleFormSubmit} />
+											<Bizcard title={extra.title} onSubmitForm={(tool, data) => handleBizcardFormSubmit(msg, extra, tool, data)} />
 										{/if}
 									{:else if extra.type === 'document_job'}
 										<DocumentJob jobId={extra.jobId} label={extra.label} onResolved={(result) => resolveDocumentJob(msg, extra.jobId, result)} />
+									{:else if extra.type === 'reply'}
+										{#if !extra.completed}
+											<Reply
+												title={extra.title}
+												fields={extra.fields}
+												submitLabel={extra.submitLabel}
+												onsubmit={(answer) => handleReplySubmit(msg, extra, answer)}
+											/>
+										{/if}
 									{/if}
 								{/if}
 							{/each}
@@ -668,6 +706,14 @@
 			</div>
 		</div>
 	</div>
+
+	{#if panelForm}
+		<FormDialog
+			form={panelForm}
+			onsubmit={handlePanelSubmit}
+			oncancel={handlePanelCancel}
+		/>
+	{/if}
 </div>
 
 <style lang="scss">
@@ -677,6 +723,7 @@
 		flex-direction: column;
 		height: 100%;
 		overflow: hidden;
+
 	}
 
 	/* ---- Greeting ---- */
