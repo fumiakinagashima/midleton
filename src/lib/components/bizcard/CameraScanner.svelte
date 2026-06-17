@@ -1,18 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import type { CV } from '@techstark/opencv-js';
-	import {
-		loadOpenCv,
-		detectCard,
-		createStabilityTracker,
-		captureWarpedCard,
-		captureFullFrame,
-		getCoverCrop,
-		type Quad
-	} from './cardDetector';
 
 	type ScanState = 'init' | 'starting' | 'live' | 'captured' | 'error';
-	type CropRect = { sx: number; sy: number; sw: number; sh: number };
 
 	type Props = {
 		onCapture: (blob: Blob) => void;
@@ -28,26 +17,83 @@
 	let viewportEl: HTMLDivElement;
 	let videoEl: HTMLVideoElement;
 	let overlayCanvas: HTMLCanvasElement;
-	let workingCanvas: HTMLCanvasElement;
 
 	let stream: MediaStream | null = null;
-	let cv: CV | null = null;
-	let detectionRaf = 0;
-	let lastDetectTime = 0;
-	let stabilityTracker: ReturnType<typeof createStabilityTracker> | null = null;
-	let currentQuad: Quad | null = null;
-	let currentCrop: CropRect | null = null;
-	let currentWorkingSize = { width: 0, height: 0 };
-	let primaryColor = '#705446';
 
-	const WORKING_WIDTH = 400;
+	const LIVE_STATUS_MSG = 'シャッターボタン（または Space キー）で撮影してください。';
+
+	/** Computes the source rect of `videoEl` visible under `object-fit: cover` for a `containerW x containerH` box. */
+	function getCoverCrop(
+		videoW: number,
+		videoH: number,
+		containerW: number,
+		containerH: number
+	): { sx: number; sy: number; sw: number; sh: number } {
+		const videoRatio = videoW / videoH;
+		const containerRatio = containerW / containerH;
+		if (videoRatio > containerRatio) {
+			const sh = videoH;
+			const sw = sh * containerRatio;
+			return { sx: (videoW - sw) / 2, sy: 0, sw, sh };
+		}
+		const sw = videoW;
+		const sh = sw / containerRatio;
+		return { sx: 0, sy: (videoH - sh) / 2, sw, sh };
+	}
+
+	/** Crops the cover-fit `cropRect` of the video at native resolution. */
+	function captureFullFrame(
+		cropRect: { sx: number; sy: number; sw: number; sh: number },
+		outputLongEdge = 1600
+	): HTMLCanvasElement {
+		const scale = Math.min(1, outputLongEdge / Math.max(cropRect.sw, cropRect.sh));
+		const outW = Math.max(1, Math.round(cropRect.sw * scale));
+		const outH = Math.max(1, Math.round(cropRect.sh * scale));
+
+		const canvas = document.createElement('canvas');
+		canvas.width = outW;
+		canvas.height = outH;
+		canvas
+			.getContext('2d')!
+			.drawImage(videoEl, cropRect.sx, cropRect.sy, cropRect.sw, cropRect.sh, 0, 0, outW, outH);
+		return canvas;
+	}
+
+	function drawGuide() {
+		const containerW = viewportEl.clientWidth;
+		const containerH = viewportEl.clientHeight;
+		overlayCanvas.width = containerW;
+		overlayCanvas.height = containerH;
+		const ctx = overlayCanvas.getContext('2d')!;
+		ctx.clearRect(0, 0, containerW, containerH);
+
+		const guideW = containerW * 0.85;
+		const guideH = guideW / 1.585;
+		const x = (containerW - guideW) / 2;
+		const y = (containerH - guideH) / 2;
+		ctx.save();
+		ctx.setLineDash([10, 8]);
+		ctx.lineWidth = 2;
+		ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+		ctx.strokeRect(x, y, guideW, guideH);
+		ctx.restore();
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.code !== 'Space' || scanState !== 'live') return;
+		const tag = (document.activeElement as HTMLElement | null)?.tagName;
+		if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+		e.preventDefault();
+		manualCapture();
+	}
 
 	onMount(() => {
-		const computed = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
-		if (computed) primaryColor = computed;
+		window.addEventListener('resize', drawGuide);
+		window.addEventListener('keydown', handleKeydown);
 
 		return () => {
-			if (detectionRaf) cancelAnimationFrame(detectionRaf);
+			window.removeEventListener('resize', drawGuide);
+			window.removeEventListener('keydown', handleKeydown);
 			stream?.getTracks().forEach((t) => t.stop());
 			stream = null;
 		};
@@ -57,8 +103,7 @@
 		resetSignal;
 		if (scanState === 'captured') {
 			scanState = 'live';
-			statusMsg = cv ? '名刺を枠内に置いてください' : '自動検出は利用できません。シャッターボタンで撮影してください。';
-			stabilityTracker?.reset();
+			statusMsg = LIVE_STATUS_MSG;
 		}
 	});
 
@@ -90,89 +135,10 @@
 			return;
 		}
 
-		statusMsg = '読み取り機能を準備しています…';
-		try {
-			cv = await loadOpenCv();
-			stabilityTracker = createStabilityTracker();
-		} catch {
-			cv = null;
-		}
-
 		scanState = 'live';
-		statusMsg = cv ? '名刺を枠内に置いてください' : '自動検出は利用できません。シャッターボタンで撮影してください。';
-		detectionRaf = requestAnimationFrame(detectionLoop);
-	}
-
-	function detectionLoop(timestamp: number) {
-		detectionRaf = requestAnimationFrame(detectionLoop);
-		if (scanState !== 'live' || !cv || !videoEl.videoWidth) return;
-		if (timestamp - lastDetectTime < 125) return;
-		lastDetectTime = timestamp;
-
-		const containerW = viewportEl.clientWidth;
-		const containerH = viewportEl.clientHeight;
-		const crop = getCoverCrop(videoEl.videoWidth, videoEl.videoHeight, containerW, containerH);
-		const wW = WORKING_WIDTH;
-		const wH = Math.round(WORKING_WIDTH * (crop.sh / crop.sw));
-
-		workingCanvas.width = wW;
-		workingCanvas.height = wH;
-		workingCanvas
-			.getContext('2d')!
-			.drawImage(videoEl, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, wW, wH);
-
-		const { quad, area } = detectCard(cv, workingCanvas);
-		currentQuad = quad;
-		currentCrop = crop;
-		currentWorkingSize = { width: wW, height: wH };
-		drawOverlay(quad, wW, wH, containerW, containerH);
-
-		const stable = stabilityTracker!.push(quad, area);
-		statusMsg = quad
-			? '名刺を検出しました。動かさずにお待ちください…'
-			: '名刺を枠内に置いてください';
-
-		if (stable) {
-			stabilityTracker!.reset();
-			try {
-				const canvas = captureWarpedCard(cv, videoEl, quad!, currentWorkingSize, crop);
-				emitCapture(canvas);
-			} catch {
-				// keep live, allow retry / manual shutter
-			}
-		}
-	}
-
-	function drawOverlay(quad: Quad | null, wW: number, wH: number, containerW: number, containerH: number) {
-		overlayCanvas.width = containerW;
-		overlayCanvas.height = containerH;
-		const ctx = overlayCanvas.getContext('2d')!;
-		ctx.clearRect(0, 0, containerW, containerH);
-
-		if (quad) {
-			const kx = containerW / wW;
-			const ky = containerH / wH;
-			ctx.lineWidth = 3;
-			ctx.strokeStyle = primaryColor;
-			ctx.beginPath();
-			ctx.moveTo(quad[0].x * kx, quad[0].y * ky);
-			for (let i = 1; i < quad.length; i++) {
-				ctx.lineTo(quad[i].x * kx, quad[i].y * ky);
-			}
-			ctx.closePath();
-			ctx.stroke();
-		} else {
-			const guideW = containerW * 0.85;
-			const guideH = guideW / 1.585;
-			const x = (containerW - guideW) / 2;
-			const y = (containerH - guideH) / 2;
-			ctx.save();
-			ctx.setLineDash([10, 8]);
-			ctx.lineWidth = 2;
-			ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-			ctx.strokeRect(x, y, guideW, guideH);
-			ctx.restore();
-		}
+		statusMsg = LIVE_STATUS_MSG;
+		await tick();
+		drawGuide();
 	}
 
 	function emitCapture(canvas: HTMLCanvasElement) {
@@ -193,16 +159,8 @@
 	function manualCapture() {
 		if (scanState !== 'live' || !videoEl.videoWidth) return;
 		try {
-			let canvas: HTMLCanvasElement;
-			if (cv && currentQuad && currentCrop) {
-				canvas = captureWarpedCard(cv, videoEl, currentQuad, currentWorkingSize, currentCrop);
-			} else {
-				const crop =
-					currentCrop ??
-					getCoverCrop(videoEl.videoWidth, videoEl.videoHeight, viewportEl.clientWidth, viewportEl.clientHeight);
-				canvas = captureFullFrame(videoEl, crop);
-			}
-			emitCapture(canvas);
+			const crop = getCoverCrop(videoEl.videoWidth, videoEl.videoHeight, viewportEl.clientWidth, viewportEl.clientHeight);
+			emitCapture(captureFullFrame(crop));
 		} catch {
 			// ignore, stay live
 		}
@@ -231,8 +189,6 @@
 		{/if}
 		<button class="shutter" onclick={manualCapture} disabled={scanState !== 'live'} aria-label="撮影"></button>
 	</div>
-
-	<canvas bind:this={workingCanvas} hidden></canvas>
 </div>
 
 <style lang="scss">

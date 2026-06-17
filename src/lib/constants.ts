@@ -1,9 +1,6 @@
 // ── Polling ────────────────────────────────────────────────────────────────
 export const NOTIFICATION_POLL_INTERVAL_MS = 15000;
 
-// ── Bizcard ───────────────────────────────────────────────────────────────
-export const OPENCV_LOAD_TIMEOUT_MS = 10000;
-
 // ── Chat ───────────────────────────────────────────────────────────────────
 export const CHAT_TITLE_MAX_LENGTH = 24;
 export const CHAT_TEXTAREA_MAX_HEIGHT_PX = 192;
