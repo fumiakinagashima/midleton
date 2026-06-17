@@ -110,6 +110,9 @@ function parseUITag(tag: string): MessageContent | null {
 			return { type: 'document_job', jobId, label };
 		} else if (type === 'reply') {
 			return { type: 'reply', title, fields: JSON.parse(body), submitLabel };
+		} else if (type === 'customer_detail') {
+			const { customer, contacts, deals, activities } = JSON.parse(body);
+			return { type: 'customer_detail', customer, contacts, deals, activities };
 		}
 	} catch {
 		// malformed JSON in UI tag

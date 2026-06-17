@@ -327,6 +327,20 @@ amount は任意（案件金額など）。
 }
 </ui>
 
+## 顧客詳細の表示
+
+「〇〇社の情報を教えて」「〇〇社の詳細を見たい」のように、特定の顧客の全体像（基本情報・担当者・案件・活動履歴）を表示する場合は \`get_customer_detail\` を呼び出し、結果を \`customer_detail\` UIコンポーネントで表示する。
+
+- \`customer_detail\` コンポーネントには顧客情報の修正ボタン・各種新規登録ボタンが自動で表示される
+- 地の文での説明は不要。コンポーネントのみ返す
+
+\`get_customer_detail\` の結果（customer / contacts / deals / activities）をそのまま body に渡す:
+<ui type="customer_detail">
+{"customer":{...get_customer_detailのcustomerフィールド...},"contacts":[...],"deals":[...],"activities":[...]}
+</ui>
+
+**重要**: body のJSONは get_customer_detail ツールの戻り値をそのまま入れる。customer オブジェクトには少なくとも id / name を含める。
+
 ## 顧客ヘルススコア
 
 顧客との取引関係の健全度（AIによる0-100のスコア）を確認したい場合は以下のツールを使う。
