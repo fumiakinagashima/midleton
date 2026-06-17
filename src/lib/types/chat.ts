@@ -134,6 +134,27 @@ export type DocumentJobContent = {
 	label: string;
 };
 
+export type ReplyOption = {
+	value: string;
+	label: string;
+};
+
+export type ReplyField = {
+	key: string;
+	type: 'single' | 'multiple' | 'text' | 'number' | 'datetime';
+	label?: string;
+	options?: ReplyOption[];
+	placeholder?: string;
+};
+
+export type ReplyContent = {
+	type: 'reply';
+	title?: string;
+	fields: ReplyField[];
+	submitLabel?: string;
+	completed?: boolean;
+};
+
 export type MessageContent =
 	| TextContent
 	| FormContent
@@ -145,7 +166,8 @@ export type MessageContent =
 	| KanbanContent
 	| LinkContent
 	| BizcardContent
-	| DocumentJobContent;
+	| DocumentJobContent
+	| ReplyContent;
 
 export type Message = {
 	id: string;
