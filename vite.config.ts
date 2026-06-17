@@ -8,9 +8,6 @@ export default defineConfig({
 		paraglide({ project: './project.inlang', outdir: './src/lib/paraglide' }),
 		sveltekit()
 	],
-	optimizeDeps: {
-		exclude: ['@techstark/opencv-js']
-	},
 	test: {
 		environment: 'node',
 		include: ['src/**/*.{test,spec}.{js,ts}']
