@@ -10,8 +10,9 @@
 	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
 	import Reply from '$lib/components/chat/Reply.svelte';
 	import FormDialog from '$lib/components/chat/FormDialog.svelte';
+	import CustomerDetail from '$lib/components/chat/CustomerDetail.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent } from '$lib/types/chat';
+	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick, untrack } from 'svelte';
@@ -596,7 +597,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent}
+									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent | CustomerDetailContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -629,6 +630,14 @@
 												onsubmit={(answer) => handleReplySubmit(msg, extra, answer)}
 											/>
 										{/if}
+									{:else if extra.type === 'customer_detail'}
+										<CustomerDetail
+											customer={extra.customer}
+											contacts={extra.contacts}
+											deals={extra.deals}
+											activities={extra.activities}
+											onOpenForm={(form) => { panelForm = form; }}
+										/>
 									{/if}
 								{/if}
 							{/each}

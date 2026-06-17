@@ -155,6 +155,51 @@ export type ReplyContent = {
 	completed?: boolean;
 };
 
+export type CustomerDetailCustomer = {
+	id: string;
+	name: string;
+	email?: string | null;
+	phone?: string | null;
+	postal_code?: string | null;
+	address?: string | null;
+	website?: string | null;
+	status?: string | null;
+	notes?: string | null;
+};
+
+export type CustomerDetailContact = {
+	id: string;
+	name: string;
+	role?: string | null;
+	department?: string | null;
+	email?: string | null;
+	phone?: string | null;
+};
+
+export type CustomerDetailDeal = {
+	id: string;
+	title: string;
+	amount?: number | null;
+	status: string;
+	plannedStart?: string | null;
+	plannedEnd?: string | null;
+};
+
+export type CustomerDetailActivity = {
+	id: string;
+	type: string;
+	content: string;
+	createdAt: string | number;
+};
+
+export type CustomerDetailContent = {
+	type: 'customer_detail';
+	customer: CustomerDetailCustomer;
+	contacts: CustomerDetailContact[];
+	deals: CustomerDetailDeal[];
+	activities: CustomerDetailActivity[];
+};
+
 export type MessageContent =
 	| TextContent
 	| FormContent
@@ -167,7 +212,8 @@ export type MessageContent =
 	| LinkContent
 	| BizcardContent
 	| DocumentJobContent
-	| ReplyContent;
+	| ReplyContent
+	| CustomerDetailContent;
 
 export type Message = {
 	id: string;
