@@ -27,7 +27,6 @@ binding = "R2"
 bucket_name = "midleton"
 
 [vars]
-# 本番は `wrangler secret put ANTHROPIC_API_KEY` で管理する
-ANTHROPIC_API_KEY = ""
+# ANTHROPIC_API_KEY は `wrangler secret put ANTHROPIC_API_KEY` で管理する（[vars] に書くと deploy 時にシークレットを空文字で上書きしてしまうため定義しない）
 # ローカル開発時のモックモード（.dev.vars で上書き可能）
 MOCK_AI = "false"
