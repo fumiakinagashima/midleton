@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { createDb } from '$lib/server/db';
 import { getWorkflow } from '$lib/server/db/workflow-service';
+import { listWorkflowRuns } from '$lib/server/db/workflow-run-service';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, platform, locals }) => {
@@ -11,5 +12,6 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	if (workflow.accountId && workflow.accountId !== locals.account?.id) {
 		throw error(403, '権限がありません');
 	}
-	return { workflow };
+	const runs = await listWorkflowRuns(db, params.id);
+	return { workflow, runs };
 };

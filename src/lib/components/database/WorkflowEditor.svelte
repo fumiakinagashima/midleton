@@ -4,7 +4,9 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import Workflow, { type WorkflowState } from '$lib/components/chat/Workflow.svelte';
 	import { validateWorkflow } from '$lib/workflow-validation';
+	import { formatJstDateTime } from '$lib/datetime';
 	import type { WorkflowStep } from '$lib/types/chat';
+	import type { WorkflowRunRow } from '$lib/server/db/workflow-run-service';
 
 	type Props = {
 		id?: string;
@@ -13,6 +15,7 @@
 		initialTriggerMinute?: number;
 		initialSteps?: WorkflowStep[];
 		initialEnabled?: boolean;
+		runs?: WorkflowRunRow[];
 	};
 
 	let {
@@ -21,7 +24,8 @@
 		initialTriggerHour = 9,
 		initialTriggerMinute = 0,
 		initialSteps = [],
-		initialEnabled = false
+		initialEnabled = false,
+		runs = []
 	}: Props = $props();
 
 	let enabled = $state(untrack(() => initialEnabled));
@@ -98,6 +102,38 @@
 			editable={true}
 		/>
 	</div>
+
+	{#if id}
+		<div class="run-log">
+			<h3>実行ログ</h3>
+			{#if runs.length === 0}
+				<p class="run-log-empty">実行履歴はまだありません。</p>
+			{:else}
+				<table class="run-log-table">
+					<thead>
+						<tr>
+							<th>開始</th>
+							<th>結果</th>
+							<th>エラー</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each runs as run (run.id)}
+							<tr>
+								<td class="run-log-date">{formatJstDateTime(run.startedAt)}</td>
+								<td>
+									<span class="run-log-badge" class:ok={run.ok} class:fail={!run.ok}>
+										{run.ok ? '成功' : '失敗'}
+									</span>
+								</td>
+								<td class="run-log-error">{run.error ?? ''}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+		</div>
+	{/if}
 </div>
 
 <style lang="scss">
@@ -159,5 +195,71 @@
 
 	.editor-canvas {
 		flex: 1;
+	}
+
+	.run-log {
+		border-top: 1px solid var(--color-border);
+		padding-top: 16px;
+
+		h3 {
+			margin: 0 0 8px;
+			font-size: 0.9375rem;
+		}
+	}
+
+	.run-log-empty {
+		margin: 0;
+		font-size: 0.875rem;
+		color: var(--color-text-muted);
+	}
+
+	.run-log-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.8125rem;
+
+		th {
+			text-align: left;
+			padding: 6px 10px;
+			color: var(--color-text-muted);
+			font-weight: 600;
+			border-bottom: 1px solid var(--color-border);
+		}
+
+		td {
+			padding: 6px 10px;
+			border-bottom: 1px solid var(--color-border);
+		}
+
+		tbody tr:last-child td {
+			border-bottom: none;
+		}
+	}
+
+	.run-log-date {
+		white-space: nowrap;
+		color: var(--color-text-muted);
+	}
+
+	.run-log-error {
+		color: var(--color-danger, #dc2626);
+	}
+
+	.run-log-badge {
+		font-size: 0.75rem;
+		padding: 2px 8px;
+		border-radius: 20px;
+		border: 1px solid;
+		font-weight: 500;
+		white-space: nowrap;
+
+		&.ok {
+			color: #16a34a;
+			border-color: #16a34a;
+		}
+		&.fail {
+			color: #dc2626;
+			border-color: #dc2626;
+		}
 	}
 </style>
