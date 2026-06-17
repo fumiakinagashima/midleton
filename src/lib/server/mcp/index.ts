@@ -12,6 +12,7 @@ import * as entities from './entities';
 import * as approvals from './approvals';
 import * as help from './help';
 import * as followup from './followup';
+import * as workflows from './workflows';
 
 export type { ToolEnv } from './shared';
 
@@ -65,7 +66,9 @@ export type ToolName =
 	| 'update_approval_step'
 	| 'cancel_approval'
 	| 'get_help'
-	| 'suggest_customer_followup';
+	| 'suggest_customer_followup'
+	| 'save_workflow'
+	| 'list_workflows';
 
 export const tools: Tool[] = [
 	...integrations.tools,
@@ -79,7 +82,8 @@ export const tools: Tool[] = [
 	...entities.tools,
 	...approvals.tools,
 	...help.tools,
-	...followup.tools
+	...followup.tools,
+	...workflows.tools
 ];
 
 export async function dispatchTool(
@@ -140,6 +144,8 @@ export async function dispatchTool(
 		case 'cancel_approval':                return approvals.handleCancelApproval(db, input);
 		case 'get_help':                       return help.handleGetHelp(input);
 		case 'suggest_customer_followup':      return followup.handleSuggestCustomerFollowup(db, input, env);
+		case 'save_workflow':                  return workflows.handleSaveWorkflow(db, input, env);
+		case 'list_workflows':                 return workflows.handleListWorkflows(db, env);
 		default:
 			throw new Error(`Unknown tool: ${name}`);
 	}

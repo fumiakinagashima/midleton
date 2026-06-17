@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Table from '$lib/components/chat/Table.svelte';
+	import Workflow from '$lib/components/chat/Workflow.svelte';
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
 	import Gantt from '$lib/components/chat/Gantt.svelte';
@@ -12,7 +13,7 @@
 	import FormDialog from '$lib/components/chat/FormDialog.svelte';
 	import CustomerDetail from '$lib/components/chat/CustomerDetail.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent } from '$lib/types/chat';
+	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick, untrack } from 'svelte';
@@ -597,7 +598,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent | CustomerDetailContent}
+									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent | CustomerDetailContent | WorkflowContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -637,6 +638,26 @@
 											deals={extra.deals}
 											activities={extra.activities}
 											onOpenForm={(form) => { panelForm = form; }}
+										/>
+									{:else if extra.type === 'workflow'}
+										<Workflow
+											name={extra.name}
+											triggerHour={extra.triggerHour}
+											triggerMinute={extra.triggerMinute}
+											steps={extra.steps}
+											onsave={async (def) => {
+												try {
+													const res = await fetch('/api/workflows', {
+														method: 'POST',
+														headers: { 'Content-Type': 'application/json' },
+														body: JSON.stringify(def)
+													});
+													if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? '保存に失敗しました');
+													toast.success(`「${def.name}」を保存しました。/database/workflows から有効化してください。`);
+												} catch (e) {
+													toast.error(e instanceof Error ? e.message : '保存に失敗しました');
+												}
+											}}
 										/>
 									{/if}
 								{/if}
