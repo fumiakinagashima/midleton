@@ -3,7 +3,6 @@
 	import CameraScanner from './CameraScanner.svelte';
 
 	type State = 'idle' | 'loading' | 'done' | 'error';
-	type Mode = 'file' | 'camera';
 
 	type Props = {
 		onRegister?: (result: BizcardResult, mode: 'both' | 'existing') => void;
@@ -11,14 +10,10 @@
 
 	let { onRegister }: Props = $props();
 
-	const cameraSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
-
 	let state = $state<State>('idle');
 	let errorMsg = $state('');
 	let results = $state<BizcardResult[]>([]);
 	let previewUrl = $state<string | null>(null);
-	let dragging = $state(false);
-	let mode: Mode = $state('camera');
 	let scanResetSignal = $state(0);
 
 	const fields: { key: keyof BizcardResult; label: string; icon: string }[] = [
@@ -31,72 +26,10 @@
 		{ key: 'website', label: 'Web',      icon: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 17.9c-3.9-.5-7-3.9-7-7.9 0-.6.1-1.2.2-1.8L9 15v1c0 1.1.9 2 2 2v1.9zm6.9-2.6c-.3-.8-1-1.3-1.9-1.3h-1v-3c0-.6-.4-1-1-1H8v-2h2c.6 0 1-.4 1-1V7h2c1.1 0 2-.9 2-2v-.4c2.9 1.2 5 4 5 7.4 0 2.1-.8 4-2.1 5.3z' }
 	];
 
-	function isHeic(file: File): boolean {
-		if (file.type === 'image/heic' || file.type === 'image/heif') return true;
-		const ext = file.name.split('.').pop()?.toLowerCase();
-		return ext === 'heic' || ext === 'heif';
-	}
-
-	function handleFiles(files: FileList | null) {
-		const file = files?.[0];
-		if (!file) return;
-		if (isHeic(file)) {
-			state = 'error';
-			errorMsg = 'heic';
-			return;
-		}
-		if (!file.type.startsWith('image/')) {
-			state = 'error';
-			errorMsg = '画像ファイルを選択してください。';
-			return;
-		}
-		if (previewUrl) URL.revokeObjectURL(previewUrl);
-		previewUrl = URL.createObjectURL(file);
-		upload(file);
-	}
-
-	// 長辺 1600px・品質 0.85 にリサイズ（複数枚でも各カードの文字が読める解像度）
-	function resizeImage(file: File, maxPx = 1600): Promise<Blob> {
-		return new Promise((resolve, reject) => {
-			const img = new Image();
-			const url = URL.createObjectURL(file);
-			img.onload = () => {
-				URL.revokeObjectURL(url);
-				const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-				const w = Math.round(img.width * scale);
-				const h = Math.round(img.height * scale);
-				const canvas = document.createElement('canvas');
-				canvas.width = w;
-				canvas.height = h;
-				canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
-				canvas.toBlob(
-					(blob) => (blob ? resolve(blob) : reject(new Error('canvas.toBlob failed'))),
-					'image/jpeg',
-					0.85
-				);
-			};
-			img.onerror = () => reject(new Error('image load failed'));
-			img.src = url;
-		});
-	}
-
-	async function upload(input: Blob | File) {
+	async function upload(blob: Blob) {
 		state = 'loading';
 		results = [];
 		errorMsg = '';
-
-		let blob: Blob;
-		if (input instanceof File) {
-			try {
-				blob = await resizeImage(input);
-			} catch {
-				state = 'error';
-				errorMsg = '画像の処理に失敗しました。';
-				return;
-			}
-		} else {
-			blob = input;
-		}
 
 		const fd = new FormData();
 		fd.append('image', blob, 'bizcard.jpg');
@@ -124,27 +57,12 @@
 		}
 	}
 
-	function onDrop(e: DragEvent) {
-		e.preventDefault();
-		dragging = false;
-		handleFiles(e.dataTransfer?.files ?? null);
-	}
-
-	function onDragOver(e: DragEvent) { e.preventDefault(); dragging = true; }
-	function onDragLeave() { dragging = false; }
-
 	function reset() {
 		state = 'idle';
 		results = [];
 		errorMsg = '';
 		if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
 		scanResetSignal += 1;
-	}
-
-	function setMode(next: Mode) {
-		if (mode === next) return;
-		mode = next;
-		reset();
 	}
 
 	function handleCameraCapture(blob: Blob) {
@@ -169,39 +87,11 @@
 </script>
 
 <div class="scanner">
-	<!-- Upload zone -->
-	{#if mode === 'camera'}
-		<div class="capture-area">
-			<div class="upload-zone camera-zone">
-				<CameraScanner onCapture={handleCameraCapture} onCancel={() => setMode('file')} resetSignal={scanResetSignal} />
-				{#if previewUrl}
-					<div class="capture-overlay">
-						<img src={previewUrl} alt="名刺プレビュー" class="preview-img" />
-						{#if state === 'loading'}
-							<div class="overlay">
-								<div class="spinner"></div>
-								<p>AIが情報を読み取っています…</p>
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</div>
-			<button type="button" class="mode-link" onclick={() => setMode('file')}>ファイルで読み込む</button>
-		</div>
-	{:else}
-		<div class="capture-area">
-			<div
-				class="upload-zone"
-				class:dragging
-				class:has-preview={!!previewUrl}
-				ondrop={onDrop}
-				ondragover={onDragOver}
-				ondragleave={onDragLeave}
-				role="button"
-				tabindex="0"
-				aria-label="名刺画像をアップロード"
-			>
-				{#if previewUrl}
+	<div class="capture-area">
+		<div class="upload-zone">
+			<CameraScanner onCapture={handleCameraCapture} resetSignal={scanResetSignal} />
+			{#if previewUrl}
+				<div class="capture-overlay">
 					<img src={previewUrl} alt="名刺プレビュー" class="preview-img" />
 					{#if state === 'loading'}
 						<div class="overlay">
@@ -209,36 +99,17 @@
 							<p>AIが情報を読み取っています…</p>
 						</div>
 					{/if}
-				{:else}
-					<div class="placeholder">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-							<rect x="3" y="5" width="18" height="14" rx="2"/>
-							<path d="M3 9h18"/>
-							<circle cx="8" cy="7" r="0.5" fill="currentColor"/>
-							<circle cx="10" cy="7" r="0.5" fill="currentColor"/>
-						</svg>
-						<p class="ph-title">名刺をドロップ</p>
-						<p class="ph-sub">または</p>
-						<label class="upload-btn">
-							ファイルを選択
-							<input type="file" accept="image/*" onchange={(e) => handleFiles((e.target as HTMLInputElement).files)} />
-						</label>
-						<p class="ph-hint">JPEG・PNG・WEBP 対応・複数枚同時対応</p>
-					</div>
-				{/if}
-			</div>
-			{#if cameraSupported}
-				<button type="button" class="mode-link" onclick={() => setMode('camera')}>カメラで読み取る</button>
+				</div>
 			{/if}
 		</div>
-	{/if}
+	</div>
 
 	<!-- Result cards -->
 	{#if state === 'done' && results.length > 0}
 		<div class="results-wrap">
 			<div class="result-header">
 				<span class="result-badge">{results.length}件 抽出完了</span>
-				<button class="reset-btn" onclick={reset}>{mode === 'camera' ? '再スキャンする' : '別の画像を読み込む'}</button>
+				<button class="reset-btn" onclick={reset}>再スキャンする</button>
 			</div>
 
 			<div class="result-cards">
@@ -282,7 +153,7 @@
 
 	{#if state === 'error'}
 		<div class="error-box">
-			<p>{errorMsg === 'heic' ? 'HEIC形式は非対応です。JPEG または PNG に変換してください。' : errorMsg}</p>
+			<p>{errorMsg}</p>
 			<button onclick={reset}>閉じる</button>
 		</div>
 	{/if}
@@ -303,43 +174,13 @@
 		max-width: 480px;
 	}
 
-	.mode-link {
-		font-size: 0.8125rem;
-		color: var(--color-text-muted);
-		background: none;
-		border: none;
-		cursor: pointer;
-		text-decoration: underline;
-		padding: 0;
-
-		&:hover { color: var(--color-text); }
-	}
-
 	.upload-zone {
 		max-width: 480px;
 		min-height: 220px;
-		border: 2px dashed var(--color-border);
 		border-radius: 16px;
 		background: var(--color-surface);
-		display: flex;
-		align-items: center;
-		justify-content: center;
 		position: relative;
 		overflow: hidden;
-		transition: border-color 0.15s, background 0.15s;
-		cursor: pointer;
-
-		&.dragging {
-			border-color: var(--color-primary);
-			background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
-		}
-
-		&.has-preview {
-			min-height: 220px;
-			cursor: default;
-		}
-
-		&.camera-zone { display: block; }
 	}
 
 	.capture-overlay {
@@ -371,57 +212,6 @@
 			color: var(--color-text-muted);
 			margin: 0;
 		}
-	}
-
-	.placeholder {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 10px;
-		padding: 32px;
-		text-align: center;
-
-		svg {
-			width: 48px;
-			height: 48px;
-			color: var(--color-text-muted);
-			opacity: 0.5;
-		}
-	}
-
-	.ph-title {
-		font-size: 1rem;
-		font-weight: 600;
-		color: var(--color-text);
-		margin: 0;
-	}
-
-	.ph-sub {
-		font-size: 0.875rem;
-		color: var(--color-text-muted);
-		margin: 0;
-	}
-
-	.ph-hint {
-		font-size: 0.75rem;
-		color: var(--color-text-muted);
-		margin: 0;
-	}
-
-	.upload-btn {
-		display: inline-block;
-		padding: 7px 18px;
-		border-radius: 8px;
-		background: var(--color-primary);
-		color: #fff;
-		font-size: 0.875rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: opacity 0.15s;
-
-		&:hover { opacity: 0.88; }
-
-		input { display: none; }
 	}
 
 	.spinner {

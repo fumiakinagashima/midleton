@@ -5,10 +5,9 @@
 
 	type Props = {
 		onCapture: (blob: Blob) => void;
-		onCancel?: () => void;
 		resetSignal: number;
 	};
-	let { onCapture, onCancel, resetSignal }: Props = $props();
+	let { onCapture, resetSignal }: Props = $props();
 
 	let scanState = $state<ScanState>('init');
 	let statusMsg = $state('');
@@ -175,9 +174,7 @@
 	{:else if scanState === 'error'}
 		<div class="placeholder">
 			<p class="error-text">{errorMsg}</p>
-			{#if onCancel}
-				<button class="primary-btn" onclick={() => onCancel?.()}>ファイル選択に戻る</button>
-			{/if}
+			<button class="primary-btn" onclick={startCamera}>再試行</button>
 		</div>
 	{/if}
 
