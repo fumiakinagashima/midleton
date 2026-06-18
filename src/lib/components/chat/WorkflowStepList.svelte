@@ -9,6 +9,7 @@
 		parseStepRef,
 		makeItemRef,
 		parseItemRef,
+		entityListItemFields,
 		type WorkflowListResultField
 	} from '$lib/workflow-tools';
 	import type { VisibleStep, VisibleListStep } from '$lib/workflow-validation';
@@ -75,7 +76,10 @@
 			if (s.kind === 'action') {
 				const tool = getWorkflowActionTool(s.tool);
 				if (tool?.listResult) {
-					visible.push({ id: s.id, label: s.label, itemFields: tool.listResult.itemFields });
+					// get_entitiesはテーブルごとにフィールドが異なるため、選択中のentity_type_idから動的に解決する
+					const itemFields =
+						s.tool === 'get_entities' ? entityListItemFields(entityTypes, s.params?.entity_type_id) : tool.listResult.itemFields;
+					visible.push({ id: s.id, label: s.label, itemFields });
 				}
 			}
 		}

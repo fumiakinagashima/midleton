@@ -437,7 +437,7 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
   - 検索・集計: 顧客 / 案件 / 活動履歴（`search_deals`・`search_activities`をカタログに追加し対称にした。`search_customers`と同様listResult付きでforeachのsourceにも使える）
   - [x] 自作テーブル: 「検索」カテゴリの対象に、顧客・案件・活動履歴と同じ並びで各カスタムテーブルが個別の選択肢として並ぶ（`includeEntityTargets`フラグ、`get_entities`固定。「自作テーブル」という1つの選択肢にまとめず、テーブルごとに対象を分けるUI）。テーブル一覧は画面アクセス時にサーバーサイドで取得する（`listEntityTypesForWorkflow`、`table-service.ts`）。対象選択時に`step.tool='get_entities'`と`step.params.entity_type_id`を直接設定し、`entity_type_id`はカタログのparamsには含めない（`send_email`の`to`注入と同じパターンで`run.ts`が直接付与する）
     - 保存済みの対象テーブルが後から削除された場合、編集画面では「（削除されたテーブル）」等の表示は持たせず単純に未選択（「対象を選択」）の状態に戻る設計どおり実装。`validateWorkflow`に`entityTypes`を渡して存在チェックを追加し、未選択（実質削除済み）はエラーとして保存をブロックする（全呼び出し元 — `WorkflowEditor`/`WorkflowDialog`/`save_workflow`/`/api/workflows`系API — でentityTypesを渡すように統一）
-    - foreachのsourceとして使う場合のitemFields（カスタムフィールドはテーブルごとに異なる）は将来対応として保留。現状はlistResultなしで検索（件数・条件参照）のみ対応
+    - [x] foreachのsourceとしても利用可能（`get_entities`に`listResult`を追加。`extractList`が各レコードの`data`をトップレベルに展開するため、テーブルごとに異なるフィールドにも対応できる）。itemFieldsは選択中のentity_type_idから動的に解決する（`entityListItemFields`、`workflow-tools.ts`）。`collectListVisibility`/`validateWorkflow`/`WorkflowStepList.svelte`の3箇所で同じ解決ロジックを使用
   - Slack（通知）は対象の選択肢が連携設定に依存し動的に組み立てる必要があるため、別途仕組みを用意してから追加するTODOとして保留
 - [ ] カスタムテーブル削除時にワークフローでの参照有無をチェックし、使用中なら削除前に警告する（別フェーズで対応）
 - [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する
