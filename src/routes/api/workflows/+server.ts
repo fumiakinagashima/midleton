@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { createWorkflow } from '$lib/server/db/workflow-service';
+import { listEntityTypesForWorkflow } from '$lib/server/db/table-service';
 import { validateWorkflow } from '$lib/workflow-validation';
 import type { WorkflowStep } from '$lib/types/chat';
 
@@ -21,7 +22,8 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 		const triggerMinute = body.triggerMinute ?? 0;
 		const steps = body.steps ?? [];
 
-		const validation = validateWorkflow(triggerHour, triggerMinute, steps);
+		const entityTypes = await listEntityTypesForWorkflow(db);
+		const validation = validateWorkflow(triggerHour, triggerMinute, steps, entityTypes);
 		if (!validation.ok) {
 			return json({ error: validation.errors.join(' / ') }, { status: 422 });
 		}

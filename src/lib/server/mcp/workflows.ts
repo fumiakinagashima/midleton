@@ -3,6 +3,7 @@ import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 import type { Db } from '../db';
 import type { ToolEnv } from './shared';
 import { createWorkflow, updateWorkflow, listWorkflows, getWorkflow, type WorkflowRow } from '../db/workflow-service';
+import { listEntityTypesForWorkflow } from '../db/table-service';
 import { validateWorkflow } from '$lib/workflow-validation';
 import type { WorkflowStep } from '$lib/types/chat';
 
@@ -78,7 +79,8 @@ export const tools: Tool[] = [
 
 export async function handleSaveWorkflow(db: Db, input: unknown, env?: ToolEnv) {
 	const { id, name, triggerHour, triggerMinute, steps } = saveWorkflowInputSchema.parse(input);
-	const validation = validateWorkflow(triggerHour, triggerMinute, steps);
+	const entityTypes = await listEntityTypesForWorkflow(db);
+	const validation = validateWorkflow(triggerHour, triggerMinute, steps, entityTypes);
 	if (!validation.ok) {
 		throw new Error(`ワークフローの内容に問題があります: ${validation.errors.join(' / ')}`);
 	}

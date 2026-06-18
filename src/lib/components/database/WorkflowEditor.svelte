@@ -9,6 +9,7 @@
 	import { formatJstDateTime } from '$lib/datetime';
 	import type { WorkflowStep } from '$lib/types/chat';
 	import type { WorkflowRunRow } from '$lib/server/db/workflow-run-service';
+	import type { EntityTypeForWorkflow } from '$lib/server/db/table-service';
 
 	type WorkflowReviewResult = { summary: string; issues: string[]; suggestions: string[] };
 
@@ -20,6 +21,7 @@
 		initialSteps?: WorkflowStep[];
 		initialEnabled?: boolean;
 		runs?: WorkflowRunRow[];
+		entityTypes?: EntityTypeForWorkflow[];
 	};
 
 	let {
@@ -29,7 +31,8 @@
 		initialTriggerMinute = 0,
 		initialSteps = [],
 		initialEnabled = false,
-		runs = []
+		runs = [],
+		entityTypes = []
 	}: Props = $props();
 
 	let enabled = $state(untrack(() => initialEnabled));
@@ -79,7 +82,7 @@
 			toast.error('ワークフロー名を入力してください');
 			return;
 		}
-		const validation = validateWorkflow(state.triggerHour, state.triggerMinute, state.steps);
+		const validation = validateWorkflow(state.triggerHour, state.triggerMinute, state.steps, entityTypes);
 		if (!validation.ok) {
 			for (const msg of validation.errors) toast.error(msg);
 			return;
@@ -177,6 +180,7 @@
 				triggerMinute={initialTriggerMinute}
 				steps={initialSteps}
 				editable={true}
+				{entityTypes}
 			/>
 		</div>
 	</div>

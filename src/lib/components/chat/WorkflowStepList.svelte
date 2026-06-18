@@ -12,6 +12,7 @@
 		type WorkflowListResultField
 	} from '$lib/workflow-tools';
 	import type { VisibleStep, VisibleListStep } from '$lib/workflow-validation';
+	import type { EntityTypeForWorkflow } from '$lib/server/db/table-service';
 	import GripVertical from '$lib/components/icon/GripVertical.svelte';
 	import WorkflowStepList from './WorkflowStepList.svelte';
 
@@ -22,9 +23,10 @@
 		itemFields: WorkflowListResultField[] | null;
 		editable: boolean;
 		depth: number;
+		entityTypes?: EntityTypeForWorkflow[];
 	};
 
-	let { steps, visibleBefore, listVisibleBefore, itemFields, editable, depth }: Props = $props();
+	let { steps, visibleBefore, listVisibleBefore, itemFields, editable, depth, entityTypes = [] }: Props = $props();
 
 	function makeId(): string {
 		return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -103,6 +105,29 @@
 	function currentCategoryKey(stepId: string, tool: string): string {
 		if (tool) return findWorkflowActionCategory(tool)?.key ?? '';
 		return pendingCategory[stepId] ?? '';
+	}
+
+	/** カテゴリの対象一覧。includeEntityTargetsの場合、各カスタムテーブルを顧客・案件等と同じ並びに追加する。 */
+	function effectiveTargets(category: { targets: { value: string; label: string; tool: string }[]; includeEntityTargets?: boolean }) {
+		const base = category.targets.map((t) => ({ value: t.tool, label: t.label }));
+		if (!category.includeEntityTargets) return base;
+		return [...base, ...entityTypes.map((et) => ({ value: `entity:${et.id}`, label: et.label }))];
+	}
+
+	/** 対象selectの現在値。get_entitiesの場合はparams.entity_type_idから`entity:<id>`形式に変換する。 */
+	function currentTargetValue(step: { tool: string; params?: Record<string, string> }): string {
+		if (step.tool === 'get_entities') return `entity:${step.params?.entity_type_id ?? ''}`;
+		return step.tool;
+	}
+
+	function applyTargetSelection(step: { tool: string; params?: Record<string, string> }, value: string) {
+		if (value.startsWith('entity:')) {
+			step.tool = 'get_entities';
+			step.params = { entity_type_id: value.slice('entity:'.length) };
+		} else {
+			step.tool = value;
+			step.params = {};
+		}
 	}
 
 	// ドラッグ&ドロップによる並び替え（同じ steps 配列内、つまり同じスコープ内のみ）
@@ -191,16 +216,13 @@
 					</select>
 					{#if category}
 						<select
-							value={step.tool}
+							value={currentTargetValue(step)}
 							disabled={!editable}
-							onchange={(e) => {
-								step.tool = e.currentTarget.value;
-								step.params = {};
-							}}
+							onchange={(e) => applyTargetSelection(step, e.currentTarget.value)}
 						>
 							<option value="">対象を選択</option>
-							{#each category.targets as t (t.value)}
-								<option value={t.tool}>{t.label}</option>
+							{#each effectiveTargets(category) as t (t.value)}
+								<option value={t.value}>{t.label}</option>
 							{/each}
 						</select>
 					{/if}
@@ -371,6 +393,7 @@
 						{listVisibleBefore}
 						{itemFields}
 						{editable}
+						{entityTypes}
 						depth={depth + 1}
 					/>
 				</div>
@@ -384,6 +407,7 @@
 						listVisibleBefore={listVisible}
 						itemFields={sourceVisible?.itemFields ?? itemFields}
 						{editable}
+						{entityTypes}
 						depth={depth + 1}
 					/>
 				</div>

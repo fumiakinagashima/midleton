@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import type { WorkflowStep } from '$lib/types/chat';
+	import type { EntityTypeForWorkflow } from '$lib/server/db/table-service';
 	import WorkflowStepList from './WorkflowStepList.svelte';
 
 	export type WorkflowState = {
@@ -17,6 +18,7 @@
 		steps: WorkflowStep[];
 		onsave?: (def: WorkflowState) => void;
 		editable?: boolean;
+		entityTypes?: EntityTypeForWorkflow[];
 	};
 
 	let {
@@ -25,7 +27,8 @@
 		triggerMinute: initMinute,
 		steps: initSteps,
 		onsave,
-		editable = true
+		editable = true,
+		entityTypes = []
 	}: Props = $props();
 
 	// チャットの $state からの値は深くリアクティブなProxyの場合があり、
@@ -84,7 +87,7 @@
 	</div>
 
 	<div class="wf-body">
-		<WorkflowStepList {steps} visibleBefore={[]} listVisibleBefore={[]} itemFields={null} {editable} depth={0} />
+		<WorkflowStepList {steps} visibleBefore={[]} listVisibleBefore={[]} itemFields={null} {editable} depth={0} {entityTypes} />
 	</div>
 </div>
 
