@@ -2,7 +2,9 @@
 	import { untrack } from 'svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatJstDateTime } from '$lib/datetime';
+	import WorkflowDialog from '$lib/components/chat/WorkflowDialog.svelte';
 	import type { WorkflowRow } from '$lib/server/db/workflow-service';
+	import type { WorkflowContent } from '$lib/types/chat';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -10,6 +12,15 @@
 	let rows = $state<WorkflowRow[]>(untrack(() => data.rows));
 
 	let deletingId = $state<string | null>(null);
+	let showNewDialog = $state(false);
+
+	const blankWorkflow: WorkflowContent = {
+		type: 'workflow',
+		name: '新規ワークフロー',
+		triggerHour: 9,
+		triggerMinute: 0,
+		steps: []
+	};
 
 	function triggerLabel(row: WorkflowRow): string {
 		return `毎日 ${String(row.triggerHour).padStart(2, '0')}:${String(row.triggerMinute).padStart(2, '0')}`;
@@ -37,13 +48,13 @@
 <div class="page">
 	<div class="page-header">
 		<h1>ワークフロー管理</h1>
-		<a href="/database/workflows/new" class="btn-primary">+ 新規作成</a>
+		<button class="btn-primary" onclick={() => (showNewDialog = true)}>+ 新規作成</button>
 	</div>
 
 	{#if rows.length === 0}
 		<div class="empty">
 			<p>保存済みのワークフローはありません。</p>
-			<a href="/database/workflows/new" class="btn-primary">新規作成する</a>
+			<button class="btn-primary" onclick={() => (showNewDialog = true)}>新規作成する</button>
 		</div>
 	{:else}
 		<div class="wf-list">
@@ -71,6 +82,16 @@
 				</div>
 			{/each}
 		</div>
+	{/if}
+
+	{#if showNewDialog}
+		<WorkflowDialog
+			workflow={blankWorkflow}
+			onclose={() => (showNewDialog = false)}
+			onsaved={(row) => {
+				rows = [row, ...rows];
+			}}
+		/>
 	{/if}
 </div>
 

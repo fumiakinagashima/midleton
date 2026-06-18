@@ -68,7 +68,8 @@ export type ToolName =
 	| 'get_help'
 	| 'suggest_customer_followup'
 	| 'save_workflow'
-	| 'list_workflows';
+	| 'list_workflows'
+	| 'get_workflow';
 
 export const tools: Tool[] = [
 	...integrations.tools,
@@ -146,6 +147,7 @@ export async function dispatchTool(
 		case 'suggest_customer_followup':      return followup.handleSuggestCustomerFollowup(db, input, env);
 		case 'save_workflow':                  return workflows.handleSaveWorkflow(db, input, env);
 		case 'list_workflows':                 return workflows.handleListWorkflows(db, env);
+		case 'get_workflow':                   return workflows.handleGetWorkflow(db, input, env);
 		default:
 			throw new Error(`Unknown tool: ${name}`);
 	}
