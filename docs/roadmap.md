@@ -432,6 +432,10 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [x] ワークフローダイアログ（`WorkflowDialog.svelte`）: チャット内インライン表示（履歴に残り続け、後から内容が変わってもUIが追従しないため保存時に先祖帰りする恐れがあった）をやめ、`FormDialog`と同じ「チャット＋編集を左右に並べたモーダル」に統一。`/database/workflows`の「+ 新規作成」もページ遷移からこのダイアログに変更（保存後は一覧にその場で反映）。メインチャットで「ワークフローを作りたい」等の曖昧な依頼を受けた場合は、質問せず空のワークフローを即座にこのダイアログで表示する
 - [x] `get_workflow` MCPツール（名前またはIDで既存ワークフローを取得。複数一致時は候補を提示）。`save_workflow`にもid引数を追加し、id指定時は新規作成ではなく更新するように修正（重複作成を防止）。メインチャットでの編集は上記ワークフローダイアログを再利用
 - [x] アクションツールカタログの拡充（`WorkflowParamField`に`select`/`number`型を追加し、`search_customers`（件数）・`summarize_deals`・`summarize_activities`を追加。enumパラメータはセレクト、数値パラメータは`run.ts`実行時に数値変換してから`dispatchTool`へ渡す）
+- [x] アクション選択を「カテゴリ→対象」の2段階に再編（`WORKFLOW_ACTION_CATEGORIES`、`WorkflowStepList.svelte`）。対象ごとにツールがフラットに増え続けるのを避ける狙い。カタログ本体（`WORKFLOW_ACTION_TOOLS`）は変更せず、その上に被せる表示用グルーピングなので保存データ（`step.tool`）への影響なし
+  - 通知: 通知センター（`send_notification`）/ メール（`send_email`）
+  - 検索・集計: 顧客 / 案件 / 活動履歴（`search_deals`・`search_activities`をカタログに追加し対称にした。`search_customers`と同様listResult付きでforeachのsourceにも使える）
+  - Slack（通知）・自作テーブル（検索・集計）は対象の選択肢がDB設定に依存し動的に組み立てる必要があるため、別途仕組みを用意してから追加するTODOとして保留
 - [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する
 - [x] アクション「通知センターに通知」（`send_notification` MCPツール、`communication.ts`）。宛先は自動でワークフロー登録者。cron実行時はセッションが無いため、`processDueWorkflows`で`workflow.accountId`をこの実行スコープの`env.accountId`として引き渡すように修正
 - [ ] **変数ヘルプ（次の優先タスク）**: エディタ内で「今この位置で使える`@step:<id>`/`@item:<field>`」を動的に一覧確認できるUIが無く、各パラメータのselectを個別に開かないと分からない。ヘルプ的な一覧表示を検討する

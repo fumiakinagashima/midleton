@@ -97,6 +97,90 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		}
 	},
 	{
+		value: 'search_deals',
+		label: '案件を検索',
+		params: [
+			{ key: 'customer_name', label: '顧客名（部分一致）', type: 'text' },
+			{
+				key: 'status',
+				label: 'ステータス',
+				type: 'select',
+				options: [
+					{ value: '', label: '指定しない' },
+					{ value: 'open', label: '進行中' },
+					{ value: 'won', label: '受注' },
+					{ value: 'lost', label: '失注' }
+				]
+			},
+			{ key: 'amount_min', label: '金額の下限', type: 'number' },
+			{ key: 'amount_max', label: '金額の上限', type: 'number' },
+			{ key: 'since', label: '対象期間の開始日', type: 'date' },
+			{ key: 'until', label: '対象期間の終了日', type: 'date' },
+			{
+				key: 'date_field',
+				label: '期間の基準日',
+				type: 'select',
+				options: [
+					{ value: 'created_at', label: '登録日' },
+					{ value: 'closed_at', label: '成約/失注日' }
+				]
+			},
+			{ key: 'limit', label: '取得件数の上限', type: 'number' }
+		],
+		resultType: 'number',
+		resultDesc: '該当する案件の件数',
+		extractResult: (raw) => (Array.isArray(raw) ? raw.length : 0),
+		listResult: {
+			desc: '該当する案件の一覧（foreachで1件ずつ処理する場合に使う）',
+			itemFields: [
+				{ key: 'id', label: 'ID' },
+				{ key: 'customerId', label: '顧客ID' },
+				{ key: 'customerName', label: '顧客名' },
+				{ key: 'title', label: '案件名' },
+				{ key: 'amount', label: '金額' },
+				{ key: 'status', label: 'ステータス' }
+			],
+			extractList: (raw) => (Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [])
+		}
+	},
+	{
+		value: 'search_activities',
+		label: '活動履歴を検索',
+		params: [
+			{ key: 'customer_id', label: '顧客ID', type: 'text' },
+			{
+				key: 'type',
+				label: '種別',
+				type: 'select',
+				options: [
+					{ value: '', label: '指定しない' },
+					{ value: 'note', label: 'メモ' },
+					{ value: 'call', label: '電話' },
+					{ value: 'email', label: 'メール' },
+					{ value: 'meeting', label: '商談' },
+					{ value: 'deal_created', label: '案件登録' }
+				]
+			},
+			{ key: 'content', label: '内容（部分一致）', type: 'text' },
+			{ key: 'since', label: '対象期間の開始日', type: 'date' },
+			{ key: 'until', label: '対象期間の終了日', type: 'date' },
+			{ key: 'limit', label: '取得件数の上限', type: 'number' }
+		],
+		resultType: 'number',
+		resultDesc: '該当する活動履歴の件数',
+		extractResult: (raw) => (Array.isArray(raw) ? raw.length : 0),
+		listResult: {
+			desc: '該当する活動履歴の一覧（foreachで1件ずつ処理する場合に使う）',
+			itemFields: [
+				{ key: 'id', label: 'ID' },
+				{ key: 'customerId', label: '顧客ID' },
+				{ key: 'type', label: '種別' },
+				{ key: 'content', label: '内容' }
+			],
+			extractList: (raw) => (Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [])
+		}
+	},
+	{
 		value: 'summarize_deals',
 		label: '案件を集計',
 		params: [
@@ -131,6 +215,52 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 
 export function getWorkflowActionTool(tool: string): WorkflowActionToolDef | undefined {
 	return WORKFLOW_ACTION_TOOLS.find((t) => t.value === tool);
+}
+
+export type WorkflowActionCategoryTarget = { value: string; label: string; tool: string };
+
+export type WorkflowActionCategory = {
+	key: string;
+	label: string;
+	targets: WorkflowActionCategoryTarget[];
+};
+
+/**
+ * エディタ上で「カテゴリ→対象」の2段階選択にするためのグルーピング。
+ * カタログ（WORKFLOW_ACTION_TOOLS）自体は変更せず、その上に被せる表示用の構造。
+ * 対象の選択肢が増えるたびにツール一覧がフラットに増え続けるのを避けるため。
+ */
+export const WORKFLOW_ACTION_CATEGORIES: WorkflowActionCategory[] = [
+	{
+		key: 'notify',
+		label: '通知',
+		targets: [
+			{ value: 'notification', label: '通知センター', tool: 'send_notification' },
+			{ value: 'email', label: 'メール', tool: 'send_email' }
+		]
+	},
+	{
+		key: 'search',
+		label: '検索',
+		targets: [
+			{ value: 'customers', label: '顧客', tool: 'search_customers' },
+			{ value: 'deals', label: '案件', tool: 'search_deals' },
+			{ value: 'activities', label: '活動履歴', tool: 'search_activities' }
+		]
+	},
+	{
+		key: 'summarize',
+		label: '集計',
+		targets: [
+			{ value: 'customers', label: '顧客', tool: 'summarize_customers' },
+			{ value: 'deals', label: '案件', tool: 'summarize_deals' },
+			{ value: 'activities', label: '活動履歴', tool: 'summarize_activities' }
+		]
+	}
+];
+
+export function findWorkflowActionCategory(tool: string): WorkflowActionCategory | undefined {
+	return WORKFLOW_ACTION_CATEGORIES.find((c) => c.targets.some((t) => t.tool === tool));
 }
 
 const RESULT_TYPE_LABELS: Record<WorkflowResultType, string> = {
