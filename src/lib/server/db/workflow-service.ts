@@ -100,3 +100,25 @@ export async function updateWorkflow(
 export async function deleteWorkflow(db: Db, id: string): Promise<void> {
 	await db.delete(workflows).where(eq(workflows.id, id));
 }
+
+function stepsReferenceEntityType(steps: WorkflowStep[], entityTypeId: string): boolean {
+	for (const step of steps) {
+		if (step.kind === 'action') {
+			if (step.tool === 'get_entities' && step.params?.entity_type_id === entityTypeId) return true;
+		} else if (step.kind === 'condition') {
+			if (stepsReferenceEntityType(step.then, entityTypeId)) return true;
+		} else {
+			if (stepsReferenceEntityType(step.body, entityTypeId)) return true;
+		}
+	}
+	return false;
+}
+
+/** カスタムテーブル削除前のチェック用: このentity_type_idを `get_entities` ステップで参照しているワークフローを探す。 */
+export async function findWorkflowsUsingEntityType(
+	db: Db,
+	entityTypeId: string
+): Promise<{ id: string; name: string }[]> {
+	const all = await listWorkflows(db);
+	return all.filter((w) => stepsReferenceEntityType(w.steps, entityTypeId)).map((w) => ({ id: w.id, name: w.name }));
+}

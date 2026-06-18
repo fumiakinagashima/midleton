@@ -7,7 +7,7 @@ const STEP_REF_SEMANTICS_NOTE =
 
 // レビューAI・チャットアシスタントAI・メインチャット共通: foreach・@item:<field> の解決ルールの説明。
 const ITEM_REF_SEMANTICS_NOTE =
-	'`foreach` ステップは、listResultを持つ先行アクションの一覧（@step:<id>）を1件ずつ処理する。body内では `@item:<field>` で現在処理中の項目のフィールドを参照できる（fieldはツールのlistResultが提供するitemFieldsのキーのみ有効）。body内の結果・@itemはbodyの外からは参照できない（条件のthenと同じスコープ規則）。暴走防止のため、1回の実行で先頭から最大50件までしか処理しない仕様（while相当の無限ループは提供しない）。';
+	'`foreach` ステップは、listResultを持つ先行アクションの一覧（@step:<id>）を1件ずつ処理する。body内では `@item:<foreachのid>:<field>` で現在処理中の項目のフィールドを参照する（fieldはツールのlistResultが提供するitemFieldsのキーのみ有効）。foreachのidを省略した `@item:<field>` 形式も使えるが、その場合は最も内側のforeachを指す。foreachをネストする場合、内側のbodyから外側のforeachの項目を参照するには外側のforeachのidを含む形式が必須（省略すると内側のforeachを指してしまい外側の項目にアクセスできない）。body内の結果・@itemはbodyの外からは参照できない（条件のthenと同じスコープ規則）。暴走防止のため、1回の実行で先頭から最大50件までしか処理しない仕様（while相当の無限ループは提供しない）。';
 
 export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムのアシスタントです。
 ユーザーの業務指示を日本語で受け取り、適切なツールを使ってデータの登録・取得・更新を行います。

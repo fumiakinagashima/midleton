@@ -373,12 +373,21 @@ export function parseStepRef(value: string | undefined): string | null {
 
 const ITEM_REF_PREFIX = '@item:';
 
-/** foreachのbody内で、現在処理中の項目のフィールドを参照する記法。 */
-export function makeItemRef(field: string): string {
-	return `${ITEM_REF_PREFIX}${field}`;
+export type ParsedItemRef = { foreachStepId: string | null; field: string };
+
+/**
+ * foreachのbody内で、現在処理中の項目のフィールドを参照する記法（`@item:<foreachのid>:<field>`）。
+ * foreachStepIdを指定することで、ネストしたforeachのどちらの項目を指すかを区別する（エディタは常にこの形式で保存する）。
+ * foreachStepIdを省略した旧形式（`@item:<field>`）はparseItemRefで読めるが、最も内側のforeachを指すものとして解釈する。
+ */
+export function makeItemRef(foreachStepId: string, field: string): string {
+	return `${ITEM_REF_PREFIX}${foreachStepId}:${field}`;
 }
 
-export function parseItemRef(value: string | undefined): string | null {
+export function parseItemRef(value: string | undefined): ParsedItemRef | null {
 	if (!value || !value.startsWith(ITEM_REF_PREFIX)) return null;
-	return value.slice(ITEM_REF_PREFIX.length);
+	const rest = value.slice(ITEM_REF_PREFIX.length);
+	const sep = rest.indexOf(':');
+	if (sep === -1) return { foreachStepId: null, field: rest };
+	return { foreachStepId: rest.slice(0, sep), field: rest.slice(sep + 1) };
 }

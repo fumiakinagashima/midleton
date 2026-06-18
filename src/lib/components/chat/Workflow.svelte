@@ -87,7 +87,7 @@
 	</div>
 
 	<div class="wf-body">
-		<WorkflowStepList {steps} visibleBefore={[]} listVisibleBefore={[]} itemFields={null} {editable} depth={0} {entityTypes} />
+		<WorkflowStepList {steps} visibleBefore={[]} listVisibleBefore={[]} itemScopes={[]} {editable} depth={0} {entityTypes} />
 	</div>
 </div>
 

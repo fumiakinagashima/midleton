@@ -444,10 +444,11 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [x] アクション「通知センターに通知」（`send_notification` MCPツール、`communication.ts`）。宛先は自動でワークフロー登録者。cron実行時はセッションが無いため、`processDueWorkflows`で`workflow.accountId`をこの実行スコープの`env.accountId`として引き渡すように修正
 
 **v2完了（2026-06-18）**。v3は「より精度の高い操作」と「ヘルプ周りの強化」をテーマに進める方針。v3 TODO:
-- [ ] **変数ヘルプ**: エディタ内で「今この位置で使える`@step:<id>`/`@item:<field>`」を動的に一覧確認できるUIが無く、各パラメータのselectを個別に開かないと分からない。ヘルプ的な一覧表示を検討する
+- [x] **変数ヘルプ**: 各ステップ行に「ここで使える変数を見る」ボタン（`InfoCircle`、`WorkflowStepList.svelte`）を追加し、クリックでそのステップの位置から参照可能な先行ステップの結果・`@item:<foreachのid>:<field>`の一覧を、実際の`@step:<id>`/`@item:...`トークン付きで展開表示する
+- [x] **ネストしたforeach対応**: 内側のforeachに入ると外側の`@item`が見えなくなる問題を修正。`@item:<field>`（旧形式・最も内側のforeachを指す）に加えて`@item:<foreachのid>:<field>`形式を導入し、祖先のforeach全てをスタック（`ItemScope[]`/`ItemStack`）として保持するように変更（`workflow-tools.ts`の`parseItemRef`/`makeItemRef`、`workflow-validation.ts`、`run.ts`の`resolveOperand`、`WorkflowStepList.svelte`）。ネストしている場合、エディタのselect・変数ヘルプには外側・内側どちらの項目かをラベルで区別して両方表示する。AI向けの`ITEM_REF_SEMANTICS_NOTE`（`prompt.ts`）にもネスト時のスコープ規則を追記
 - [ ] Slack（通知）の対象追加。連携設定（webhook）から動的に選択肢を組み立てる仕組みが必要
-- [ ] カスタムテーブル削除時にワークフローでの参照有無をチェックし、使用中なら削除前に警告する
-- [ ] `get_contacts`が検索・集計2カテゴリから参照されるため、保存済みステップ再読込時のカテゴリ表示が常に「検索」になる見た目の制約（機能影響なし、対応は任意）
+- [x] カスタムテーブル削除時にワークフローでの参照有無をチェックし、使用中なら削除前に警告する。`findWorkflowsUsingEntityType`（`workflow-service.ts`、全ワークフローのステップを再帰的に走査）を追加し、`DELETE /api/database/tables/[name]`は使用中の場合409（使用ワークフロー一覧付き）を返す。`/database/[type]/schema`の削除ボタンは409時にワークフロー名を含む確認ダイアログを表示し、同意後`?force=1`で再送信して削除する
+- [x] `get_contacts`が検索・集計2カテゴリから参照されるため、保存済みステップ再読込時のカテゴリ表示が常に「検索」になる見た目の制約 → `WorkflowActionStep`に`category?: string`を追加し、対象選択時に選択中のカテゴリキーを保存。再読込時は`step.category`を優先し、未設定（旧データ・AI生成）の場合のみtoolからの逆引きにフォールバックする
 - [ ] より精度の高い操作（ユーザーの今後の指示で具体化）
 
 ### 資料生成
