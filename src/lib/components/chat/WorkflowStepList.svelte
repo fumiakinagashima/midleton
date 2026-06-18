@@ -1,9 +1,10 @@
 <script lang="ts">
 	import type { WorkflowStep } from '$lib/types/chat';
 	import {
-		WORKFLOW_ACTION_TOOLS,
+		WORKFLOW_ACTION_CATEGORIES,
 		WORKFLOW_OPERATORS,
 		getWorkflowActionTool,
+		findWorkflowActionCategory,
 		makeStepRef,
 		parseStepRef,
 		makeItemRef,
@@ -95,6 +96,15 @@
 		return makeStepRef(value);
 	}
 
+	// カテゴリ選択中（対象未選択でtoolが空の）ステップのカテゴリを覚えておくための一時状態。
+	// tool が決まれば常にそこからカテゴリを逆引きできるため、これは未確定の間だけ使う。
+	let pendingCategory = $state<Record<string, string>>({});
+
+	function currentCategoryKey(stepId: string, tool: string): string {
+		if (tool) return findWorkflowActionCategory(tool)?.key ?? '';
+		return pendingCategory[stepId] ?? '';
+	}
+
 	// ドラッグ&ドロップによる並び替え（同じ steps 配列内、つまり同じスコープ内のみ）
 	let draggedIndex = $state<number | null>(null);
 	let dragOverIndex = $state<number | null>(null);
@@ -163,19 +173,37 @@
 				/>
 
 				{#if step.kind === 'action'}
+					{@const categoryKey = currentCategoryKey(step.id, step.tool)}
+					{@const category = WORKFLOW_ACTION_CATEGORIES.find((c) => c.key === categoryKey)}
 					<select
-						value={step.tool}
+						value={categoryKey}
 						disabled={!editable}
 						onchange={(e) => {
-							step.tool = e.currentTarget.value;
+							pendingCategory[step.id] = e.currentTarget.value;
+							step.tool = '';
 							step.params = {};
 						}}
 					>
-						<option value="">ツールを選択</option>
-						{#each WORKFLOW_ACTION_TOOLS as t (t.value)}
-							<option value={t.value}>{t.label}</option>
+						<option value="">カテゴリを選択</option>
+						{#each WORKFLOW_ACTION_CATEGORIES as c (c.key)}
+							<option value={c.key}>{c.label}</option>
 						{/each}
 					</select>
+					{#if category}
+						<select
+							value={step.tool}
+							disabled={!editable}
+							onchange={(e) => {
+								step.tool = e.currentTarget.value;
+								step.params = {};
+							}}
+						>
+							<option value="">対象を選択</option>
+							{#each category.targets as t (t.value)}
+								<option value={t.tool}>{t.label}</option>
+							{/each}
+						</select>
+					{/if}
 				{/if}
 
 				{#if editable}
