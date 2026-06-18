@@ -11,6 +11,17 @@ export type WorkflowParamField = {
 	options?: { value: string; label: string }[];
 };
 
+export type WorkflowListResultField = { key: string; label: string };
+
+/** foreachのsourceとして参照できる、配列形式の結果。 */
+export type WorkflowListResultDef = {
+	desc: string;
+	/** body内で `@item:<key>` として参照できるフィールド一覧（UI・AIへの案内に使う） */
+	itemFields: WorkflowListResultField[];
+	/** ツールの生の戻り値から一覧（オブジェクトの配列）を取り出す */
+	extractList: (raw: unknown) => Record<string, unknown>[];
+};
+
 export type WorkflowActionToolDef = {
 	value: string;
 	label: string;
@@ -21,6 +32,8 @@ export type WorkflowActionToolDef = {
 	resultDesc?: string;
 	/** ツールの生の戻り値からスカラー結果を取り出す（resultType指定時は必須） */
 	extractResult?: (raw: unknown) => boolean | number | string;
+	/** foreachのsourceとして使える配列結果を返す場合に指定する（resultTypeと併用可） */
+	listResult?: WorkflowListResultDef;
 	/** AIへの説明文に添える補足（自動補完される値の説明など）。UI上には表示しない */
 	note?: string;
 };
@@ -34,6 +47,15 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 			{ key: 'body', label: '本文', type: 'textarea', required: true }
 		],
 		note: '宛先は自動でユーザー自身のメールアドレスになる（to パラメータは不要）'
+	},
+	{
+		value: 'send_notification',
+		label: '通知センターに通知',
+		params: [
+			{ key: 'title', label: 'タイトル', type: 'text', required: true },
+			{ key: 'body', label: '本文', type: 'textarea', required: true }
+		],
+		note: '通知先は自動でワークフローの登録者になる'
 	},
 	{
 		value: 'summarize_customers',
@@ -62,7 +84,17 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		],
 		resultType: 'number',
 		resultDesc: '該当する顧客の件数',
-		extractResult: (raw) => (Array.isArray(raw) ? raw.length : 0)
+		extractResult: (raw) => (Array.isArray(raw) ? raw.length : 0),
+		listResult: {
+			desc: '該当する顧客の一覧（foreachで1件ずつ処理する場合に使う）',
+			itemFields: [
+				{ key: 'id', label: 'ID' },
+				{ key: 'name', label: '顧客名' },
+				{ key: 'email', label: 'メールアドレス' },
+				{ key: 'status', label: 'ステータス' }
+			],
+			extractList: (raw) => (Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [])
+		}
 	},
 	{
 		value: 'summarize_deals',
@@ -117,7 +149,10 @@ export function describeWorkflowActionToolForAI(t: WorkflowActionToolDef): strin
 		? `、結果は${RESULT_TYPE_LABELS[t.resultType]}${t.resultDesc ? `（${t.resultDesc}）` : ''}`
 		: '';
 	const noteDesc = t.note ? `※${t.note}` : '';
-	return `- \`${t.value}\`（${t.label}${resultDesc}）: params = ${paramsDesc}${noteDesc ? ` ${noteDesc}` : ''}`;
+	const listDesc = t.listResult
+		? `。foreachのsourceとして一覧（${t.listResult.desc}）も取得可能。body内では ${t.listResult.itemFields.map((f) => `@item:${f.key}（${f.label}）`).join(' / ')} が参照できる`
+		: '';
+	return `- \`${t.value}\`（${t.label}${resultDesc}）: params = ${paramsDesc}${noteDesc ? ` ${noteDesc}` : ''}${listDesc}`;
 }
 
 export const WORKFLOW_OPERATORS: { value: string; label: string }[] = [
@@ -138,4 +173,16 @@ export function makeStepRef(id: string): string {
 export function parseStepRef(value: string | undefined): string | null {
 	if (!value || !value.startsWith(STEP_REF_PREFIX)) return null;
 	return value.slice(STEP_REF_PREFIX.length);
+}
+
+const ITEM_REF_PREFIX = '@item:';
+
+/** foreachのbody内で、現在処理中の項目のフィールドを参照する記法。 */
+export function makeItemRef(field: string): string {
+	return `${ITEM_REF_PREFIX}${field}`;
+}
+
+export function parseItemRef(value: string | undefined): string | null {
+	if (!value || !value.startsWith(ITEM_REF_PREFIX)) return null;
+	return value.slice(ITEM_REF_PREFIX.length);
 }

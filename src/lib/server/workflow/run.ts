@@ -5,15 +5,31 @@ import { getEnabledWorkflows } from '../db/workflow-service';
 import { recordWorkflowRun } from '../db/workflow-run-service';
 import { getAccount } from '../db/account-service';
 import { getJstHourMinute } from '$lib/datetime';
-import { getWorkflowActionTool, parseStepRef } from '$lib/workflow-tools';
-import type { WorkflowStep, WorkflowActionStep, WorkflowResultType } from '$lib/types/chat';
+import { getWorkflowActionTool, parseStepRef, parseItemRef } from '$lib/workflow-tools';
+import { WORKFLOW_FOREACH_MAX_ITEMS } from '$lib/constants';
+import type {
+	WorkflowStep,
+	WorkflowActionStep,
+	WorkflowForeachStep,
+	WorkflowResultType
+} from '$lib/types/chat';
 
 type StepResult = { type: WorkflowResultType; value: boolean | number | string };
+type ListResults = Map<string, Record<string, unknown>[]>;
+type CurrentItem = Record<string, unknown> | null;
 
 /** ワークフロー実行を即時中断させるためのエラー（未定義の変数参照・未対応ツール等）。 */
 class WorkflowAbortError extends Error {}
 
-function resolveOperand(operand: string, results: Map<string, StepResult>): StepResult {
+function resolveOperand(operand: string, results: Map<string, StepResult>, currentItem: CurrentItem): StepResult {
+	const itemField = parseItemRef(operand);
+	if (itemField !== null) {
+		if (!currentItem) throw new WorkflowAbortError(`@item参照はforeachの中でのみ使用できます: ${operand}`);
+		const v = currentItem[itemField];
+		if (v === undefined) throw new WorkflowAbortError(`現在の項目に存在しないフィールドです: ${itemField}`);
+		const type: WorkflowResultType = typeof v === 'number' ? 'number' : typeof v === 'boolean' ? 'boolean' : 'string';
+		return { type, value: (v as boolean | number | string) ?? '' };
+	}
 	const refId = parseStepRef(operand);
 	if (refId === null) return { type: 'string', value: operand };
 	const found = results.get(refId);
@@ -48,8 +64,10 @@ async function runAction(
 	db: Db,
 	step: WorkflowActionStep,
 	results: Map<string, StepResult>,
+	listResults: ListResults,
 	env: ToolEnv | undefined,
-	selfEmail: string | null
+	selfEmail: string | null,
+	currentItem: CurrentItem
 ): Promise<void> {
 	const toolDef = getWorkflowActionTool(step.tool);
 	if (!toolDef) throw new WorkflowAbortError(`未対応のツールです: ${step.tool}`);
@@ -58,7 +76,7 @@ async function runAction(
 	for (const field of toolDef.params) {
 		const raw = step.params?.[field.key];
 		if (!raw) continue;
-		const value = resolveOperand(raw, results).value;
+		const value = resolveOperand(raw, results, currentItem).value;
 		if (field.type === 'number') {
 			resolvedParams[field.key] = Number(value);
 		} else if (field.type === 'date' && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -81,24 +99,48 @@ async function runAction(
 	if (toolDef.resultType && toolDef.extractResult) {
 		results.set(step.id, { type: toolDef.resultType, value: toolDef.extractResult(raw) });
 	}
+	if (toolDef.listResult) {
+		listResults.set(step.id, toolDef.listResult.extractList(raw));
+	}
+}
+
+async function runForeach(
+	db: Db,
+	step: WorkflowForeachStep,
+	results: Map<string, StepResult>,
+	listResults: ListResults,
+	env: ToolEnv | undefined,
+	selfEmail: string | null
+): Promise<void> {
+	const refId = parseStepRef(step.source);
+	if (!refId) throw new WorkflowAbortError(`「${step.label}」の対象が選択されていません`);
+	const items = listResults.get(refId);
+	if (!items) throw new WorkflowAbortError(`「${step.label}」の参照先のリスト結果が見つかりません: ${refId}`);
+	for (const item of items.slice(0, WORKFLOW_FOREACH_MAX_ITEMS)) {
+		await runSteps(db, step.body, results, listResults, env, selfEmail, item);
+	}
 }
 
 async function runSteps(
 	db: Db,
 	steps: WorkflowStep[],
 	results: Map<string, StepResult>,
+	listResults: ListResults,
 	env: ToolEnv | undefined,
-	selfEmail: string | null
+	selfEmail: string | null,
+	currentItem: CurrentItem = null
 ): Promise<void> {
 	for (const step of steps) {
 		if (step.kind === 'action') {
-			await runAction(db, step, results, env, selfEmail);
-		} else {
-			const left = resolveOperand(step.left, results);
-			const right = resolveOperand(step.right, results);
+			await runAction(db, step, results, listResults, env, selfEmail, currentItem);
+		} else if (step.kind === 'condition') {
+			const left = resolveOperand(step.left, results, currentItem);
+			const right = resolveOperand(step.right, results, currentItem);
 			if (compare(left, step.operator, right)) {
-				await runSteps(db, step.then, results, env, selfEmail);
+				await runSteps(db, step.then, results, listResults, env, selfEmail, currentItem);
 			}
+		} else {
+			await runForeach(db, step, results, listResults, env, selfEmail);
 		}
 	}
 }
@@ -121,7 +163,12 @@ export async function processDueWorkflows(
 		const startedAt = new Date();
 		try {
 			const account = workflow.accountId ? await getAccount(db, workflow.accountId) : null;
-			await runSteps(db, workflow.steps, new Map(), env, account?.email ?? null);
+			// send_notification 等、env.accountId を「通知・登録の宛先」として参照するツールのために、
+			// ワークフローの登録者をこの実行スコープのアカウントとして引き渡す
+			const toolEnv: ToolEnv | undefined = workflow.accountId
+				? { ...(env ?? {}), accountId: workflow.accountId }
+				: env;
+			await runSteps(db, workflow.steps, new Map(), new Map(), toolEnv, account?.email ?? null);
 			results.push({ id: workflow.id, name: workflow.name, ok: true });
 			await recordWorkflowRun(db, {
 				workflowId: workflow.id,

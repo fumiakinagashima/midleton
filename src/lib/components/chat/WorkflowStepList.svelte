@@ -5,29 +5,34 @@
 		WORKFLOW_OPERATORS,
 		getWorkflowActionTool,
 		makeStepRef,
-		parseStepRef
+		parseStepRef,
+		makeItemRef,
+		parseItemRef,
+		type WorkflowListResultField
 	} from '$lib/workflow-tools';
-	import type { VisibleStep } from '$lib/workflow-validation';
+	import type { VisibleStep, VisibleListStep } from '$lib/workflow-validation';
 	import GripVertical from '$lib/components/icon/GripVertical.svelte';
 	import WorkflowStepList from './WorkflowStepList.svelte';
 
 	type Props = {
 		steps: WorkflowStep[];
 		visibleBefore: VisibleStep[];
+		listVisibleBefore: VisibleListStep[];
+		itemFields: WorkflowListResultField[] | null;
 		editable: boolean;
 		depth: number;
 	};
 
-	let { steps, visibleBefore, editable, depth }: Props = $props();
+	let { steps, visibleBefore, listVisibleBefore, itemFields, editable, depth }: Props = $props();
 
 	function makeId(): string {
 		return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 	}
 
-	function addStep(kind: 'action' | 'condition') {
+	function addStep(kind: 'action' | 'condition' | 'foreach') {
 		if (kind === 'action') {
 			steps.push({ id: makeId(), kind: 'action', label: '新しいアクション', tool: '', params: {} });
-		} else {
+		} else if (kind === 'condition') {
 			steps.push({
 				id: makeId(),
 				kind: 'condition',
@@ -37,6 +42,8 @@
 				right: '',
 				then: []
 			});
+		} else {
+			steps.push({ id: makeId(), kind: 'foreach', label: '新しい繰り返し', source: '', body: [] });
 		}
 	}
 
@@ -56,6 +63,36 @@
 			}
 		}
 		return visible;
+	}
+
+	function visibleListUpTo(index: number): VisibleListStep[] {
+		const visible = [...listVisibleBefore];
+		for (let i = 0; i < index; i++) {
+			const s = steps[i];
+			if (s.kind === 'action') {
+				const tool = getWorkflowActionTool(s.tool);
+				if (tool?.listResult) {
+					visible.push({ id: s.id, label: s.label, itemFields: tool.listResult.itemFields });
+				}
+			}
+		}
+		return visible;
+	}
+
+	/** params/condition の参照select用: 現在の値を `'__literal__'` / ステップid / `item:<field>` に変換する。 */
+	function refSelectValue(operand: string | undefined): string {
+		const itemField = parseItemRef(operand);
+		if (itemField !== null) return `item:${itemField}`;
+		const stepId = parseStepRef(operand);
+		if (stepId !== null) return stepId;
+		return '__literal__';
+	}
+
+	/** refSelectValue の逆変換: select の選択値を実際に保存するoperand文字列に変換する。 */
+	function operandFromSelect(value: string): string {
+		if (value === '__literal__') return '';
+		if (value.startsWith('item:')) return makeItemRef(value.slice('item:'.length));
+		return makeStepRef(value);
 	}
 
 	// ドラッグ&ドロップによる並び替え（同じ steps 配列内、つまり同じスコープ内のみ）
@@ -150,25 +187,27 @@
 				{@const tool = getWorkflowActionTool(step.tool)}
 				{#if tool}
 					{#each tool.params as field (field.key)}
-						{@const refId = parseStepRef(step.params?.[field.key])}
+						{@const selVal = refSelectValue(step.params?.[field.key])}
 						<div class="wf-line wf-param">
 							<label for="wf-param-{step.id}-{field.key}">{field.label}</label>
 							<select
 								id="wf-param-{step.id}-{field.key}"
-								value={refId ?? '__literal__'}
+								value={selVal}
 								disabled={!editable}
 								onchange={(e) => {
-									const v = e.currentTarget.value;
 									if (!step.params) step.params = {};
-									step.params[field.key] = v === '__literal__' ? '' : makeStepRef(v);
+									step.params[field.key] = operandFromSelect(e.currentTarget.value);
 								}}
 							>
 								<option value="__literal__">直接入力</option>
 								{#each visible as v (v.id)}
 									<option value={v.id}>{v.label}の結果を使う</option>
 								{/each}
+								{#each itemFields ?? [] as f (f.key)}
+									<option value="item:{f.key}">{f.label}（現在の項目）</option>
+								{/each}
 							</select>
-							{#if refId === null}
+							{#if selVal === '__literal__'}
 								{#if field.type === 'textarea'}
 									<textarea
 										value={step.params?.[field.key] ?? ''}
@@ -226,18 +265,21 @@
 						</div>
 					{/each}
 				{/if}
-			{:else}
-				{@const rightRef = parseStepRef(step.right)}
+			{:else if step.kind === 'condition'}
+				{@const rightSel = refSelectValue(step.right)}
 				<div class="wf-line wf-cond-line">
 					<span class="wf-cond-label">判定:</span>
 					<select
-						value={parseStepRef(step.left) ?? ''}
+						value={refSelectValue(step.left)}
 						disabled={!editable}
-						onchange={(e) => (step.left = e.currentTarget.value ? makeStepRef(e.currentTarget.value) : '')}
+						onchange={(e) => (step.left = operandFromSelect(e.currentTarget.value))}
 					>
-						<option value="">選択してください</option>
+						<option value="__literal__">選択してください</option>
 						{#each visible as v (v.id)}
 							<option value={v.id}>{v.label}{v.resultDesc ? `（${v.resultDesc}）` : ''}</option>
+						{/each}
+						{#each itemFields ?? [] as f (f.key)}
+							<option value="item:{f.key}">{f.label}（現在の項目）</option>
 						{/each}
 					</select>
 					<select
@@ -250,19 +292,19 @@
 						{/each}
 					</select>
 					<select
-						value={rightRef ?? '__literal__'}
+						value={rightSel}
 						disabled={!editable}
-						onchange={(e) => {
-							const v = e.currentTarget.value;
-							step.right = v === '__literal__' ? '' : makeStepRef(v);
-						}}
+						onchange={(e) => (step.right = operandFromSelect(e.currentTarget.value))}
 					>
 						<option value="__literal__">直接入力</option>
 						{#each visible as v (v.id)}
 							<option value={v.id}>{v.label}の結果</option>
 						{/each}
+						{#each itemFields ?? [] as f (f.key)}
+							<option value="item:{f.key}">{f.label}（現在の項目）</option>
+						{/each}
 					</select>
-					{#if rightRef === null}
+					{#if rightSel === '__literal__'}
 						<input
 							type="text"
 							value={step.right}
@@ -271,11 +313,48 @@
 						/>
 					{/if}
 				</div>
+			{:else}
+				{@const listVisible = visibleListUpTo(i)}
+				{@const sourceStepId = parseStepRef(step.source)}
+				{@const sourceVisible = listVisible.find((v) => v.id === sourceStepId)}
+				<div class="wf-line wf-foreach-line">
+					<span class="wf-cond-label">対象:</span>
+					<select
+						value={sourceStepId ?? ''}
+						disabled={!editable}
+						onchange={(e) => (step.source = e.currentTarget.value ? makeStepRef(e.currentTarget.value) : '')}
+					>
+						<option value="">選択してください</option>
+						{#each listVisible as v (v.id)}
+							<option value={v.id}>{v.label}の一覧</option>
+						{/each}
+					</select>
+				</div>
 			{/if}
 
 			{#if step.kind === 'condition'}
 				<div class="wf-then">
-					<WorkflowStepList steps={step.then} visibleBefore={visible} {editable} depth={depth + 1} />
+					<WorkflowStepList
+						steps={step.then}
+						visibleBefore={visible}
+						{listVisibleBefore}
+						{itemFields}
+						{editable}
+						depth={depth + 1}
+					/>
+				</div>
+			{:else if step.kind === 'foreach'}
+				{@const listVisible = visibleListUpTo(i)}
+				{@const sourceVisible = listVisible.find((v) => v.id === parseStepRef(step.source))}
+				<div class="wf-then">
+					<WorkflowStepList
+						steps={step.body}
+						visibleBefore={visible}
+						listVisibleBefore={listVisible}
+						itemFields={sourceVisible?.itemFields ?? itemFields}
+						{editable}
+						depth={depth + 1}
+					/>
 				</div>
 			{/if}
 		</div>
@@ -295,6 +374,7 @@
 		<div class="wf-add-row">
 			<button class="btn-add t-action" onclick={() => addStep('action')}>+ アクション</button>
 			<button class="btn-add t-condition" onclick={() => addStep('condition')}>+ 条件</button>
+			<button class="btn-add t-foreach" onclick={() => addStep('foreach')}>+ 繰り返し</button>
 		</div>
 	{/if}
 </div>
@@ -314,6 +394,10 @@
 
 		&.t-condition {
 			border-left-color: #d57c30;
+		}
+
+		&.t-foreach {
+			border-left-color: #2563eb;
 		}
 
 		&.dragging {
@@ -470,6 +554,10 @@
 		&.t-condition {
 			background: #d57c30;
 			border-color: #d57c30;
+		}
+		&.t-foreach {
+			background: #2563eb;
+			border-color: #2563eb;
 		}
 	}
 </style>

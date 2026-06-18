@@ -228,7 +228,20 @@ export type WorkflowConditionStep = {
 	then: WorkflowStep[];
 };
 
-export type WorkflowStep = WorkflowActionStep | WorkflowConditionStep;
+/**
+ * 配列型の結果（resultListを持つアクション）を1件ずつ処理する。無限ループ回避のため
+ * while相当の仕組みは提供しない。body内では現在の項目を `@item:<field>` で参照できる
+ * （body専用スコープ。外からは参照不可）。
+ */
+export type WorkflowForeachStep = {
+	id: string;
+	kind: 'foreach';
+	label: string;
+	source: WorkflowOperand;
+	body: WorkflowStep[];
+};
+
+export type WorkflowStep = WorkflowActionStep | WorkflowConditionStep | WorkflowForeachStep;
 
 export type WorkflowContent = {
 	type: 'workflow';

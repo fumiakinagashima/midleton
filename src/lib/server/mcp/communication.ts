@@ -4,7 +4,7 @@ import type { Db } from '../db';
 import { sendEmail, getEmailSetup } from '../email';
 import { recordActivity } from '../db/table-service';
 import { createReminder, listReminders, resolveChannelLabels, deleteSentReminders } from '../db/reminder-service';
-import { deleteReadNotifications } from '../db/notification-service';
+import { deleteReadNotifications, createNotification } from '../db/notification-service';
 import { parseJstDatetime } from '$lib/datetime';
 import type { ToolEnv } from './shared';
 
@@ -53,6 +53,18 @@ export const tools: Tool[] = [
 				}
 			},
 			required: ['to', 'subject', 'body']
+		}
+	},
+	{
+		name: 'send_notification',
+		description: '自分宛てに通知センターへ通知を送る。メールではなくアプリ内の通知として知らせたい場合に使う。',
+		input_schema: {
+			type: 'object',
+			properties: {
+				title: { type: 'string', description: '通知のタイトル' },
+				body: { type: 'string', description: '通知の本文' }
+			},
+			required: ['title', 'body']
 		}
 	},
 	{
@@ -152,6 +164,24 @@ export async function handleSendEmail(db: Db, input: unknown, env?: ToolEnv) {
 		);
 	}
 	return { to: data.to, subject: data.subject };
+}
+
+const sendNotificationSchema = z.object({
+	title: z.string().min(1),
+	body: z.string().min(1)
+});
+
+export async function handleSendNotification(db: Db, input: unknown, env?: ToolEnv) {
+	const data = sendNotificationSchema.parse(input);
+	if (!env?.accountId) throw new Error('通知先のアカウントが特定できません。');
+	const notification = await createNotification(db, {
+		type: 'workflow',
+		title: data.title,
+		body: data.body,
+		seedContent: [{ type: 'text', text: data.body }],
+		accountId: env.accountId
+	});
+	return { id: notification.id, title: notification.title };
 }
 
 const createReminderSchema = z.object({
