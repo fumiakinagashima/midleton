@@ -425,13 +425,16 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [x] ステップリスト編集UI（`src/lib/components/chat/Workflow.svelte` / `WorkflowStepList.svelte`、再帰的なインデント表示。キャンバス・ドラッグ&ドロップは廃止）
 - [x] ワークフロー管理用の非AI画面（`/database/workflows`・`/new`・`/[id]`、有効化トグル）+ サイドバーリンク
 - [x] AIによるワークフロー構成案の生成（チャット → `workflow`コンポーネントとしてステップ構成を提案、システムプロンプトに`@step:<id>`参照記法を案内）
-- [ ] **foreach（v2、配列型の変数のみに適用、無限ループ回避のためwhileは提供しない）**: 「先日登録された顧客一覧に処理を繰り返す」等のユースケース。ループ本体専用の変数スコープ設計が必要
+- [x] **foreach（配列型の変数のみに適用、無限ループ回避のためwhileは提供しない）**: listResult（`search_customers`に追加）を持つ先行アクションの一覧を`@step:<id>`でforeachのsourceに指定し、body内では`@item:<field>`で現在の項目を参照する（`WorkflowForeachStep`、ループ本体専用スコープ。条件のthenと同じ可視性ルールで外からは参照不可）。暴走防止のため1回の実行で先頭から最大50件まで（`WORKFLOW_FOREACH_MAX_ITEMS`）。`WorkflowStepList.svelte`に「+ 繰り返し」追加、`@item:`はパラメータ・条件のセレクトから選択可能
 - [x] AIレビュー機能: 編集中のワークフロー構成をAIがレビューし、未到達ステップ・条件の論理的な誤りなどを指摘する（`WORKFLOW_REVIEW_SYSTEM_PROMPT`/`buildWorkflowReviewPrompt`、`/api/workflows/review`、`WorkflowEditor.svelte`の「保存」横に配置。承認申請レビューと同じ「ボタン押下でAI分析」パターンを再利用）
 - [x] ワークフロー作成画面専用のAIアシスタント（チャット）: `/database/workflows/new`・`/[id]`の左側に専用チャットパネル（`WorkflowChatPanel.svelte`）を設置し、会話内容に応じて右側のエディタへ直接ステップ構成を反映する（`Workflow.svelte`に`setState`を追加、`/api/workflow-chat`は読み取り専用ツールのみ許可）。メインチャットの汎用アシスタント（会話履歴・他ドメインの指示が混在）とは別に、ワークフロー構築に特化した単機能の対話とすることで精度を優先した
   - 副産物として、メインチャット側で`<ui type="workflow">`タグが`stream.ts`の`parseUITag`で未対応（他のタグ種別は実装済みだがworkflowのみ分岐が抜けていた）だったバグを発見・修正。チャットからのワークフロー提案機能はこれまで実質動作していなかった
-- [ ] `get_workflow` MCPツール（チャットから既存ワークフローを呼び出してインライン編集）・チャット完結フロー
+- [x] ワークフローダイアログ（`WorkflowDialog.svelte`）: チャット内インライン表示（履歴に残り続け、後から内容が変わってもUIが追従しないため保存時に先祖帰りする恐れがあった）をやめ、`FormDialog`と同じ「チャット＋編集を左右に並べたモーダル」に統一。`/database/workflows`の「+ 新規作成」もページ遷移からこのダイアログに変更（保存後は一覧にその場で反映）。メインチャットで「ワークフローを作りたい」等の曖昧な依頼を受けた場合は、質問せず空のワークフローを即座にこのダイアログで表示する
+- [x] `get_workflow` MCPツール（名前またはIDで既存ワークフローを取得。複数一致時は候補を提示）。`save_workflow`にもid引数を追加し、id指定時は新規作成ではなく更新するように修正（重複作成を防止）。メインチャットでの編集は上記ワークフローダイアログを再利用
 - [x] アクションツールカタログの拡充（`WorkflowParamField`に`select`/`number`型を追加し、`search_customers`（件数）・`summarize_deals`・`summarize_activities`を追加。enumパラメータはセレクト、数値パラメータは`run.ts`実行時に数値変換してから`dispatchTool`へ渡す）
 - [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する
+- [x] アクション「通知センターに通知」（`send_notification` MCPツール、`communication.ts`）。宛先は自動でワークフロー登録者。cron実行時はセッションが無いため、`processDueWorkflows`で`workflow.accountId`をこの実行スコープの`env.accountId`として引き渡すように修正
+- [ ] **変数ヘルプ（次の優先タスク）**: エディタ内で「今この位置で使える`@step:<id>`/`@item:<field>`」を動的に一覧確認できるUIが無く、各パラメータのselectを個別に開かないと分からない。ヘルプ的な一覧表示を検討する
 
 ### 資料生成
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）

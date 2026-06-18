@@ -1,5 +1,5 @@
 import type { WorkflowStep, WorkflowResultType } from './types/chat';
-import { getWorkflowActionTool, parseStepRef } from './workflow-tools';
+import { getWorkflowActionTool, parseStepRef, parseItemRef, type WorkflowListResultField } from './workflow-tools';
 
 export type ValidationResult = { ok: true } | { ok: false; errors: string[] };
 
@@ -10,10 +10,16 @@ export type VisibleStep = {
 	resultDesc?: string;
 };
 
+export type VisibleListStep = {
+	id: string;
+	label: string;
+	itemFields: WorkflowListResultField[];
+};
+
 /**
  * 各ステップの位置で「参照可能な先行ステップ（スカラー結果を持つアクションのみ）」を集める。
- * 条件の `then` の中だけで作られた結果は、`then` を抜けた後の兄弟ステップからは見えない
- * （その分岐が実行されたかどうか保証できないため）。
+ * 条件の `then` ・ foreachの `body` の中だけで作られた結果は、そこを抜けた後の兄弟ステップからは
+ * 見えない（その分岐・繰り返しが実行されたかどうか保証できないため）。
  */
 export function collectVisibility(
 	steps: WorkflowStep[],
@@ -33,17 +39,56 @@ function walk(steps: WorkflowStep[], visibleBefore: VisibleStep[], out: Map<stri
 			if (tool?.resultType) {
 				visible = [...visible, { id: step.id, label: step.label, resultType: tool.resultType, resultDesc: tool.resultDesc }];
 			}
-		} else {
+		} else if (step.kind === 'condition') {
 			walk(step.then, visible, out);
 			// then を抜けた後は、then 内で作られた結果を見せない（visible はここでは更新しない）
+		} else {
+			walk(step.body, visible, out);
+			// body を抜けた後は、body 内で作られた結果を見せない（visible はここでは更新しない）
+		}
+	}
+}
+
+/** foreachの `source` として参照できる「一覧を返す先行アクション」を集める。スコープ規則はcollectVisibilityと同じ。 */
+export function collectListVisibility(
+	steps: WorkflowStep[],
+	visibleBefore: VisibleListStep[] = []
+): Map<string, VisibleListStep[]> {
+	const out = new Map<string, VisibleListStep[]>();
+	walkList(steps, visibleBefore, out);
+	return out;
+}
+
+function walkList(steps: WorkflowStep[], visibleBefore: VisibleListStep[], out: Map<string, VisibleListStep[]>) {
+	let visible = visibleBefore;
+	for (const step of steps) {
+		out.set(step.id, visible);
+		if (step.kind === 'action') {
+			const tool = getWorkflowActionTool(step.tool);
+			if (tool?.listResult) {
+				visible = [...visible, { id: step.id, label: step.label, itemFields: tool.listResult.itemFields }];
+			}
+		} else if (step.kind === 'condition') {
+			walkList(step.then, visible, out);
+		} else {
+			walkList(step.body, visible, out);
 		}
 	}
 }
 
 function resolveOperandType(
 	operand: string,
-	visible: VisibleStep[]
+	visible: VisibleStep[],
+	itemFields: WorkflowListResultField[] | null
 ): { ok: true; type: WorkflowResultType } | { ok: false; error: string } {
+	const itemField = parseItemRef(operand);
+	if (itemField !== null) {
+		if (!itemFields) return { ok: false, error: `@item参照はforeachの中でのみ使用できます: ${operand}` };
+		if (!itemFields.some((f) => f.key === itemField)) {
+			return { ok: false, error: `存在しない項目フィールドです: ${itemField}` };
+		}
+		return { ok: true, type: 'string' };
+	}
 	const refId = parseStepRef(operand);
 	if (refId === null) return { ok: true, type: 'string' }; // リテラルは文字列として扱う
 	const found = visible.find((v) => v.id === refId);
@@ -69,8 +114,9 @@ export function validateWorkflow(
 	}
 
 	const visibility = collectVisibility(steps);
+	const listVisibility = collectListVisibility(steps);
 
-	function checkStep(step: WorkflowStep) {
+	function checkStep(step: WorkflowStep, itemFields: WorkflowListResultField[] | null) {
 		const visible = visibility.get(step.id) ?? [];
 		if (step.kind === 'action') {
 			const tool = getWorkflowActionTool(step.tool);
@@ -85,37 +131,47 @@ export function validateWorkflow(
 					continue;
 				}
 				if (value) {
-					const refId = parseStepRef(value);
-					if (refId !== null && !visible.some((v) => v.id === refId)) {
-						errors.push(`「${step.label}」の「${field.label}」が参照する先行ステップが見つかりません`);
-					}
+					const resolved = resolveOperandType(value, visible, itemFields);
+					if (!resolved.ok) errors.push(`「${step.label}」の「${field.label}」: ${resolved.error}`);
 				}
 			}
-		} else {
+		} else if (step.kind === 'condition') {
 			if (!step.left) {
 				errors.push(`「${step.label}」の判定対象が選択されていません`);
+			} else if (parseStepRef(step.left) === null && parseItemRef(step.left) === null) {
+				errors.push(`「${step.label}」の判定対象は先行ステップの結果または@itemを選択してください`);
 			} else {
-				const leftRef = parseStepRef(step.left);
-				if (leftRef === null) {
-					errors.push(`「${step.label}」の判定対象は先行ステップの結果を選択してください`);
-				} else if (!visible.some((v) => v.id === leftRef)) {
-					errors.push(`「${step.label}」の判定対象（先行ステップ）が見つかりません`);
-				}
+				const leftResolved = resolveOperandType(step.left, visible, itemFields);
+				if (!leftResolved.ok) errors.push(`「${step.label}」の判定対象: ${leftResolved.error}`);
 			}
 			if (!step.right) {
 				errors.push(`「${step.label}」の比較先が未入力です`);
 			} else {
-				const rightResolved = resolveOperandType(step.right, visible);
+				const rightResolved = resolveOperandType(step.right, visible, itemFields);
 				if (!rightResolved.ok) errors.push(`「${step.label}」の比較先: ${rightResolved.error}`);
 			}
 			if (step.then.length === 0) {
 				errors.push(`「${step.label}」のYes時の処理が1つもありません`);
 			}
-			for (const child of step.then) checkStep(child);
+			for (const child of step.then) checkStep(child, itemFields);
+		} else {
+			const refId = parseStepRef(step.source);
+			const listVisible = listVisibility.get(step.id) ?? [];
+			const sourceStep = refId !== null ? listVisible.find((v) => v.id === refId) : undefined;
+			if (!step.source) {
+				errors.push(`「${step.label}」の対象（一覧）が選択されていません`);
+			} else if (!sourceStep) {
+				errors.push(`「${step.label}」の対象は一覧を返す先行ステップを選択してください`);
+			}
+			if (step.body.length === 0) {
+				errors.push(`「${step.label}」の繰り返す内容が1つもありません`);
+			}
+			const bodyItemFields = sourceStep?.itemFields ?? itemFields;
+			for (const child of step.body) checkStep(child, bodyItemFields);
 		}
 	}
 
-	for (const step of steps) checkStep(step);
+	for (const step of steps) checkStep(step, null);
 
 	return errors.length > 0 ? { ok: false, errors } : { ok: true };
 }

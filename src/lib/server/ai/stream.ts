@@ -87,6 +87,13 @@ function sanitizeWorkflowSteps(steps: unknown): WorkflowStep[] {
 				then: sanitizeWorkflowSteps(step.then)
 			};
 		}
+		if (step.kind === 'foreach') {
+			return {
+				...step,
+				source: typeof step.source === 'string' ? step.source : String(step.source ?? ''),
+				body: sanitizeWorkflowSteps(step.body)
+			};
+		}
 		return step;
 	});
 }

@@ -44,3 +44,7 @@ export const DEFAULT_LIST_LIMIT = 50;
 export const DEFAULT_ACTIVITY_LIST_LIMIT = 20;
 export const CUSTOMER_DETAIL_ACTIVITY_LIMIT = 10;
 export const HEALTH_RANKING_DEFAULT_LIMIT = 5;
+
+// ── ワークフロー ───────────────────────────────────────────────────────────
+/** foreachステップが1回の実行で処理する最大件数（暴走防止のセーフティキャップ） */
+export const WORKFLOW_FOREACH_MAX_ITEMS = 50;
