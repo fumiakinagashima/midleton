@@ -87,6 +87,7 @@
 	{#if showNewDialog}
 		<WorkflowDialog
 			workflow={blankWorkflow}
+			entityTypes={data.entityTypes}
 			onclose={() => (showNewDialog = false)}
 			onsaved={(row) => {
 				rows = [row, ...rows];

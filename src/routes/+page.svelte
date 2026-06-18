@@ -730,7 +730,7 @@
 		/>
 	{/if}
 	{#if panelWorkflow}
-		<WorkflowDialog workflow={panelWorkflow} onclose={() => (panelWorkflow = null)} />
+		<WorkflowDialog workflow={panelWorkflow} entityTypes={data.entityTypes} onclose={() => (panelWorkflow = null)} />
 	{/if}
 </div>
 

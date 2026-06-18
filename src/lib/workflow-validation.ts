@@ -99,9 +99,11 @@ function resolveOperandType(
 export function validateWorkflow(
 	triggerHour: number,
 	triggerMinute: number,
-	steps: WorkflowStep[]
+	steps: WorkflowStep[],
+	entityTypes: { id: string }[] = []
 ): ValidationResult {
 	const errors: string[] = [];
+	const entityTypeIds = new Set(entityTypes.map((e) => e.id));
 
 	if (!Number.isInteger(triggerHour) || triggerHour < 0 || triggerHour > 23) {
 		errors.push('トリガーの時刻（時）が不正です');
@@ -123,6 +125,12 @@ export function validateWorkflow(
 			if (!tool) {
 				errors.push(`「${step.label}」のアクションが選択されていません`);
 				return;
+			}
+			if (tool.value === 'get_entities') {
+				const entityTypeId = step.params?.entity_type_id;
+				if (!entityTypeId || !entityTypeIds.has(entityTypeId)) {
+					errors.push(`「${step.label}」の対象テーブルが見つかりません（削除された可能性があります）`);
+				}
 			}
 			for (const field of tool.params) {
 				const value = step.params?.[field.key];

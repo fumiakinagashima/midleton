@@ -210,6 +210,16 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		resultType: 'number',
 		resultDesc: '該当する活動履歴の総件数',
 		extractResult: (raw) => (raw as { total: number }).total
+	},
+	{
+		value: 'get_entities',
+		label: '自作テーブルを検索',
+		params: [{ key: 'limit', label: '取得件数の上限', type: 'number' }],
+		resultType: 'number',
+		resultDesc: '該当するレコードの件数',
+		extractResult: (raw) => (Array.isArray(raw) ? raw.length : 0),
+		note: '対象テーブルは「対象」の選択で決まる（個々のカスタムテーブルが対象の選択肢に並ぶ。entity_type_idを直接paramsで指定することはできない）'
+		// foreach用のlistResultは将来対応（テーブルごとにフィールドが異なるため動的解決が必要）
 	}
 ];
 
@@ -223,6 +233,8 @@ export type WorkflowActionCategory = {
 	key: string;
 	label: string;
 	targets: WorkflowActionCategoryTarget[];
+	/** trueの場合、各カスタムテーブル（entity_type）が顧客・案件などと同じ並びで対象の選択肢に追加される（get_entities固定） */
+	includeEntityTargets?: boolean;
 };
 
 /**
@@ -246,7 +258,8 @@ export const WORKFLOW_ACTION_CATEGORIES: WorkflowActionCategory[] = [
 			{ value: 'customers', label: '顧客', tool: 'search_customers' },
 			{ value: 'deals', label: '案件', tool: 'search_deals' },
 			{ value: 'activities', label: '活動履歴', tool: 'search_activities' }
-		]
+		],
+		includeEntityTargets: true
 	},
 	{
 		key: 'summarize',
@@ -260,6 +273,7 @@ export const WORKFLOW_ACTION_CATEGORIES: WorkflowActionCategory[] = [
 ];
 
 export function findWorkflowActionCategory(tool: string): WorkflowActionCategory | undefined {
+	if (tool === 'get_entities') return WORKFLOW_ACTION_CATEGORIES.find((c) => c.includeEntityTargets);
 	return WORKFLOW_ACTION_CATEGORIES.find((c) => c.targets.some((t) => t.tool === tool));
 }
 

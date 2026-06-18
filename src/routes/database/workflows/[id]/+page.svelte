@@ -15,4 +15,5 @@
 	initialSteps={data.workflow.steps}
 	initialEnabled={data.workflow.enabled}
 	runs={data.runs}
+	entityTypes={data.entityTypes}
 />

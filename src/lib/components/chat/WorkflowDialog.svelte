@@ -6,14 +6,16 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import type { WorkflowContent } from '$lib/types/chat';
 	import type { WorkflowRow } from '$lib/server/db/workflow-service';
+	import type { EntityTypeForWorkflow } from '$lib/server/db/table-service';
 
 	type Props = {
 		workflow: WorkflowContent;
 		onclose: () => void;
 		onsaved?: (row: WorkflowRow) => void;
+		entityTypes?: EntityTypeForWorkflow[];
 	};
 
-	let { workflow, onclose, onsaved }: Props = $props();
+	let { workflow, onclose, onsaved, entityTypes = [] }: Props = $props();
 
 	type WorkflowInstance = { getState: () => WorkflowState; setState: (def: WorkflowState) => void };
 	let wfRef = $state<WorkflowInstance | null>(null);
@@ -27,7 +29,7 @@
 			toast.error('ワークフロー名を入力してください');
 			return;
 		}
-		const validation = validateWorkflow(state.triggerHour, state.triggerMinute, state.steps);
+		const validation = validateWorkflow(state.triggerHour, state.triggerMinute, state.steps, entityTypes);
 		if (!validation.ok) {
 			for (const msg of validation.errors) toast.error(msg);
 			return;
@@ -95,6 +97,7 @@
 				triggerMinute={workflow.triggerMinute}
 				steps={workflow.steps}
 				editable={true}
+				{entityTypes}
 			/>
 		</div>
 	</div>

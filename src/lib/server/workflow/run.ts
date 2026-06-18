@@ -92,6 +92,11 @@ async function runAction(
 	if (step.tool === 'send_email') {
 		if (!selfEmail) throw new WorkflowAbortError('送信先（自分のメールアドレス）が特定できません');
 		input = { ...resolvedParams, to: selfEmail };
+	} else if (step.tool === 'get_entities') {
+		// entity_type_id はカタログのparamsに含めず、エディタの「対象」選択で直接 step.params に設定される
+		const entityTypeId = step.params?.entity_type_id;
+		if (!entityTypeId) throw new WorkflowAbortError(`「${step.label}」の対象テーブルが選択されていません`);
+		input = { ...resolvedParams, entity_type_id: entityTypeId };
 	}
 
 	const raw = await dispatchTool(db, step.tool as ToolName, input, env);
