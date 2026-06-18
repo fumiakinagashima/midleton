@@ -39,6 +39,14 @@
 	export function getState(): WorkflowState {
 		return { name, triggerHour, triggerMinute, steps };
 	}
+
+	/** 外部（AIアシスタントパネル等）から提案された状態を反映する。 */
+	export function setState(def: WorkflowState) {
+		name = def.name;
+		triggerHour = def.triggerHour;
+		triggerMinute = def.triggerMinute;
+		steps = structuredClone(def.steps);
+	}
 </script>
 
 <div class="wf-wrap">

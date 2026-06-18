@@ -426,7 +426,9 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [x] ワークフロー管理用の非AI画面（`/database/workflows`・`/new`・`/[id]`、有効化トグル）+ サイドバーリンク
 - [x] AIによるワークフロー構成案の生成（チャット → `workflow`コンポーネントとしてステップ構成を提案、システムプロンプトに`@step:<id>`参照記法を案内）
 - [ ] **foreach（v2、配列型の変数のみに適用、無限ループ回避のためwhileは提供しない）**: 「先日登録された顧客一覧に処理を繰り返す」等のユースケース。ループ本体専用の変数スコープ設計が必要
-- [ ] **AIレビュー機能（v2）**: 保存済みワークフローの構成をAIがレビュー（コードレビュー的UX）し、未到達ステップ・条件の論理的な誤りなどを指摘する。既存の承認申請レビュー・ヘルススコアと同じ「ボタン押下でAI分析」パターンを再利用
+- [x] AIレビュー機能: 編集中のワークフロー構成をAIがレビューし、未到達ステップ・条件の論理的な誤りなどを指摘する（`WORKFLOW_REVIEW_SYSTEM_PROMPT`/`buildWorkflowReviewPrompt`、`/api/workflows/review`、`WorkflowEditor.svelte`の「保存」横に配置。承認申請レビューと同じ「ボタン押下でAI分析」パターンを再利用）
+- [x] ワークフロー作成画面専用のAIアシスタント（チャット）: `/database/workflows/new`・`/[id]`の左側に専用チャットパネル（`WorkflowChatPanel.svelte`）を設置し、会話内容に応じて右側のエディタへ直接ステップ構成を反映する（`Workflow.svelte`に`setState`を追加、`/api/workflow-chat`は読み取り専用ツールのみ許可）。メインチャットの汎用アシスタント（会話履歴・他ドメインの指示が混在）とは別に、ワークフロー構築に特化した単機能の対話とすることで精度を優先した
+  - 副産物として、メインチャット側で`<ui type="workflow">`タグが`stream.ts`の`parseUITag`で未対応（他のタグ種別は実装済みだがworkflowのみ分岐が抜けていた）だったバグを発見・修正。チャットからのワークフロー提案機能はこれまで実質動作していなかった
 - [ ] `get_workflow` MCPツール（チャットから既存ワークフローを呼び出してインライン編集）・チャット完結フロー
 - [x] アクションツールカタログの拡充（`WorkflowParamField`に`select`/`number`型を追加し、`search_customers`（件数）・`summarize_deals`・`summarize_activities`を追加。enumパラメータはセレクト、数値パラメータは`run.ts`実行時に数値変換してから`dispatchTool`へ渡す）
 - [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する

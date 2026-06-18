@@ -14,7 +14,7 @@ export type StreamEvent =
 	| { type: 'error'; message: string };
 
 // テキストストリームを処理し、<ui>ブロックをバッファリングしてdeltaとuiイベントに分離
-class TextStreamProcessor {
+export class TextStreamProcessor {
 	private buf = '';
 	private inUi = false;
 
@@ -61,11 +61,12 @@ class TextStreamProcessor {
 	}
 }
 
-function parseUITag(tag: string): MessageContent | null {
+export function parseUITag(tag: string): MessageContent | null {
 	const attrStr = /^<ui\s([^>]*)>/.exec(tag)?.[1] ?? '';
 	const body = tag.replace(/^<ui[^>]*>/, '').replace(/<\/ui>$/, '').trim();
 	const type = /type="([^"]+)"/.exec(attrStr)?.[1];
 	const title = /title="([^"]+)"/.exec(attrStr)?.[1];
+	const name = /name="([^"]+)"/.exec(attrStr)?.[1];
 	const tool = /tool="([^"]+)"/.exec(attrStr)?.[1];
 	const submitLabel = /submitLabel="([^"]+)"/.exec(attrStr)?.[1];
 	const chartType = /chartType="([^"]+)"/.exec(attrStr)?.[1] as 'bar' | 'line' | 'pie' | undefined;
@@ -113,6 +114,9 @@ function parseUITag(tag: string): MessageContent | null {
 		} else if (type === 'customer_detail') {
 			const { customer, contacts, deals, activities } = JSON.parse(body);
 			return { type: 'customer_detail', customer, contacts, deals, activities };
+		} else if (type === 'workflow') {
+			const { triggerHour, triggerMinute, steps } = JSON.parse(body);
+			return { type: 'workflow', name: name ?? '新規ワークフロー', triggerHour, triggerMinute, steps };
 		}
 	} catch {
 		// malformed JSON in UI tag
