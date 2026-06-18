@@ -212,6 +212,30 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		extractResult: (raw) => (raw as { total: number }).total
 	},
 	{
+		value: 'get_contacts',
+		label: '担当者を検索',
+		params: [
+			{ key: 'customer_id', label: '顧客ID', type: 'text' },
+			{ key: 'limit', label: '取得件数の上限', type: 'number' }
+		],
+		resultType: 'number',
+		resultDesc: '該当する担当者の件数',
+		extractResult: (raw) => (Array.isArray(raw) ? raw.length : 0),
+		listResult: {
+			desc: '該当する担当者の一覧（foreachで1件ずつ処理する場合に使う）',
+			itemFields: [
+				{ key: 'id', label: 'ID' },
+				{ key: 'customerId', label: '顧客ID' },
+				{ key: 'name', label: '担当者名' },
+				{ key: 'email', label: 'メールアドレス' },
+				{ key: 'phone', label: '電話番号' },
+				{ key: 'role', label: '役職' },
+				{ key: 'department', label: '部署' }
+			],
+			extractList: (raw) => (Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [])
+		}
+	},
+	{
 		value: 'get_entities',
 		label: '自作テーブルを検索',
 		params: [{ key: 'limit', label: '取得件数の上限', type: 'number' }],
@@ -269,7 +293,8 @@ export const WORKFLOW_ACTION_CATEGORIES: WorkflowActionCategory[] = [
 		targets: [
 			{ value: 'customers', label: '顧客', tool: 'search_customers' },
 			{ value: 'deals', label: '案件', tool: 'search_deals' },
-			{ value: 'activities', label: '活動履歴', tool: 'search_activities' }
+			{ value: 'activities', label: '活動履歴', tool: 'search_activities' },
+			{ value: 'contacts', label: '担当者', tool: 'get_contacts' }
 		],
 		includeEntityTargets: true
 	},
@@ -279,7 +304,8 @@ export const WORKFLOW_ACTION_CATEGORIES: WorkflowActionCategory[] = [
 		targets: [
 			{ value: 'customers', label: '顧客', tool: 'summarize_customers' },
 			{ value: 'deals', label: '案件', tool: 'summarize_deals' },
-			{ value: 'activities', label: '活動履歴', tool: 'summarize_activities' }
+			{ value: 'activities', label: '活動履歴', tool: 'summarize_activities' },
+			{ value: 'contacts', label: '担当者', tool: 'get_contacts' }
 		]
 	}
 ];
