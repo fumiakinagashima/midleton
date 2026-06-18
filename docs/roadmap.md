@@ -440,10 +440,15 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
     - 保存済みの対象テーブルが後から削除された場合、編集画面では「（削除されたテーブル）」等の表示は持たせず単純に未選択（「対象を選択」）の状態に戻る設計どおり実装。`validateWorkflow`に`entityTypes`を渡して存在チェックを追加し、未選択（実質削除済み）はエラーとして保存をブロックする（全呼び出し元 — `WorkflowEditor`/`WorkflowDialog`/`save_workflow`/`/api/workflows`系API — でentityTypesを渡すように統一）
     - [x] foreachのsourceとしても利用可能（`get_entities`に`listResult`を追加。`extractList`が各レコードの`data`をトップレベルに展開するため、テーブルごとに異なるフィールドにも対応できる）。itemFieldsは選択中のentity_type_idから動的に解決する（`entityListItemFields`、`workflow-tools.ts`）。`collectListVisibility`/`validateWorkflow`/`WorkflowStepList.svelte`の3箇所で同じ解決ロジックを使用
   - Slack（通知）は対象の選択肢が連携設定に依存し動的に組み立てる必要があるため、別途仕組みを用意してから追加するTODOとして保留
-- [ ] カスタムテーブル削除時にワークフローでの参照有無をチェックし、使用中なら削除前に警告する（別フェーズで対応）
 - [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する
 - [x] アクション「通知センターに通知」（`send_notification` MCPツール、`communication.ts`）。宛先は自動でワークフロー登録者。cron実行時はセッションが無いため、`processDueWorkflows`で`workflow.accountId`をこの実行スコープの`env.accountId`として引き渡すように修正
-- [ ] **変数ヘルプ（次の優先タスク）**: エディタ内で「今この位置で使える`@step:<id>`/`@item:<field>`」を動的に一覧確認できるUIが無く、各パラメータのselectを個別に開かないと分からない。ヘルプ的な一覧表示を検討する
+
+**v2完了（2026-06-18）**。v3は「より精度の高い操作」と「ヘルプ周りの強化」をテーマに進める方針。v3 TODO:
+- [ ] **変数ヘルプ**: エディタ内で「今この位置で使える`@step:<id>`/`@item:<field>`」を動的に一覧確認できるUIが無く、各パラメータのselectを個別に開かないと分からない。ヘルプ的な一覧表示を検討する
+- [ ] Slack（通知）の対象追加。連携設定（webhook）から動的に選択肢を組み立てる仕組みが必要
+- [ ] カスタムテーブル削除時にワークフローでの参照有無をチェックし、使用中なら削除前に警告する
+- [ ] `get_contacts`が検索・集計2カテゴリから参照されるため、保存済みステップ再読込時のカテゴリ表示が常に「検索」になる見た目の制約（機能影響なし、対応は任意）
+- [ ] より精度の高い操作（ユーザーの今後の指示で具体化）
 
 ### 資料生成
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）
