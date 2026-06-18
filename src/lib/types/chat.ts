@@ -214,6 +214,10 @@ export type WorkflowActionStep = {
 	label: string;
 	tool: string;
 	params?: Record<string, WorkflowOperand>;
+	/** エディタの「カテゴリ→対象」選択で選んだカテゴリキー（例: 'search' / 'summarize'）。
+	 *  toolが複数カテゴリから参照される場合に、再読込時どちらのカテゴリで表示するかを覚えておくため。
+	 *  未設定（AI生成・旧データ）の場合は findWorkflowActionCategory による逆引きにフォールバックする。 */
+	category?: string;
 };
 
 export type WorkflowConditionOperator = '==' | '!=' | '>' | '<' | '>=' | '<=';

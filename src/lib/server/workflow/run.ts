@@ -16,17 +16,21 @@ import type {
 
 type StepResult = { type: WorkflowResultType; value: boolean | number | string };
 type ListResults = Map<string, Record<string, unknown>[]>;
-type CurrentItem = Record<string, unknown> | null;
+/** ネストしたforeachの「現在の項目」をforeachのidごとに積んだスタック。配列の末尾が最も内側のforeach。 */
+type ItemStack = { foreachStepId: string; item: Record<string, unknown> }[];
 
 /** ワークフロー実行を即時中断させるためのエラー（未定義の変数参照・未対応ツール等）。 */
 class WorkflowAbortError extends Error {}
 
-function resolveOperand(operand: string, results: Map<string, StepResult>, currentItem: CurrentItem): StepResult {
-	const itemField = parseItemRef(operand);
-	if (itemField !== null) {
-		if (!currentItem) throw new WorkflowAbortError(`@item参照はforeachの中でのみ使用できます: ${operand}`);
-		const v = currentItem[itemField];
-		if (v === undefined) throw new WorkflowAbortError(`現在の項目に存在しないフィールドです: ${itemField}`);
+function resolveOperand(operand: string, results: Map<string, StepResult>, itemStack: ItemStack): StepResult {
+	const itemRef = parseItemRef(operand);
+	if (itemRef !== null) {
+		const scope = itemRef.foreachStepId
+			? itemStack.find((s) => s.foreachStepId === itemRef.foreachStepId)
+			: itemStack[itemStack.length - 1];
+		if (!scope) throw new WorkflowAbortError(`@item参照はforeachの中でのみ使用できます: ${operand}`);
+		const v = scope.item[itemRef.field];
+		if (v === undefined) throw new WorkflowAbortError(`現在の項目に存在しないフィールドです: ${itemRef.field}`);
 		const type: WorkflowResultType = typeof v === 'number' ? 'number' : typeof v === 'boolean' ? 'boolean' : 'string';
 		return { type, value: (v as boolean | number | string) ?? '' };
 	}
@@ -67,7 +71,7 @@ async function runAction(
 	listResults: ListResults,
 	env: ToolEnv | undefined,
 	selfEmail: string | null,
-	currentItem: CurrentItem
+	itemStack: ItemStack
 ): Promise<void> {
 	const toolDef = getWorkflowActionTool(step.tool);
 	if (!toolDef) throw new WorkflowAbortError(`未対応のツールです: ${step.tool}`);
@@ -76,7 +80,7 @@ async function runAction(
 	for (const field of toolDef.params) {
 		const raw = step.params?.[field.key];
 		if (!raw) continue;
-		const value = resolveOperand(raw, results, currentItem).value;
+		const value = resolveOperand(raw, results, itemStack).value;
 		if (field.type === 'number') {
 			resolvedParams[field.key] = Number(value);
 		} else if (field.type === 'date' && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -115,14 +119,15 @@ async function runForeach(
 	results: Map<string, StepResult>,
 	listResults: ListResults,
 	env: ToolEnv | undefined,
-	selfEmail: string | null
+	selfEmail: string | null,
+	itemStack: ItemStack
 ): Promise<void> {
 	const refId = parseStepRef(step.source);
 	if (!refId) throw new WorkflowAbortError(`「${step.label}」の対象が選択されていません`);
 	const items = listResults.get(refId);
 	if (!items) throw new WorkflowAbortError(`「${step.label}」の参照先のリスト結果が見つかりません: ${refId}`);
 	for (const item of items.slice(0, WORKFLOW_FOREACH_MAX_ITEMS)) {
-		await runSteps(db, step.body, results, listResults, env, selfEmail, item);
+		await runSteps(db, step.body, results, listResults, env, selfEmail, [...itemStack, { foreachStepId: step.id, item }]);
 	}
 }
 
@@ -133,19 +138,19 @@ async function runSteps(
 	listResults: ListResults,
 	env: ToolEnv | undefined,
 	selfEmail: string | null,
-	currentItem: CurrentItem = null
+	itemStack: ItemStack = []
 ): Promise<void> {
 	for (const step of steps) {
 		if (step.kind === 'action') {
-			await runAction(db, step, results, listResults, env, selfEmail, currentItem);
+			await runAction(db, step, results, listResults, env, selfEmail, itemStack);
 		} else if (step.kind === 'condition') {
-			const left = resolveOperand(step.left, results, currentItem);
-			const right = resolveOperand(step.right, results, currentItem);
+			const left = resolveOperand(step.left, results, itemStack);
+			const right = resolveOperand(step.right, results, itemStack);
 			if (compare(left, step.operator, right)) {
-				await runSteps(db, step.then, results, listResults, env, selfEmail, currentItem);
+				await runSteps(db, step.then, results, listResults, env, selfEmail, itemStack);
 			}
 		} else {
-			await runForeach(db, step, results, listResults, env, selfEmail);
+			await runForeach(db, step, results, listResults, env, selfEmail, itemStack);
 		}
 	}
 }

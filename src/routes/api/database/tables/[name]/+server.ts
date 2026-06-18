@@ -2,9 +2,10 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import {
-	updateEntityType, deleteEntityType, updateCoreCustomFields,
+	updateEntityType, deleteEntityType, updateCoreCustomFields, getEntityTypeByName,
 	CORE_TABLE_NAMES, type EntityTypeInput, type EditableField
 } from '$lib/server/db/table-service';
+import { findWorkflowsUsingEntityType } from '$lib/server/db/workflow-service';
 
 export const PATCH: RequestHandler = async ({ params, request, platform }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
@@ -22,9 +23,18 @@ export const PATCH: RequestHandler = async ({ params, request, platform }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ params, platform }) => {
+export const DELETE: RequestHandler = async ({ params, platform, url }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
 	const db = createDb(platform.env.DB);
+	if (url.searchParams.get('force') !== '1') {
+		const et = await getEntityTypeByName(db, params.name);
+		if (et) {
+			const workflows = await findWorkflowsUsingEntityType(db, et.id);
+			if (workflows.length > 0) {
+				return json({ error: 'used_by_workflows', workflows }, { status: 409 });
+			}
+		}
+	}
 	await deleteEntityType(db, params.name);
 	return new Response(null, { status: 204 });
 };

@@ -24,6 +24,12 @@ export type VisibleListStep = {
 	itemFields: WorkflowListResultField[];
 };
 
+/** ネストしたforeachのうち、いずれか1段の「現在の項目」スコープ。bodyの内側ではこのスタック（祖先のforeach全て）を全て参照できる。 */
+export type ItemScope = {
+	foreachStepId: string;
+	itemFields: WorkflowListResultField[];
+};
+
 /**
  * 各ステップの位置で「参照可能な先行ステップ（スカラー結果を持つアクションのみ）」を集める。
  * 条件の `then` ・ foreachの `body` の中だけで作られた結果は、そこを抜けた後の兄弟ステップからは
@@ -101,13 +107,16 @@ function walkList(
 function resolveOperandType(
 	operand: string,
 	visible: VisibleStep[],
-	itemFields: WorkflowListResultField[] | null
+	itemScopes: ItemScope[]
 ): { ok: true; type: WorkflowResultType } | { ok: false; error: string } {
-	const itemField = parseItemRef(operand);
-	if (itemField !== null) {
-		if (!itemFields) return { ok: false, error: `@item参照はforeachの中でのみ使用できます: ${operand}` };
-		if (!itemFields.some((f) => f.key === itemField)) {
-			return { ok: false, error: `存在しない項目フィールドです: ${itemField}` };
+	const itemRef = parseItemRef(operand);
+	if (itemRef !== null) {
+		const scope = itemRef.foreachStepId
+			? itemScopes.find((s) => s.foreachStepId === itemRef.foreachStepId)
+			: itemScopes[itemScopes.length - 1];
+		if (!scope) return { ok: false, error: `@item参照はforeachの中でのみ使用できます: ${operand}` };
+		if (!scope.itemFields.some((f) => f.key === itemRef.field)) {
+			return { ok: false, error: `存在しない項目フィールドです: ${itemRef.field}` };
 		}
 		return { ok: true, type: 'string' };
 	}
@@ -140,7 +149,7 @@ export function validateWorkflow(
 	const visibility = collectVisibility(steps);
 	const listVisibility = collectListVisibility(steps, [], entityTypes);
 
-	function checkStep(step: WorkflowStep, itemFields: WorkflowListResultField[] | null) {
+	function checkStep(step: WorkflowStep, itemScopes: ItemScope[]) {
 		const visible = visibility.get(step.id) ?? [];
 		if (step.kind === 'action') {
 			const tool = getWorkflowActionTool(step.tool);
@@ -161,7 +170,7 @@ export function validateWorkflow(
 					continue;
 				}
 				if (value) {
-					const resolved = resolveOperandType(value, visible, itemFields);
+					const resolved = resolveOperandType(value, visible, itemScopes);
 					if (!resolved.ok) errors.push(`「${step.label}」の「${field.label}」: ${resolved.error}`);
 				}
 			}
@@ -171,19 +180,19 @@ export function validateWorkflow(
 			} else if (parseStepRef(step.left) === null && parseItemRef(step.left) === null) {
 				errors.push(`「${step.label}」の判定対象は先行ステップの結果または@itemを選択してください`);
 			} else {
-				const leftResolved = resolveOperandType(step.left, visible, itemFields);
+				const leftResolved = resolveOperandType(step.left, visible, itemScopes);
 				if (!leftResolved.ok) errors.push(`「${step.label}」の判定対象: ${leftResolved.error}`);
 			}
 			if (!step.right) {
 				errors.push(`「${step.label}」の比較先が未入力です`);
 			} else {
-				const rightResolved = resolveOperandType(step.right, visible, itemFields);
+				const rightResolved = resolveOperandType(step.right, visible, itemScopes);
 				if (!rightResolved.ok) errors.push(`「${step.label}」の比較先: ${rightResolved.error}`);
 			}
 			if (step.then.length === 0) {
 				errors.push(`「${step.label}」のYes時の処理が1つもありません`);
 			}
-			for (const child of step.then) checkStep(child, itemFields);
+			for (const child of step.then) checkStep(child, itemScopes);
 		} else {
 			const refId = parseStepRef(step.source);
 			const listVisible = listVisibility.get(step.id) ?? [];
@@ -196,12 +205,14 @@ export function validateWorkflow(
 			if (step.body.length === 0) {
 				errors.push(`「${step.label}」の繰り返す内容が1つもありません`);
 			}
-			const bodyItemFields = sourceStep?.itemFields ?? itemFields;
-			for (const child of step.body) checkStep(child, bodyItemFields);
+			const bodyItemScopes = sourceStep
+				? [...itemScopes, { foreachStepId: step.id, itemFields: sourceStep.itemFields }]
+				: itemScopes;
+			for (const child of step.body) checkStep(child, bodyItemScopes);
 		}
 	}
 
-	for (const step of steps) checkStep(step, null);
+	for (const step of steps) checkStep(step, []);
 
 	return errors.length > 0 ? { ok: false, errors } : { ok: true };
 }

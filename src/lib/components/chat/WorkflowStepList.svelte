@@ -15,19 +15,23 @@
 	import type { VisibleStep, VisibleListStep } from '$lib/workflow-validation';
 	import type { EntityTypeForWorkflow } from '$lib/server/db/table-service';
 	import GripVertical from '$lib/components/icon/GripVertical.svelte';
+	import InfoCircle from '$lib/components/icon/InfoCircle.svelte';
 	import WorkflowStepList from './WorkflowStepList.svelte';
+
+	/** ネストしたforeachのうち、いずれか1段の「現在の項目」スコープ。bodyの内側ではこのスタック（祖先のforeach全て）を全て参照できる。 */
+	type ItemScope = { foreachStepId: string; label: string; itemFields: WorkflowListResultField[] };
 
 	type Props = {
 		steps: WorkflowStep[];
 		visibleBefore: VisibleStep[];
 		listVisibleBefore: VisibleListStep[];
-		itemFields: WorkflowListResultField[] | null;
+		itemScopes: ItemScope[];
 		editable: boolean;
 		depth: number;
 		entityTypes?: EntityTypeForWorkflow[];
 	};
 
-	let { steps, visibleBefore, listVisibleBefore, itemFields, editable, depth, entityTypes = [] }: Props = $props();
+	let { steps, visibleBefore, listVisibleBefore, itemScopes, editable, depth, entityTypes = [] }: Props = $props();
 
 	function makeId(): string {
 		return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -86,10 +90,14 @@
 		return visible;
 	}
 
-	/** params/condition の参照select用: 現在の値を `'__literal__'` / ステップid / `item:<field>` に変換する。 */
+	/** params/condition の参照select用: 現在の値を `'__literal__'` / ステップid / `item:<foreachのid>:<field>` に変換する。 */
 	function refSelectValue(operand: string | undefined): string {
-		const itemField = parseItemRef(operand);
-		if (itemField !== null) return `item:${itemField}`;
+		const itemRef = parseItemRef(operand);
+		if (itemRef !== null) {
+			// foreachのidを省略した旧形式は最も内側のforeachを指すものとして解釈する
+			const foreachStepId = itemRef.foreachStepId ?? itemScopes[itemScopes.length - 1]?.foreachStepId ?? '';
+			return `item:${foreachStepId}:${itemRef.field}`;
+		}
 		const stepId = parseStepRef(operand);
 		if (stepId !== null) return stepId;
 		return '__literal__';
@@ -98,17 +106,48 @@
 	/** refSelectValue の逆変換: select の選択値を実際に保存するoperand文字列に変換する。 */
 	function operandFromSelect(value: string): string {
 		if (value === '__literal__') return '';
-		if (value.startsWith('item:')) return makeItemRef(value.slice('item:'.length));
+		if (value.startsWith('item:')) {
+			const rest = value.slice('item:'.length);
+			const sep = rest.indexOf(':');
+			return makeItemRef(rest.slice(0, sep), rest.slice(sep + 1));
+		}
 		return makeStepRef(value);
+	}
+
+	/**
+	 * このステップの位置で選択可能な「現在の項目」フィールドを、祖先のforeach全て（itemScopes）から
+	 * フラットなリストにする。ネストしている場合（itemScopes.length > 1）は、どのループの項目かを
+	 * ラベルに付記して区別する。
+	 */
+	type ItemOption = { foreachStepId: string; field: WorkflowListResultField; scopeLabel: string };
+
+	function flatItemOptions(): ItemOption[] {
+		return itemScopes.flatMap((scope) =>
+			scope.itemFields.map((f) => ({ foreachStepId: scope.foreachStepId, field: f, scopeLabel: scope.label }))
+		);
+	}
+
+	function itemSelectValue(opt: ItemOption): string {
+		return `item:${opt.foreachStepId}:${opt.field.key}`;
+	}
+
+	function itemOptionLabel(opt: ItemOption): string {
+		return itemScopes.length > 1 ? `${opt.field.label}（${opt.scopeLabel}）` : `${opt.field.label}（現在の項目）`;
+	}
+
+	function itemToken(opt: ItemOption): string {
+		return `@item:${opt.foreachStepId}:${opt.field.key}`;
 	}
 
 	// カテゴリ選択中（対象未選択でtoolが空の）ステップのカテゴリを覚えておくための一時状態。
 	// tool が決まれば常にそこからカテゴリを逆引きできるため、これは未確定の間だけ使う。
 	let pendingCategory = $state<Record<string, string>>({});
 
-	function currentCategoryKey(stepId: string, tool: string): string {
-		if (tool) return findWorkflowActionCategory(tool)?.key ?? '';
-		return pendingCategory[stepId] ?? '';
+	// get_contacts 等、同じtoolが複数カテゴリ（検索・集計）から参照される場合に、
+	// 再読込後どちらのカテゴリで表示するかをstep.categoryで覚えておく。未設定（AI生成・旧データ）はtoolからの逆引きにフォールバックする。
+	function currentCategoryKey(step: { id: string; tool: string; category?: string }): string {
+		if (step.tool) return step.category ?? findWorkflowActionCategory(step.tool)?.key ?? '';
+		return pendingCategory[step.id] ?? '';
 	}
 
 	/** カテゴリの対象一覧。includeEntityTargetsの場合、各カスタムテーブルを顧客・案件等と同じ並びに追加する。 */
@@ -124,7 +163,11 @@
 		return step.tool;
 	}
 
-	function applyTargetSelection(step: { tool: string; params?: Record<string, string> }, value: string) {
+	function applyTargetSelection(
+		step: { tool: string; params?: Record<string, string>; category?: string },
+		value: string,
+		categoryKey: string
+	) {
 		if (value.startsWith('entity:')) {
 			step.tool = 'get_entities';
 			step.params = { entity_type_id: value.slice('entity:'.length) };
@@ -132,6 +175,14 @@
 			step.tool = value;
 			step.params = {};
 		}
+		step.category = categoryKey;
+	}
+
+	// 「ここで使える変数」ヘルプパネルの開閉状態（ステップごと）
+	let helpOpenFor = $state<Record<string, boolean>>({});
+
+	function toggleHelp(stepId: string) {
+		helpOpenFor[stepId] = !helpOpenFor[stepId];
 	}
 
 	// ドラッグ&ドロップによる並び替え（同じ steps 配列内、つまり同じスコープ内のみ）
@@ -170,6 +221,7 @@
 <div class="wf-steps">
 	{#each steps as step, i (step.id)}
 		{@const visible = visibleUpTo(i)}
+		{@const itemOpts = flatItemOptions()}
 		<div
 			class="wf-step t-{step.kind}"
 			class:dragging={editable && draggedIndex === i}
@@ -202,7 +254,7 @@
 				/>
 
 				{#if step.kind === 'action'}
-					{@const categoryKey = currentCategoryKey(step.id, step.tool)}
+					{@const categoryKey = currentCategoryKey(step)}
 					{@const category = WORKFLOW_ACTION_CATEGORIES.find((c) => c.key === categoryKey)}
 					<select
 						value={categoryKey}
@@ -211,6 +263,7 @@
 							pendingCategory[step.id] = e.currentTarget.value;
 							step.tool = '';
 							step.params = {};
+							step.category = undefined;
 						}}
 					>
 						<option value="">カテゴリを選択</option>
@@ -222,7 +275,7 @@
 						<select
 							value={currentTargetValue(step)}
 							disabled={!editable}
-							onchange={(e) => applyTargetSelection(step, e.currentTarget.value)}
+							onchange={(e) => applyTargetSelection(step, e.currentTarget.value, categoryKey)}
 						>
 							<option value="">対象を選択</option>
 							{#each effectiveTargets(category) as t (t.value)}
@@ -232,10 +285,44 @@
 					{/if}
 				{/if}
 
+				<button
+					type="button"
+					class="wf-help-btn"
+					class:active={helpOpenFor[step.id]}
+					onclick={() => toggleHelp(step.id)}
+					title="ここで使える変数を見る"
+				>
+					<InfoCircle size={14} />
+				</button>
+
 				{#if editable}
 					<button class="wf-del" onclick={() => removeStep(i)}>×</button>
 				{/if}
 			</div>
+
+			{#if helpOpenFor[step.id]}
+				<div class="wf-help-panel">
+					<div class="wf-help-title">ここで使える変数</div>
+					{#if visible.length === 0 && itemOpts.length === 0}
+						<p class="wf-help-empty">まだ使える変数はありません（先行ステップに数値・件数等の結果を持つアクションを追加してください）</p>
+					{:else}
+						<ul class="wf-help-list">
+							{#each visible as v (v.id)}
+								<li>
+									<span class="wf-help-name">{v.label}</span>{v.resultDesc ? `（${v.resultDesc}）` : ''}
+									<code class="wf-help-token">@step:{v.id}</code>
+								</li>
+							{/each}
+							{#each itemOpts as opt (opt.foreachStepId + ':' + opt.field.key)}
+								<li>
+									<span class="wf-help-name">{opt.field.label}</span>
+									<code class="wf-help-token">{itemToken(opt)}</code>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+			{/if}
 
 			{#if step.kind === 'action'}
 				{@const tool = getWorkflowActionTool(step.tool)}
@@ -272,8 +359,8 @@
 									{#each visible as v (v.id)}
 										<option value={v.id}>{v.label}の結果を使う</option>
 									{/each}
-									{#each itemFields ?? [] as f (f.key)}
-										<option value="item:{f.key}">{f.label}（現在の項目）</option>
+									{#each itemOpts as opt (opt.foreachStepId + ':' + opt.field.key)}
+										<option value={itemSelectValue(opt)}>{itemOptionLabel(opt)}</option>
 									{/each}
 								</select>
 							{/if}
@@ -335,8 +422,8 @@
 						{#each visible as v (v.id)}
 							<option value={v.id}>{v.label}{v.resultDesc ? `（${v.resultDesc}）` : ''}</option>
 						{/each}
-						{#each itemFields ?? [] as f (f.key)}
-							<option value="item:{f.key}">{f.label}（現在の項目）</option>
+						{#each itemOpts as opt (opt.foreachStepId + ':' + opt.field.key)}
+							<option value={itemSelectValue(opt)}>{itemOptionLabel(opt)}</option>
 						{/each}
 					</select>
 					<select
@@ -357,8 +444,8 @@
 						{#each visible as v (v.id)}
 							<option value={v.id}>{v.label}の結果</option>
 						{/each}
-						{#each itemFields ?? [] as f (f.key)}
-							<option value="item:{f.key}">{f.label}（現在の項目）</option>
+						{#each itemOpts as opt (opt.foreachStepId + ':' + opt.field.key)}
+							<option value={itemSelectValue(opt)}>{itemOptionLabel(opt)}</option>
 						{/each}
 					</select>
 					{#if rightSel === '__literal__'}
@@ -395,7 +482,7 @@
 						steps={step.then}
 						visibleBefore={visible}
 						{listVisibleBefore}
-						{itemFields}
+						{itemScopes}
 						{editable}
 						{entityTypes}
 						depth={depth + 1}
@@ -409,7 +496,9 @@
 						steps={step.body}
 						visibleBefore={visible}
 						listVisibleBefore={listVisible}
-						itemFields={sourceVisible?.itemFields ?? itemFields}
+						itemScopes={sourceVisible
+							? [...itemScopes, { foreachStepId: step.id, label: step.label, itemFields: sourceVisible.itemFields }]
+							: itemScopes}
 						{editable}
 						{entityTypes}
 						depth={depth + 1}
@@ -570,6 +659,61 @@
 		&:hover {
 			color: #ef4444;
 		}
+	}
+
+	.wf-help-btn {
+		display: flex;
+		align-items: center;
+		background: none;
+		border: none;
+		color: var(--color-text-muted);
+		cursor: pointer;
+		padding: 2px;
+		flex-shrink: 0;
+		&:hover,
+		&.active {
+			color: var(--color-primary);
+		}
+	}
+
+	.wf-help-panel {
+		margin: 2px 0 4px 22px;
+		padding: 8px 10px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: var(--color-surface);
+	}
+
+	.wf-help-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		margin-bottom: 4px;
+	}
+
+	.wf-help-empty {
+		font-size: 0.8125rem;
+		color: var(--color-text-muted);
+		margin: 0;
+	}
+
+	.wf-help-list {
+		margin: 0;
+		padding-left: 18px;
+		font-size: 0.8125rem;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.wf-help-name {
+		font-weight: 600;
+	}
+
+	.wf-help-token {
+		font-family: ui-monospace, monospace;
+		font-size: 0.87rem;
+		color: var(--color-text-muted);
 	}
 
 	.wf-then {
