@@ -28,10 +28,17 @@
 		editable = true
 	}: Props = $props();
 
+	// チャットの $state からの値は深くリアクティブなProxyの場合があり、
+	// ブラウザ native の structuredClone がそれを認識できず DataCloneError になることがあるため、
+	// JSONシリアライズで複製する（WorkflowStep は常にプレーンなJSONデータのため安全）。
+	function cloneSteps(steps: WorkflowStep[]): WorkflowStep[] {
+		return JSON.parse(JSON.stringify(steps));
+	}
+
 	let name = $state(untrack(() => initName));
 	let triggerHour = $state(untrack(() => initHour));
 	let triggerMinute = $state(untrack(() => initMinute));
-	let steps = $state<WorkflowStep[]>(untrack(() => structuredClone(initSteps)));
+	let steps = $state<WorkflowStep[]>(untrack(() => cloneSteps(initSteps)));
 
 	const HOURS = Array.from({ length: 24 }, (_, i) => i);
 	const MINUTES = Array.from({ length: 60 }, (_, i) => i);
@@ -45,7 +52,7 @@
 		name = def.name;
 		triggerHour = def.triggerHour;
 		triggerMinute = def.triggerMinute;
-		steps = structuredClone(def.steps);
+		steps = cloneSteps(def.steps);
 	}
 </script>
 

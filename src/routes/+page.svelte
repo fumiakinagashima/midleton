@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Table from '$lib/components/chat/Table.svelte';
-	import Workflow from '$lib/components/chat/Workflow.svelte';
+	import WorkflowDialog from '$lib/components/chat/WorkflowDialog.svelte';
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
 	import Gantt from '$lib/components/chat/Gantt.svelte';
@@ -88,6 +88,7 @@
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
 	let panelForm = $state<FormContent | null>(null);
+	let panelWorkflow = $state<WorkflowContent | null>(null);
 
 	let streamingText = $state('');
 	let streamingUIContents = $state<MessageContent[]>([]);
@@ -292,16 +293,19 @@
 
 	function finalizeStreamingMessage() {
 		let nextPanelForm: FormContent | null = null;
+		let nextPanelWorkflow: WorkflowContent | null = null;
 		const contents: MessageContent[] = [];
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
 		for (const c of streamingUIContents) {
 			if (c.type === 'form') {
 				nextPanelForm = c as FormContent;
+			} else if (c.type === 'workflow') {
+				nextPanelWorkflow = c as WorkflowContent;
 			} else {
 				contents.push(c);
 			}
 		}
-		if (contents.length === 0 && !nextPanelForm) contents.push({ type: 'text', text: m.chat_error() });
+		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow) contents.push({ type: 'text', text: m.chat_error() });
 		hidePreviousDealKanban(contents);
 		if (contents.length > 0) {
 			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() };
@@ -309,6 +313,7 @@
 			persistMessage(message);
 		}
 		if (nextPanelForm) panelForm = nextPanelForm;
+		if (nextPanelWorkflow) panelWorkflow = nextPanelWorkflow;
 		streamingText = '';
 		streamingUIContents = [];
 	}
@@ -598,7 +603,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent | CustomerDetailContent | WorkflowContent}
+									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent | CustomerDetailContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -638,26 +643,6 @@
 											deals={extra.deals}
 											activities={extra.activities}
 											onOpenForm={(form) => { panelForm = form; }}
-										/>
-									{:else if extra.type === 'workflow'}
-										<Workflow
-											name={extra.name}
-											triggerHour={extra.triggerHour}
-											triggerMinute={extra.triggerMinute}
-											steps={extra.steps}
-											onsave={async (def) => {
-												try {
-													const res = await fetch('/api/workflows', {
-														method: 'POST',
-														headers: { 'Content-Type': 'application/json' },
-														body: JSON.stringify(def)
-													});
-													if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? '保存に失敗しました');
-													toast.success(`「${def.name}」を保存しました。/database/workflows から有効化してください。`);
-												} catch (e) {
-													toast.error(e instanceof Error ? e.message : '保存に失敗しました');
-												}
-											}}
 										/>
 									{/if}
 								{/if}
@@ -743,6 +728,9 @@
 			onsubmit={handlePanelSubmit}
 			oncancel={handlePanelCancel}
 		/>
+	{/if}
+	{#if panelWorkflow}
+		<WorkflowDialog workflow={panelWorkflow} onclose={() => (panelWorkflow = null)} />
 	{/if}
 </div>
 
