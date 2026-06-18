@@ -190,24 +190,40 @@
 						{@const selVal = refSelectValue(step.params?.[field.key])}
 						<div class="wf-line wf-param">
 							<label for="wf-param-{step.id}-{field.key}">{field.label}</label>
-							<select
-								id="wf-param-{step.id}-{field.key}"
-								value={selVal}
-								disabled={!editable}
-								onchange={(e) => {
-									if (!step.params) step.params = {};
-									step.params[field.key] = operandFromSelect(e.currentTarget.value);
-								}}
-							>
-								<option value="__literal__">直接入力</option>
-								{#each visible as v (v.id)}
-									<option value={v.id}>{v.label}の結果を使う</option>
-								{/each}
-								{#each itemFields ?? [] as f (f.key)}
-									<option value="item:{f.key}">{f.label}（現在の項目）</option>
-								{/each}
-							</select>
-							{#if selVal === '__literal__'}
+							{#if field.type === 'select'}
+								<select
+									id="wf-param-{step.id}-{field.key}"
+									value={step.params?.[field.key] ?? ''}
+									disabled={!editable}
+									onchange={(e) => {
+										if (!step.params) step.params = {};
+										step.params[field.key] = e.currentTarget.value;
+									}}
+								>
+									{#each field.options ?? [] as opt (opt.value)}
+										<option value={opt.value}>{opt.label}</option>
+									{/each}
+								</select>
+							{:else}
+								<select
+									id="wf-param-{step.id}-{field.key}"
+									value={selVal}
+									disabled={!editable}
+									onchange={(e) => {
+										if (!step.params) step.params = {};
+										step.params[field.key] = operandFromSelect(e.currentTarget.value);
+									}}
+								>
+									<option value="__literal__">直接入力</option>
+									{#each visible as v (v.id)}
+										<option value={v.id}>{v.label}の結果を使う</option>
+									{/each}
+									{#each itemFields ?? [] as f (f.key)}
+										<option value="item:{f.key}">{f.label}（現在の項目）</option>
+									{/each}
+								</select>
+							{/if}
+							{#if selVal === '__literal__' && field.type !== 'select'}
 								{#if field.type === 'textarea'}
 									<textarea
 										value={step.params?.[field.key] ?? ''}
@@ -217,19 +233,6 @@
 											step.params[field.key] = e.currentTarget.value;
 										}}
 									></textarea>
-								{:else if field.type === 'select'}
-									<select
-										value={step.params?.[field.key] ?? ''}
-										disabled={!editable}
-										onchange={(e) => {
-											if (!step.params) step.params = {};
-											step.params[field.key] = e.currentTarget.value;
-										}}
-									>
-										{#each field.options ?? [] as opt (opt.value)}
-											<option value={opt.value}>{opt.label}</option>
-										{/each}
-									</select>
 								{:else if field.type === 'number'}
 									<input
 										type="number"
