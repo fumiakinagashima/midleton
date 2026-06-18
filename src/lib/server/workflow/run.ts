@@ -59,7 +59,15 @@ async function runAction(
 		const raw = step.params?.[field.key];
 		if (!raw) continue;
 		const value = resolveOperand(raw, results).value;
-		resolvedParams[field.key] = field.type === 'number' ? Number(value) : String(value);
+		if (field.type === 'number') {
+			resolvedParams[field.key] = Number(value);
+		} else if (field.type === 'date' && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+			// <input type="date"> の "YYYY-MM-DD" は new Date() でUTC深夜と解釈されJSTと9時間ズレるため、
+			// JSTのウォールクロックとして明示的にオフセットを付与する（until は当日いっぱいを含めるため終端時刻にする）
+			resolvedParams[field.key] = `${value}T${field.key === 'until' ? '23:59:59' : '00:00:00'}+09:00`;
+		} else {
+			resolvedParams[field.key] = String(value);
+		}
 	}
 
 	let input: Record<string, unknown> = resolvedParams;

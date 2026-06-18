@@ -5,7 +5,7 @@ import type { WorkflowResultType } from './types/chat';
 export type WorkflowParamField = {
 	key: string;
 	label: string;
-	type: 'text' | 'textarea' | 'number' | 'select';
+	type: 'text' | 'textarea' | 'number' | 'select' | 'date';
 	required?: boolean;
 	/** type: 'select' の場合の選択肢 */
 	options?: { value: string; label: string }[];
@@ -21,6 +21,8 @@ export type WorkflowActionToolDef = {
 	resultDesc?: string;
 	/** ツールの生の戻り値からスカラー結果を取り出す（resultType指定時は必須） */
 	extractResult?: (raw: unknown) => boolean | number | string;
+	/** AIへの説明文に添える補足（自動補完される値の説明など）。UI上には表示しない */
+	note?: string;
 };
 
 export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
@@ -30,7 +32,8 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		params: [
 			{ key: 'subject', label: '件名', type: 'text', required: true },
 			{ key: 'body', label: '本文', type: 'textarea', required: true }
-		]
+		],
+		note: '宛先は自動でユーザー自身のメールアドレスになる（to パラメータは不要）'
 	},
 	{
 		value: 'summarize_customers',
@@ -65,8 +68,8 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		value: 'summarize_deals',
 		label: '案件を集計',
 		params: [
-			{ key: 'since', label: '集計開始日（ISO 8601）', type: 'text' },
-			{ key: 'until', label: '集計終了日（ISO 8601）', type: 'text' },
+			{ key: 'since', label: '集計開始日', type: 'date' },
+			{ key: 'until', label: '集計終了日', type: 'date' },
 			{
 				key: 'date_field',
 				label: '期間の基準日',
@@ -85,8 +88,8 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		value: 'summarize_activities',
 		label: '活動履歴を集計',
 		params: [
-			{ key: 'since', label: '集計開始日（ISO 8601）', type: 'text' },
-			{ key: 'until', label: '集計終了日（ISO 8601）', type: 'text' }
+			{ key: 'since', label: '集計開始日', type: 'date' },
+			{ key: 'until', label: '集計終了日', type: 'date' }
 		],
 		resultType: 'number',
 		resultDesc: '該当する活動履歴の総件数',
@@ -96,6 +99,25 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 
 export function getWorkflowActionTool(tool: string): WorkflowActionToolDef | undefined {
 	return WORKFLOW_ACTION_TOOLS.find((t) => t.value === tool);
+}
+
+const RESULT_TYPE_LABELS: Record<WorkflowResultType, string> = {
+	boolean: '真偽値',
+	number: '数値',
+	string: '文字列'
+};
+
+/** AIへのシステムプロンプトに埋め込む、カタログ1件分の説明文を生成する。 */
+export function describeWorkflowActionToolForAI(t: WorkflowActionToolDef): string {
+	const paramsDesc =
+		t.params.length > 0
+			? JSON.stringify(Object.fromEntries(t.params.map((p) => [p.key, p.label])))
+			: 'params不要';
+	const resultDesc = t.resultType
+		? `、結果は${RESULT_TYPE_LABELS[t.resultType]}${t.resultDesc ? `（${t.resultDesc}）` : ''}`
+		: '';
+	const noteDesc = t.note ? `※${t.note}` : '';
+	return `- \`${t.value}\`（${t.label}${resultDesc}）: params = ${paramsDesc}${noteDesc ? ` ${noteDesc}` : ''}`;
 }
 
 export const WORKFLOW_OPERATORS: { value: string; label: string }[] = [

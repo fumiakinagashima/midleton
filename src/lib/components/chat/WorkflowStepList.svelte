@@ -201,6 +201,16 @@
 											step.params[field.key] = e.currentTarget.value;
 										}}
 									/>
+								{:else if field.type === 'date'}
+									<input
+										type="date"
+										value={step.params?.[field.key] ?? ''}
+										disabled={!editable}
+										oninput={(e) => {
+											if (!step.params) step.params = {};
+											step.params[field.key] = e.currentTarget.value;
+										}}
+									/>
 								{:else}
 									<input
 										type="text"
@@ -265,7 +275,6 @@
 
 			{#if step.kind === 'condition'}
 				<div class="wf-then">
-					<div class="wf-then-label">YES の場合:</div>
 					<WorkflowStepList steps={step.then} visibleBefore={visible} {editable} depth={depth + 1} />
 				</div>
 			{/if}
@@ -304,7 +313,7 @@
 		transition: background-color 0.1s, opacity 0.1s;
 
 		&.t-condition {
-			border-left-color: #f59e0b;
+			border-left-color: #d57c30;
 		}
 
 		&.dragging {
@@ -360,7 +369,7 @@
 
 	.wf-line {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 6px;
 		flex-wrap: wrap;
 		padding: 2px 0 2px 22px;
@@ -389,6 +398,18 @@
 		min-height: 32px;
 	}
 
+	.wf-param {
+		input[type='text'] {
+			min-width: 360px;
+			flex: 1 1 360px;
+		}
+		textarea {
+			min-width: 360px;
+			min-height: 90px;
+			flex: 1 1 360px;
+		}
+	}
+
 	.wf-param label {
 		font-size: 0.75rem;
 		color: var(--color-text-muted);
@@ -412,12 +433,6 @@
 		margin: 4px 0 8px 16px;
 		padding-left: 10px;
 		border-left: 1px dashed var(--color-border);
-	}
-
-	.wf-then-label {
-		font-size: 0.75rem;
-		color: var(--color-text-muted);
-		margin-bottom: 4px;
 	}
 
 	.wf-drop-end {
@@ -444,17 +459,17 @@
 		font-size: 0.75rem;
 		border: 1px solid;
 		cursor: pointer;
-		background: none;
+		color: #fff;
 		&:hover {
-			opacity: 0.7;
+			opacity: 0.85;
 		}
 		&.t-action {
-			color: #22c55e;
-			border-color: #22c55e;
+			background: #22754e;
+			border-color: #22754e;
 		}
 		&.t-condition {
-			color: #f59e0b;
-			border-color: #f59e0b;
+			background: #d57c30;
+			border-color: #d57c30;
 		}
 	}
 </style>

@@ -10,7 +10,6 @@
 	let rows = $state<WorkflowRow[]>(untrack(() => data.rows));
 
 	let deletingId = $state<string | null>(null);
-	let togglingId = $state<string | null>(null);
 
 	function triggerLabel(row: WorkflowRow): string {
 		return `毎日 ${String(row.triggerHour).padStart(2, '0')}:${String(row.triggerMinute).padStart(2, '0')}`;
@@ -29,24 +28,6 @@
 			toast.success(`「${name}」を削除しました`);
 		} finally {
 			deletingId = null;
-		}
-	}
-
-	async function toggleEnabled(row: WorkflowRow) {
-		togglingId = row.id;
-		try {
-			const res = await fetch(`/api/workflows/${row.id}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ enabled: !row.enabled })
-			});
-			if (!res.ok) {
-				toast.error(((await res.json()) as { error?: string }).error ?? '更新に失敗しました');
-				return;
-			}
-			rows = rows.map((r) => (r.id === row.id ? { ...r, enabled: !r.enabled } : r));
-		} finally {
-			togglingId = null;
 		}
 	}
 </script>
@@ -68,14 +49,9 @@
 		<div class="wf-list">
 			{#each rows as row (row.id)}
 				<div class="wf-card">
-					<label class="wf-toggle">
-						<input
-							type="checkbox"
-							checked={row.enabled}
-							disabled={togglingId === row.id}
-							onchange={() => toggleEnabled(row)}
-						/>
-					</label>
+					<span class="status-badge status-{row.enabled ? 'enabled' : 'disabled'}">
+						{row.enabled ? '有効' : '無効'}
+					</span>
 					<div class="wf-card-info">
 						<span class="wf-name">{row.name}</span>
 						<span class="wf-meta">
@@ -162,10 +138,23 @@
 		}
 	}
 
-	.wf-toggle {
+	.status-badge {
 		flex-shrink: 0;
-		display: flex;
-		align-items: center;
+		font-size: 0.75rem;
+		padding: 2px 8px;
+		border-radius: 20px;
+		border: 1px solid;
+		font-weight: 500;
+		white-space: nowrap;
+
+		&.status-enabled {
+			color: #16a34a;
+			border-color: #16a34a;
+		}
+		&.status-disabled {
+			color: var(--color-text-muted);
+			border-color: var(--color-border);
+		}
 	}
 
 	.wf-card-info {

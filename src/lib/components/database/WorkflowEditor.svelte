@@ -3,10 +3,14 @@
 	import { goto } from '$app/navigation';
 	import { toast } from '$lib/stores/toast.svelte';
 	import Workflow, { type WorkflowState } from '$lib/components/chat/Workflow.svelte';
+	import WorkflowChatPanel from './WorkflowChatPanel.svelte';
+	import Toggle from '$lib/components/ui/Toggle.svelte';
 	import { validateWorkflow } from '$lib/workflow-validation';
 	import { formatJstDateTime } from '$lib/datetime';
 	import type { WorkflowStep } from '$lib/types/chat';
 	import type { WorkflowRunRow } from '$lib/server/db/workflow-run-service';
+
+	type WorkflowReviewResult = { summary: string; issues: string[]; suggestions: string[] };
 
 	type Props = {
 		id?: string;
@@ -31,8 +35,41 @@
 	let enabled = $state(untrack(() => initialEnabled));
 	let saving = $state(false);
 
-	type WorkflowInstance = { getState: () => WorkflowState };
+	type WorkflowInstance = { getState: () => WorkflowState; setState: (def: WorkflowState) => void };
 	let wfRef = $state<WorkflowInstance | null>(null);
+
+	let aiReview = $state<WorkflowReviewResult | null>(null);
+	let aiReviewLoading = $state(false);
+	let aiReviewError = $state('');
+
+	async function runAiReview() {
+		if (aiReviewLoading || !wfRef) return;
+		const state = wfRef.getState();
+		if (state.steps.length === 0) {
+			aiReviewError = 'ステップが1つもありません。';
+			return;
+		}
+		aiReviewLoading = true;
+		aiReviewError = '';
+		aiReview = null;
+		try {
+			const res = await fetch('/api/workflows/review', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(state)
+			});
+			const result = (await res.json()) as WorkflowReviewResult & { error?: string };
+			if (!res.ok) {
+				aiReviewError = result.error ?? 'AIレビューに失敗しました。';
+				return;
+			}
+			aiReview = result;
+		} catch (e) {
+			aiReviewError = e instanceof Error ? e.message : String(e);
+		} finally {
+			aiReviewLoading = false;
+		}
+	}
 
 	async function handleSave() {
 		if (saving || !wfRef) return;
@@ -83,24 +120,65 @@
 <div class="editor-wrap">
 	<div class="editor-row1">
 		<a href="/database/workflows" class="btn-back">← 一覧に戻る</a>
-		<label class="enabled-toggle">
-			<input type="checkbox" bind:checked={enabled} />
-			有効化（毎日指定時刻に実行）
-		</label>
+		<Toggle bind:checked={enabled} label="有効化（毎日指定時刻に実行）" />
+		<button class="btn-ai-review" onclick={runAiReview} disabled={aiReviewLoading}>
+			{#if aiReviewLoading}
+				レビュー中...
+			{:else if aiReview}
+				✨ 再レビュー
+			{:else}
+				✨ AIレビュー
+			{/if}
+		</button>
 		<button class="btn-save" onclick={handleSave} disabled={saving}>
 			{saving ? '保存中…' : '保存'}
 		</button>
 	</div>
 
-	<div class="editor-canvas">
-		<Workflow
-			bind:this={wfRef}
-			name={initialName}
-			triggerHour={initialTriggerHour}
-			triggerMinute={initialTriggerMinute}
-			steps={initialSteps}
-			editable={true}
+	{#if aiReviewError}
+		<p class="ai-review-error">{aiReviewError}</p>
+	{/if}
+	{#if aiReview}
+		<div class="ai-review-box">
+			<p class="ai-review-summary">{aiReview.summary}</p>
+			{#if aiReview.issues.length > 0}
+				<div class="ai-review-group">
+					<h3 class="ai-review-group-title">論理的な誤り・未到達ステップ</h3>
+					<ul class="ai-review-list">
+						{#each aiReview.issues as item}
+							<li>{item}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+			{#if aiReview.suggestions.length > 0}
+				<div class="ai-review-group">
+					<h3 class="ai-review-group-title">改善提案</h3>
+					<ul class="ai-review-list">
+						{#each aiReview.suggestions as item}
+							<li>{item}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
+	<div class="editor-body">
+		<WorkflowChatPanel
+			getCurrent={() => wfRef?.getState() ?? { name: initialName, triggerHour: initialTriggerHour, triggerMinute: initialTriggerMinute, steps: initialSteps }}
+			onApply={(state) => wfRef?.setState(state)}
 		/>
+		<div class="editor-canvas">
+			<Workflow
+				bind:this={wfRef}
+				name={initialName}
+				triggerHour={initialTriggerHour}
+				triggerMinute={initialTriggerMinute}
+				steps={initialSteps}
+				editable={true}
+			/>
+		</div>
 	</div>
 
 	{#if id}
@@ -165,17 +243,63 @@
 		}
 	}
 
-	.enabled-toggle {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 0.875rem;
-		color: var(--color-text);
+	.btn-ai-review {
+		margin-left: auto;
+		padding: 6px 14px;
+		background: none;
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		border-radius: 6px;
+		font-size: 0.8125rem;
 		cursor: pointer;
+		white-space: nowrap;
+		&:hover:not(:disabled) {
+			background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+		}
+		&:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+	}
+
+	.ai-review-error {
+		margin: 0;
+		padding: 10px 14px;
+		background: color-mix(in srgb, #dc2626 10%, transparent);
+		border: 1px solid #dc2626;
+		border-radius: 6px;
+		color: #dc2626;
+		font-size: 0.875rem;
+	}
+
+	.ai-review-box {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 14px 16px;
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+	}
+	.ai-review-summary { margin: 0; font-size: 0.9375rem; line-height: 1.7; }
+	.ai-review-group { display: flex; flex-direction: column; gap: 6px; }
+	.ai-review-group-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		margin: 0;
+	}
+	.ai-review-list { margin: 0; padding-left: 1.4em; font-size: 0.875rem; line-height: 1.7; display: flex; flex-direction: column; gap: 4px; }
+
+	.editor-body {
+		flex: 1;
+		display: flex;
+		gap: 16px;
+		align-items: flex-start;
 	}
 
 	.btn-save {
-		margin-left: auto;
+		margin-left: 0;
 		padding: 6px 20px;
 		border-radius: 6px;
 		font-size: 0.875rem;

@@ -1,3 +1,6 @@
+import { WORKFLOW_ACTION_TOOLS, describeWorkflowActionToolForAI, getWorkflowActionTool } from '$lib/workflow-tools';
+import type { WorkflowStep } from '$lib/types/chat';
+
 export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムのアシスタントです。
 ユーザーの業務指示を日本語で受け取り、適切なツールを使ってデータの登録・取得・更新を行います。
 
@@ -574,8 +577,8 @@ text / email / tel / number / textarea / select / date / datetime-local / hidden
 **先行ステップの結果を参照する**: \`params\` の値や \`condition\` の \`left\`/\`right\` に \`"@step:<id>"\` 形式で指定すると、そのステップ（自分より前に実行されたものに限る。\`then\` の中だけで作られた結果はその外からは参照不可）の結果を使う。リテラル値を使う場合はそのまま文字列で指定する。
 
 **使用できるアクションツール（tool フィールドに指定。params は各ツールの入力欄）:**
-- \`send_email\`（メール送信、宛先は自動でユーザー自身）: params = \`{"subject":"件名","body":"本文"}\`
-- \`summarize_customers\`（顧客数を集計、結果は数値）: params不要。結果は条件の \`left\`/\`right\` で参照可能
+${WORKFLOW_ACTION_TOOLS.map(describeWorkflowActionToolForAI).join('\n')}
+結果（resultType付き）は条件の \`left\`/\`right\` や後続ステップの params で \`@step:<id>\` 形式で参照可能
 
 **condition の left は必ず先行アクションの結果（\`@step:<id>\`）を指定する**（リテラル不可）。operator は \`==\` \`!=\` \`>\` \`<\` \`>=\` \`<=\` のいずれか。
 
@@ -704,6 +707,113 @@ ${input.content || '（未入力）'}
 
 ## 承認ルート（参考: 誰が承認するか）
 ${routeLines}`;
+}
+
+// レビューAI・チャットアシスタントAI共通: @step:<id> の解決ルールの説明。両者で記述がズレないよう一箇所にまとめる。
+const STEP_REF_SEMANTICS_NOTE =
+	'`@step:<id>` は、そのステップ（action）の実行結果のうちカタログのresultTypeに従って抽出済みのスカラー値（数値・文字列・真偽値）を直接指す。`@step:<id>.count` のようなプロパティアクセスや、生のAPIレスポンス構造（JOINやネストしたオブジェクト等）を考慮する必要はない。常に抽出済みの単一値に置き換わる。';
+
+export const WORKFLOW_REVIEW_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムのワークフロー（毎日決まった時刻に実行する自動化フロー）レビューAIです。
+ユーザーが作成中・保存済みのワークフロー定義（トリガー時刻・ステップ構成）を読み、有効化する前に見直した方がよい論理的な問題を指摘するのが役目です。必須パラメータの未入力やステップ参照エラーなどの構造的な誤りは別のバリデーションで検出済みなので、それ以外の「実行はできるが意図と食い違っている可能性がある」点に注目してください。
+
+## レビュー観点（例）
+- 未到達・無意味なステップ: 条件の比較が常に成立しない（または常に成立する）ため、then内のステップが実質的に意味をなさない
+- 条件の誤り: 比較演算子・比較値が業務上ありえない、または逆方向の判定になっている
+- 重複・無駄: 同じ集計・検索を繰り返している、結果を一度も参照していないステップがある
+- ラベルと実処理の不一致: ステップのラベル（人が読む説明）と実際のtool/paramsの内容が食い違っている
+- トリガー時刻と内容の不整合: 例えば深夜に顧客向けメールを送る設定になっている等
+
+## 重要な制約（指摘してはいけない点）
+- このワークフロー仕様にはelse（NOの場合の分岐）が存在しない。条件はYesの場合の処理（then）のみを持つ仕様であり、NOの場合に何も実行されないことや「else/NOの分岐がない」ことは欠陥ではない。指摘しないこと。NOの場合にも処理が必要なら、別の条件ステップを並べて表現する設計のため、その点を欠陥として指摘しない
+- ${STEP_REF_SEMANTICS_NOTE} 値の抽出方法が不明確である、プロパティを明示的に指定すべき、といった指摘はしないこと
+
+## 出力ルール
+- 必ず以下のJSON形式のみを出力する。説明文・マークダウン記法・コードブロックは一切付けない
+- summary: このまま有効化して問題ないか、見直しを検討した方がよいかを1〜2文で
+- issues（論理的な誤り・未到達ステップ）: 該当するステップのラベルを明示しながら具体的に指摘する。なければ空配列
+- suggestions（改善提案）: より意図が伝わる構成にするための提案。なければ空配列
+
+{
+  "summary": "...",
+  "issues": ["...", "..."],
+  "suggestions": ["...", "..."]
+}`;
+
+function renderWorkflowStepsForAI(steps: WorkflowStep[], indent = ''): string {
+	return steps
+		.map((s) => {
+			if (s.kind === 'action') {
+				const tool = getWorkflowActionTool(s.tool);
+				const resultNote = tool?.resultType
+					? `, 結果(@step:${s.id}で参照可能)=${tool.resultDesc ?? tool.resultType}`
+					: '';
+				return `${indent}- [${s.id}] action「${s.label}」 tool=${s.tool || '(未選択)'}${tool ? `（${tool.label}）` : ''} params=${JSON.stringify(s.params ?? {})}${resultNote}`;
+			}
+			const thenDesc = s.then.length > 0 ? `\n${renderWorkflowStepsForAI(s.then, `${indent}    `)}` : `${indent}    （なし）`;
+			return `${indent}- [${s.id}] condition「${s.label}」 ${s.left || '(未選択)'} ${s.operator} ${s.right || '(未入力)'}\n${indent}  YESの場合:${thenDesc}`;
+		})
+		.join('\n');
+}
+
+export function buildWorkflowReviewPrompt(input: {
+	name: string;
+	triggerHour: number;
+	triggerMinute: number;
+	steps: WorkflowStep[];
+}): string {
+	return `これから有効化するワークフローをレビューしてください。論理的な誤り・未到達ステップ・改善点があれば指摘してください。
+
+## ワークフロー名
+${input.name || '（未入力）'}
+
+## トリガー
+毎日 ${String(input.triggerHour).padStart(2, '0')}:${String(input.triggerMinute).padStart(2, '0')}
+
+## ステップ構成
+${input.steps.length > 0 ? renderWorkflowStepsForAI(input.steps) : '（ステップが1つもありません）'}`;
+}
+
+export function buildWorkflowChatSystemPrompt(current: {
+	name: string;
+	triggerHour: number;
+	triggerMinute: number;
+	steps: WorkflowStep[];
+}): string {
+	return `あなたはMidletonというCRM/SFAシステムの「ワークフロー」（毎日決まった時刻に実行する自動化フロー）作成を専門にサポートするAIアシスタントです。画面右側のエディタと連動しており、あなたが提案した内容はそのまま右側に反映されます。
+
+## 役目
+ユーザーとの会話から、トリガー時刻とステップ構成（action/condition）を組み立てて提案する。ワークフロー作成・編集に関係のない質問（他のCRM操作の代行など）には対応せず、ワークフロー作成の話題に戻すよう促す。
+
+## steps（配列、上から順に実行）の要素は2種類
+- action: \`{"id":"s1","kind":"action","label":"...","tool":"...","params":{...}}\`
+- condition: \`{"id":"s2","kind":"condition","label":"...","left":"...","operator":"==","right":"...","then":[...]}\`（thenはYesの場合のみ実行。elseは存在しないため、必要なら別のconditionステップとして並べる）
+
+id はステップごとに一意な文字列（s1, s2... で連番でよい）。
+
+## 先行ステップの結果を参照する
+params の値や condition の left/right に "@step:<id>" 形式で指定すると、そのステップ（自分より前に実行されたものに限る。thenの中だけで作られた結果はその外からは参照不可）の結果を使う。リテラル値を使う場合はそのまま文字列で指定する。${STEP_REF_SEMANTICS_NOTE}
+
+## 使用できるアクションツール（tool フィールドに指定。params は各ツールの入力欄）
+${WORKFLOW_ACTION_TOOLS.map(describeWorkflowActionToolForAI).join('\n')}
+結果（resultType付き）は条件のleft/rightや後続ステップのparamsで参照可能。condition の left は必ず先行アクションの結果（@step:<id>）を指定する（リテラル不可）。operator は == != > < >= <= のいずれか。
+
+## 現在の編集状態（画面右側の内容。ユーザーが手動で編集している場合もある）
+- 名前: ${current.name || '（未入力）'}
+- トリガー: 毎日 ${String(current.triggerHour).padStart(2, '0')}:${String(current.triggerMinute).padStart(2, '0')}
+- ステップ: ${current.steps.length > 0 ? `\n${renderWorkflowStepsForAI(current.steps)}` : '（なし）'}
+
+## 提案方法
+ステップ構成を提案・更新する際は、必ず以下の形式で**現在の編集状態を踏まえた上で更新後の構成全体**を出力する（差分ではなく常に全体）。テキストで簡潔に説明を添えた上で、必ずこのタグを含める:
+<ui type="workflow" name="ワークフロー名">
+{"triggerHour":9,"triggerMinute":0,"steps":[...]}
+</ui>
+
+会話のみで構成の確定に至っていない場合（要件を確認している段階等）はタグを出力しなくてよい。
+
+## 制約
+- データの登録・更新・削除・メール送信・ワークフローの保存は行わない（読み取り専用ツールのみ利用可能。必要なら現状のデータを調べて、しきい値などの提案に活かしてよい）
+- 保存は提案後にユーザーが画面右側の「保存」ボタンを押すことで行われる。あなたから保存や有効化を促す案内をする必要はない
+- 回答は簡潔にする`;
 }
 
 export const CUSTOMER_HEALTH_SCORE_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムの顧客ヘルススコアリングAIです。
