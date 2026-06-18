@@ -218,8 +218,20 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		resultType: 'number',
 		resultDesc: '該当するレコードの件数',
 		extractResult: (raw) => (Array.isArray(raw) ? raw.length : 0),
-		note: '対象テーブルは「対象」の選択で決まる（個々のカスタムテーブルが対象の選択肢に並ぶ。entity_type_idを直接paramsで指定することはできない）'
-		// foreach用のlistResultは将来対応（テーブルごとにフィールドが異なるため動的解決が必要）
+		note: '対象テーブルは「対象」の選択で決まる（個々のカスタムテーブルが対象の選択肢に並ぶ。entity_type_idを直接paramsで指定することはできない）',
+		listResult: {
+			desc: '該当するレコードの一覧（foreachで1件ずつ処理する場合に使う）',
+			// テーブルごとに実際のフィールドは異なるため、ここは器のみ。UI・検証では entityListItemFields() で
+			// このステップの entity_type_id から動的に解決した一覧を使う（このitemFieldsはフォールバック用）。
+			itemFields: [{ key: 'id', label: 'ID' }],
+			extractList: (raw) =>
+				Array.isArray(raw)
+					? (raw as { id: string; data?: Record<string, unknown> }[]).map((r) => ({
+							id: r.id,
+							...(r.data ?? {})
+						}))
+					: []
+		}
 	}
 ];
 
@@ -275,6 +287,20 @@ export const WORKFLOW_ACTION_CATEGORIES: WorkflowActionCategory[] = [
 export function findWorkflowActionCategory(tool: string): WorkflowActionCategory | undefined {
 	if (tool === 'get_entities') return WORKFLOW_ACTION_CATEGORIES.find((c) => c.includeEntityTargets);
 	return WORKFLOW_ACTION_CATEGORIES.find((c) => c.targets.some((t) => t.tool === tool));
+}
+
+/**
+ * get_entitiesステップのforeach用itemFieldsを、選択中のテーブルの実際のフィールド定義から動的に組み立てる。
+ * カタログ（WORKFLOW_ACTION_TOOLS）はテーブルごとの違いを知らないため、entityTypesを使ってここで解決する。
+ * 常に id を先頭に含む。
+ */
+export function entityListItemFields(
+	entityTypes: { id: string; fields: WorkflowListResultField[] }[],
+	entityTypeId: string | undefined
+): WorkflowListResultField[] {
+	const idField: WorkflowListResultField = { key: 'id', label: 'ID' };
+	const match = entityTypes.find((e) => e.id === entityTypeId);
+	return match ? [idField, ...match.fields] : [idField];
 }
 
 const RESULT_TYPE_LABELS: Record<WorkflowResultType, string> = {

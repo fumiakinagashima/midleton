@@ -1,5 +1,13 @@
 import type { WorkflowStep, WorkflowResultType } from './types/chat';
-import { getWorkflowActionTool, parseStepRef, parseItemRef, type WorkflowListResultField } from './workflow-tools';
+import {
+	getWorkflowActionTool,
+	parseStepRef,
+	parseItemRef,
+	entityListItemFields,
+	type WorkflowListResultField
+} from './workflow-tools';
+
+type EntityTypeForValidation = { id: string; fields?: WorkflowListResultField[] };
 
 export type ValidationResult = { ok: true } | { ok: false; errors: string[] };
 
@@ -52,26 +60,40 @@ function walk(steps: WorkflowStep[], visibleBefore: VisibleStep[], out: Map<stri
 /** foreachの `source` として参照できる「一覧を返す先行アクション」を集める。スコープ規則はcollectVisibilityと同じ。 */
 export function collectListVisibility(
 	steps: WorkflowStep[],
-	visibleBefore: VisibleListStep[] = []
+	visibleBefore: VisibleListStep[] = [],
+	entityTypes: EntityTypeForValidation[] = []
 ): Map<string, VisibleListStep[]> {
 	const out = new Map<string, VisibleListStep[]>();
-	walkList(steps, visibleBefore, out);
+	walkList(steps, visibleBefore, out, entityTypes);
 	return out;
 }
 
-function walkList(steps: WorkflowStep[], visibleBefore: VisibleListStep[], out: Map<string, VisibleListStep[]>) {
+function walkList(
+	steps: WorkflowStep[],
+	visibleBefore: VisibleListStep[],
+	out: Map<string, VisibleListStep[]>,
+	entityTypes: EntityTypeForValidation[]
+) {
 	let visible = visibleBefore;
 	for (const step of steps) {
 		out.set(step.id, visible);
 		if (step.kind === 'action') {
 			const tool = getWorkflowActionTool(step.tool);
 			if (tool?.listResult) {
-				visible = [...visible, { id: step.id, label: step.label, itemFields: tool.listResult.itemFields }];
+				// get_entitiesはテーブルごとにフィールドが異なるため、選択中のentity_type_idから動的に解決する
+				const itemFields =
+					step.tool === 'get_entities'
+						? entityListItemFields(
+								entityTypes.map((e) => ({ id: e.id, fields: e.fields ?? [] })),
+								step.params?.entity_type_id
+							)
+						: tool.listResult.itemFields;
+				visible = [...visible, { id: step.id, label: step.label, itemFields }];
 			}
 		} else if (step.kind === 'condition') {
-			walkList(step.then, visible, out);
+			walkList(step.then, visible, out, entityTypes);
 		} else {
-			walkList(step.body, visible, out);
+			walkList(step.body, visible, out, entityTypes);
 		}
 	}
 }
@@ -100,7 +122,7 @@ export function validateWorkflow(
 	triggerHour: number,
 	triggerMinute: number,
 	steps: WorkflowStep[],
-	entityTypes: { id: string }[] = []
+	entityTypes: EntityTypeForValidation[] = []
 ): ValidationResult {
 	const errors: string[] = [];
 	const entityTypeIds = new Set(entityTypes.map((e) => e.id));
@@ -116,7 +138,7 @@ export function validateWorkflow(
 	}
 
 	const visibility = collectVisibility(steps);
-	const listVisibility = collectListVisibility(steps);
+	const listVisibility = collectListVisibility(steps, [], entityTypes);
 
 	function checkStep(step: WorkflowStep, itemFields: WorkflowListResultField[] | null) {
 		const visible = visibility.get(step.id) ?? [];
