@@ -2,25 +2,21 @@
 	import { untrack } from 'svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatJstDateTime } from '$lib/datetime';
-	import WorkflowDialog from '$lib/components/chat/WorkflowDialog.svelte';
+	import WorkflowEditorDialog from '$lib/components/dialog/WorkflowEditorDialog.svelte';
 	import type { WorkflowRow } from '$lib/server/db/workflow-service';
-	import type { WorkflowContent } from '$lib/types/chat';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	let rows = $state<WorkflowRow[]>(untrack(() => data.rows));
+	// 保存（WorkflowEditor 内の invalidateAll）後に一覧へ反映する
+	$effect(() => {
+		rows = data.rows;
+	});
 
 	let deletingId = $state<string | null>(null);
-	let showNewDialog = $state(false);
-
-	const blankWorkflow: WorkflowContent = {
-		type: 'workflow',
-		name: '新規ワークフロー',
-		triggerHour: 9,
-		triggerMinute: 0,
-		steps: []
-	};
+	// null=閉, {row: null}=新規, {row}=編集
+	let dialog = $state<{ row: WorkflowRow | null } | null>(null);
 
 	function triggerLabel(row: WorkflowRow): string {
 		return `毎日 ${String(row.triggerHour).padStart(2, '0')}:${String(row.triggerMinute).padStart(2, '0')}`;
@@ -48,13 +44,13 @@
 <div class="page">
 	<div class="page-header">
 		<h1>ワークフロー管理</h1>
-		<button class="btn-primary" onclick={() => (showNewDialog = true)}>+ 新規作成</button>
+		<button class="btn-primary" onclick={() => (dialog = { row: null })}>+ 新規作成</button>
 	</div>
 
 	{#if rows.length === 0}
 		<div class="empty">
 			<p>保存済みのワークフローはありません。</p>
-			<button class="btn-primary" onclick={() => (showNewDialog = true)}>新規作成する</button>
+			<button class="btn-primary" onclick={() => (dialog = { row: null })}>新規作成する</button>
 		</div>
 	{:else}
 		<div class="wf-list">
@@ -70,7 +66,7 @@
 						</span>
 					</div>
 					<div class="wf-card-actions">
-						<a href="/database/workflows/{row.id}" class="btn-secondary">編集</a>
+						<button class="btn-secondary" onclick={() => (dialog = { row })}>編集</button>
 						<button
 							class="btn-danger"
 							disabled={deletingId === row.id}
@@ -84,15 +80,17 @@
 		</div>
 	{/if}
 
-	{#if showNewDialog}
-		<WorkflowDialog
-			workflow={blankWorkflow}
+	{#if dialog}
+		<WorkflowEditorDialog
+			id={dialog.row?.id}
+			initialName={dialog.row?.name ?? '新規ワークフロー'}
+			initialTriggerHour={dialog.row?.triggerHour ?? 9}
+			initialTriggerMinute={dialog.row?.triggerMinute ?? 0}
+			initialSteps={dialog.row?.steps ?? []}
+			initialEnabled={dialog.row?.enabled ?? false}
 			entityTypes={data.entityTypes}
 			slackIntegrations={data.slackIntegrations}
-			onclose={() => (showNewDialog = false)}
-			onsaved={(row) => {
-				rows = [row, ...rows];
-			}}
+			onclose={() => (dialog = null)}
 		/>
 	{/if}
 </div>
@@ -171,8 +169,8 @@
 		white-space: nowrap;
 
 		&.status-enabled {
-			color: #16a34a;
-			border-color: #16a34a;
+			color: var(--color-success);
+			border-color: var(--color-success);
 		}
 		&.status-disabled {
 			color: var(--color-text-muted);

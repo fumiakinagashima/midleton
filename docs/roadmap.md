@@ -385,13 +385,36 @@ v1リリース時点で未着手・保留となっている項目を集約する
   - 回答確定ボタン（または選択と同時に送信）→ 回答内容をユーザーメッセージとしてチャットに追加し、AIが続きを処理
   - 新コンポーネント `Reply`（仮称）として `MessageContent` に追加し、システムプロンプトで使い方をAIに伝える
   - 既存の `ActionSelector`（TUIコンポーネント）は廃止または統合を検討
-- [ ] **チャットのターン単位UI再設計（検討中、2026-06-18）**
-  メインチャットを縦に流れる会話ログ中心の表示から、「直前の1往復（ユーザー入力1:AIレスポンス1）」を主表示にする構成へ変更する。チャットは業務の起点に絞り、一覧に表示された行アクション（詳細/編集/削除等）から次の操作へ進める。
-  - 行アクションのクリックはAIを呼ばない（新規ターンを生成しない）。クイックアクションと同じ思想で直接API実行する
-  - 詳細/編集は中央モーダルではなく右からのスライドパネルで表示し、パネル内に履歴スタック（ブレッドクラム＋戻る）を持たせる。これにより「顧客詳細 → 担当者登録 → 活動登録」のような連続操作をパネルを閉じずに行える
-  - 過去の会話履歴（相談系の用途で必要）は別途ドロワーに表示する。生成UIを含むターンは詳細を再現せず「[○○を表示]」程度の簡易ログのみ残す。テキストのみのコピー機能を付ける
-  - デモは導入企業（開発者）向けが前提のため、「チャットUIは業務システムに合わないことが多い」という前提を踏まえた説明と捉え、UXの妥当性は伝わりやすい
-  - まず顧客一覧（詳細/編集/削除＋スライドパネル）のみで試作し、他エンティティへ展開するかを判断する
+- [x] **チャットのターン単位UI再設計（顧客一覧のみで試作、2026-06-19実装）**
+  メインチャットを縦に流れる会話ログ中心の表示から、「直前の1往復（ユーザー入力1:AIレスポンス1）」を主表示にする構成へ変更した。チャットは業務の起点に絞り、一覧に表示された行アクション（詳細/編集/削除等）から次の操作へ進める。
+  - 行アクションのクリックはAIを呼ばない（新規ターンを生成しない）。クイックアクションと同じ思想で直接API実行する（`TableContent.entity === 'customer'` の行クリックで `GET /api/customers/[id]/detail` を直接叩く）
+  - 詳細/編集は中央ダイアログ（`CustomerDialog.svelte`、顧客登録などの `FormDialog` と同じ中央モーダル＋左AIチャット欄の見た目）で表示し、ダイアログ内に履歴スタック（ブレッドクラム＋戻る）を持たせた。「顧客詳細 → 担当者登録 → 活動登録」のような連続操作をダイアログを閉じずに行える。既存の `CustomerDetail.svelte` をそのまま埋め込み、削除ボタンのみ追加。ダイアログ外枠・左AIチャット欄（`DialogChatSide.svelte`）は `FormDialog` と共通化
+  - 過去の会話履歴は `TurnHistoryDrawer.svelte`（右ドロワー）に表示する。**右ドロワーは会話履歴閲覧専用**。生成UIを含むターンは詳細を再現せず「[○○を表示]」程度の簡易ログのみ残す。テキストのみのターンはコピー機能付き
+  - AIが返す `customer_detail` UIも、form/workflowと同様に自動でこの中央ダイアログを開く方式に統合し、インライン表示は廃止した
+  - （当初は顧客一覧のみの試作。下記の後続項目で全テーブル・全入口へ展開し、`CustomerDialog` は汎用 `RecordDialog` に統合済み）
+- [x] **詳細・編集・登録UIのダイアログ統一（コア4エンティティ、2026-06-19実装）**
+  チャット・クイックアクション・`/database` の全入口で、コア4エンティティ（顧客・担当者・案件・活動）の詳細/編集/登録を共通の中央ダイアログに統一した。`CustomerDialog` を汎用 `RecordDialog.svelte` に一般化して置換。
+  - **正準化**: 書き込み=REST（`/api/database/[type]/records` POST/PATCH/DELETE、camelCase）、フィールド定義=`getTableInfo`（`GET /api/database/[type]/info`、カスタムカラム対応）、フォーム部品=`chat/Form.svelte`（`field-adapter.ts` で `FieldDef`→`FormField` 変換）。案件の status 変更時 `closedAt` 更新を REST `updateRecord` にも追加しツール経路と挙動を揃えた
+  - 詳細は顧客のみリッチ（`CustomerDetail` + 関連 + AIチャット欄）、他3種は汎用 `RecordDetail.svelte`（recordSelectはクライアントでラベル解決）
+  - `/database/[type]` 一覧はコアのみダイアログ化（行クリック/新規作成/詳細/編集）。カスタム(entity)テーブルは従来どおりフルページ遷移（次フェーズでダイアログ化）
+  - チャット/クイックアクションのコアCRUDフォーム（`create|update_*`）は `coreToolToPanel` で `RecordDialog` にルーティング（snake→camel別名マップ）。`create_reminder`/`send_email`/`create_customer_with_contact` は従来どおり `FormDialog`
+  - 積み残し: スタンドアロン `[type]/[id]`・`/edit`・`/new` ルート（ディープリンク用）は残置で `RecordForm` のまま（将来 `Form` へ寄せて廃止）。顧客 health-score は後続項目でダイアログにも移植済み、handover サマリーはスタンドアロン詳細ページに残置
+- [x] **ダイアログ統一の全テーブル展開＋ワークフロー編集ダイアログ化（2026-06-19実装）**
+  上記ダイアログ統一を全テーブル・全入口へ拡張した。
+  - **カスタムテーブルもダイアログ化**: `RecordDialog.type` を文字列化し、`/database/[type]` 一覧は全テーブル（コア＋カスタム）で詳細/編集/登録をダイアログで開く（`getTableInfo` + REST が entity テーブルも扱うため汎用詳細・フォームがそのまま動作）。一覧の行アクションは「編集」のみ（詳細=行クリック、削除=ダイアログ内）に整理
+  - **チャットで全テーブル同一動作**: `TableContent.entity` をテーブル種別文字列に一般化（`customers`/`contacts`/`deals`/`activities`/カスタム名）。`get_customers`/`get_contacts`/`search_deals` の record 系クイックアクションに付与、システムプロンプトも更新。行クリックで `RecordDialog` を開く（`removeRecordRow` で削除時の行除去も汎用化）
+  - **ワークフロー編集のダイアログ化**: `WorkflowEditor` をラップした `WorkflowEditorDialog.svelte` を新設し、`/database/workflows` の新規作成・編集とチャットの `workflow` UI が同じダイアログを開く。有効化トグル・今すぐ実行・AIレビュー・実行ログを維持（実行ログは新 `GET /api/workflows/[id]/runs` でクライアント取得）。機能の少ない旧 `chat/WorkflowDialog.svelte` は廃止
+  - **申請管理のダイアログ化**: `/database/approvals` の詳細・新規申請を `ApprovalDialog.svelte`（中身は抽出した `ApprovalDetail.svelte`/`ApprovalForm.svelte`）で開く。承認/否決/取り消し・AIレビュー・添付は従来API。スタンドアロン `[id]`・`/new` ルートは薄いラッパーとして残置（同コンポーネントを描画）
+- [x] **ダイアログUIの仕上げ・共通化と一覧ページネーション（2026-06-19実装、UI変更はいったんここで区切り）**
+  上記ダイアログ統一の総仕上げ。
+  - **コンポーネント集約**: チャットと `/database` で共有するダイアログ群を `src/lib/components/dialog/` に集約（`RecordDialog`/`RecordDetail`/`CustomerDetail`/`FormDialog`/`DialogChatSide`/`ApprovalDialog`/`ApprovalDetail`/`ApprovalForm`/`WorkflowEditorDialog`/`field-adapter.ts`）
+  - **申請のチャット共有**: `list_approvals` テーブルに `entity:'approvals'` を付与し、チャットの行クリックでも `ApprovalDialog`（詳細）を開く。`ApprovalDialog` も他ダイアログと同じ左 `DialogChatSide`（AIアシスタント）付き2カラム構成に統一
+  - **顧客詳細にAIヘルススコア**: `CustomerDetail` 末尾にヘルススコアセクションを追加（キャッシュ表示＋「AIで評価」で `POST /api/customers/[id]/health-score`）
+  - **ダイアログ右側コンテンツを100%幅化**（`Form.svelte` に `fullWidth` prop）
+  - **配色の変数化**: ステータス/セマンティックカラーを `app.scss` に集約（`--color-success`/`-warning`/`-error`/`-info`/`-neutral`＋bg/hover）。各コンポーネントの hex 直書きを置換
+  - **初期チャット入力欄のフェード除去**: 未開始時の入力欄をCSS（`top:50%`+`translateY`）で初期配置し、フェードイン/遅延/レイアウトシフトを解消（SSR的表示）。スライドは1通目送信時のみJSで実行
+  - **バグ修正**: UIのみのアシスタント応答も会話履歴に残すようにし、連続入力で過去のコンポーネントが累積表示される問題を修正（`/api/chat` の履歴構築）
+  - **一覧ページネーション**: チャットの `Table` と `/database/[type]` 一覧をクライアント側で `LIST_PAGE_SIZE`（20件/ページ、`ui/Pagination.svelte` 再利用）にページング。一覧系クイックアクションの limit を 100 に引き上げ
 - [ ] サジェストプロンプトチップ（初期画面・入力欄）
 - [ ] `Timeline` コンポーネント（活動履歴の時系列ビジュアル）— 要検討
 - [ ] `Stats` / `Scorecard` コンポーネント（KPI 数値表示）— KPI 設定の設計が先
@@ -402,7 +425,7 @@ v1リリース時点で未着手・保留となっている項目を集約する
 
 ### 非AIページ
 
-- [ ] 顧客詳細ページ（`/database/customers/[id]`）のUI整備: 基本情報・担当者・案件・活動履歴を一画面で確認できる専用レイアウト（現状は汎用の `[type]/[id]` ページ）
+- [x] 顧客の基本情報・担当者・案件・活動履歴・AIヘルススコアを一画面で確認できるリッチ表示 → `RecordDialog`（`CustomerDetail`）で提供（行クリック/チャット/AI `customer_detail` から開く）。スタンドアロンの `/database/customers/[id]` ページは汎用 `[type]/[id]`（health-score/handover セクション付き）のまま残置
 
 ### 名刺画像取り込み
 - [ ] 複数画像の一括アップロード対応（精度向上のため1枚ずつ処理する方式を検討中）

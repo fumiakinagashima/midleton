@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Table from '$lib/components/chat/Table.svelte';
-	import WorkflowDialog from '$lib/components/chat/WorkflowDialog.svelte';
+	import WorkflowEditorDialog from '$lib/components/dialog/WorkflowEditorDialog.svelte';
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
 	import Gantt from '$lib/components/chat/Gantt.svelte';
@@ -10,8 +10,11 @@
 	import Bizcard from '$lib/components/chat/Bizcard.svelte';
 	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
 	import Reply from '$lib/components/chat/Reply.svelte';
-	import FormDialog from '$lib/components/chat/FormDialog.svelte';
-	import CustomerDetail from '$lib/components/chat/CustomerDetail.svelte';
+	import FormDialog from '$lib/components/dialog/FormDialog.svelte';
+	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
+	import ApprovalDialog from '$lib/components/dialog/ApprovalDialog.svelte';
+	import { type CoreType } from '$lib/components/dialog/field-adapter';
+	import TurnHistoryDrawer from '$lib/components/chat/TurnHistoryDrawer.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
 	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
@@ -34,6 +37,7 @@
 	} from '$lib/quick-actions/catalog';
 	import Plus from '$lib/components/icon/Plus.svelte';
 	import ArrowUp from '$lib/components/icon/ArrowUp.svelte';
+	import Clock from '$lib/components/icon/Clock.svelte';
 	import { CHAT_TITLE_MAX_LENGTH, CHAT_TEXTAREA_MAX_HEIGHT_PX, DEAL_STATUS_IDS } from '$lib/constants';
 
 	function renderMarkdown(text: string): string {
@@ -84,11 +88,71 @@
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let enterToSend = $state(ls('enterToSend', 'true') !== 'false');
 	let hasStarted = $state(untrack(() => !!data.seedNotification || (!!data.seedChat && data.seedChat.messages.length > 0)));
+	// 未開始（空のチャット）の入力欄はCSSで中央配置するため初回からそのまま表示（フェードなし）。
+	// 既存チャットを開いた場合（seeded）だけ、JSが下部に配置するまで一瞬隠す。
+	let inputReady = $state(untrack(() => !hasStarted));
 	let currentChatId: string | null = untrack(() => data.seedChat?.id ?? null);
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
 	let panelForm = $state<FormContent | null>(null);
 	let panelWorkflow = $state<WorkflowContent | null>(null);
+	let panelRecord = $state<{ type: string; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null>(null);
+	let panelApprovalId = $state<string | null>(null);
+	let historyDrawerOpen = $state(false);
+
+	// コアエンティティのCRUDツールフォームは FormDialog ではなく RecordDialog（REST + getTableInfo）で開く
+	const CORE_TOOL_TYPE: Record<string, CoreType> = {
+		create_customer: 'customers', update_customer: 'customers',
+		create_contact: 'contacts', update_contact: 'contacts',
+		create_deal: 'deals', update_deal: 'deals',
+		create_activity: 'activities', update_activity: 'activities'
+	};
+	const SNAKE_TO_CAMEL: Record<string, string> = {
+		customer_id: 'customerId', postal_code: 'postalCode', name_kana: 'nameKana',
+		planned_start: 'plannedStart', planned_end: 'plannedEnd'
+	};
+
+	// コアCRUDフォームを RecordDialog のパネル指定に変換。対象外（リマインダー等）は null。
+	function coreToolToPanel(form: FormContent): typeof panelRecord {
+		const type = CORE_TOOL_TYPE[form.tool];
+		if (!type) return null;
+		if (form.tool.startsWith('update_')) {
+			const recordId = form.fields.find((f) => f.key === 'id')?.value ?? null;
+			if (!recordId) return null; // id 不明なら FormDialog にフォールバック
+			return { type, recordId: String(recordId), view: 'form' };
+		}
+		const prefill: Record<string, string> = {};
+		for (const f of form.fields) {
+			if (f.key === 'id') continue;
+			if (f.value != null && f.value !== '') prefill[SNAKE_TO_CAMEL[f.key] ?? f.key] = String(f.value);
+		}
+		return { type, recordId: null, view: 'form', prefill };
+	}
+
+	// メッセージを「ユーザー発言1件＋それに続くAI応答群」のターン単位にまとめる。
+	// 直前のターンのみをメイン画面に表示し、それ以前は履歴ドロワーに回す。
+	type Turn = { id: string; userMsg: Message | null; assistantMsgs: Message[] };
+	let turns = $derived.by(() => {
+		const result: Turn[] = [];
+		let current: Turn | null = null;
+		for (const msg of messages) {
+			if (msg.role === 'user') {
+				current = { id: msg.id, userMsg: msg, assistantMsgs: [] };
+				result.push(current);
+			} else if (current) {
+				current.assistantMsgs.push(msg);
+			} else {
+				current = { id: msg.id, userMsg: null, assistantMsgs: [msg] };
+				result.push(current);
+			}
+		}
+		return result;
+	});
+	let latestTurn = $derived<Turn | null>(turns.length > 0 ? turns[turns.length - 1] : null);
+	let pastTurns = $derived(turns.slice(0, -1));
+	let latestTurnMessages = $derived<Message[]>(
+		latestTurn ? [...(latestTurn.userMsg ? [latestTurn.userMsg] : []), ...latestTurn.assistantMsgs] : []
+	);
 
 	let streamingText = $state('');
 	let streamingUIContents = $state<MessageContent[]>([]);
@@ -163,19 +227,25 @@
 
 	// Input position management
 	function repositionInput(animate: boolean) {
-		if (!chatEl || !inputWrapEl) return;
+		if (!inputWrapEl) return;
+		if (!hasStarted) {
+			// 未開始時はCSS（top:50% + translateY(-50%)）で中央寄せ。インラインを消してCSSに委ねる。
+			inputWrapEl.style.transition = '';
+			inputWrapEl.style.top = '';
+			inputWrapEl.style.bottom = '';
+			inputWrapEl.style.transform = '';
+			return;
+		}
+		if (!chatEl) return;
 		const containerH = chatEl.offsetHeight;
 		const inputH = inputWrapEl.offsetHeight;
+		// 中央→下部のスライドは top と transform を同時にアニメーションさせて滑らかにする
 		inputWrapEl.style.transition = animate
-			? 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease'
-			: 'top 0s, opacity 0.3s ease';
-		if (!hasStarted) {
-			inputWrapEl.style.top = `${(containerH - inputH) / 2}px`;
-		} else {
-			inputWrapEl.style.top = `${containerH - inputH - 24}px`;
-		}
-		// show after first positioning to prevent top-0 flash on mount
-		inputWrapEl.style.opacity = '1';
+			? 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+			: 'none';
+		inputWrapEl.style.transform = 'translateX(-50%)';
+		inputWrapEl.style.bottom = 'auto';
+		inputWrapEl.style.top = `${containerH - inputH - 24}px`;
 	}
 
 	let isFirstEffect = true;
@@ -183,7 +253,10 @@
 		void hasStarted;
 		const animate = !isFirstEffect;
 		isFirstEffect = false;
-		requestAnimationFrame(() => repositionInput(animate));
+		requestAnimationFrame(() => {
+			repositionInput(animate);
+			inputReady = true;
+		});
 	});
 
 	$effect(() => {
@@ -294,18 +367,25 @@
 	function finalizeStreamingMessage() {
 		let nextPanelForm: FormContent | null = null;
 		let nextPanelWorkflow: WorkflowContent | null = null;
+		let nextPanelRecord: typeof panelRecord = null;
 		const contents: MessageContent[] = [];
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
 		for (const c of streamingUIContents) {
 			if (c.type === 'form') {
-				nextPanelForm = c as FormContent;
+				const asRecord = coreToolToPanel(c as FormContent);
+				if (asRecord) nextPanelRecord = asRecord;
+				else nextPanelForm = c as FormContent;
 			} else if (c.type === 'workflow') {
 				nextPanelWorkflow = c as WorkflowContent;
+			} else if (c.type === 'customer_detail') {
+				nextPanelRecord = { type: 'customers', recordId: (c as CustomerDetailContent).customer.id, view: 'detail' };
 			} else {
 				contents.push(c);
 			}
 		}
-		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow) contents.push({ type: 'text', text: m.chat_error() });
+		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow && !nextPanelRecord) {
+			contents.push({ type: 'text', text: m.chat_error() });
+		}
 		hidePreviousDealKanban(contents);
 		if (contents.length > 0) {
 			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() };
@@ -314,6 +394,7 @@
 		}
 		if (nextPanelForm) panelForm = nextPanelForm;
 		if (nextPanelWorkflow) panelWorkflow = nextPanelWorkflow;
+		if (nextPanelRecord) panelRecord = nextPanelRecord;
 		streamingText = '';
 		streamingUIContents = [];
 	}
@@ -361,6 +442,21 @@
 				if (content.type === 'kanban' && isDealStatusKanban(content) && !content.completed) {
 					content.completed = true;
 					changed = true;
+				}
+			}
+			if (changed) persistMessage(msg);
+		}
+	}
+
+	// 削除されたレコードを、同じテーブル種別の一覧テーブルから取り除く
+	function removeRecordRow(entity: string, recordId: string) {
+		for (const msg of messages) {
+			let changed = false;
+			for (const content of msg.contents) {
+				if (content.type === 'table' && content.entity === entity) {
+					const before = content.rows.length;
+					content.rows = content.rows.filter((r) => String(r.id) !== recordId);
+					if (content.rows.length !== before) changed = true;
 				}
 			}
 			if (changed) persistMessage(msg);
@@ -538,7 +634,7 @@
 				body: JSON.stringify({ id: action.id })
 			});
 			const result = (await res.json()) as { contents: MessageContent[] };
-			const nextPanelForm = result.contents.find((c) => c.type === 'form') as FormContent | undefined;
+			const formContent = result.contents.find((c) => c.type === 'form') as FormContent | undefined;
 			const otherContents = result.contents.filter((c) => c.type !== 'form');
 			if (otherContents.length > 0) {
 				hidePreviousDealKanban(otherContents);
@@ -546,7 +642,11 @@
 				messages = [...messages, message];
 				persistMessage(message);
 			}
-			if (nextPanelForm) panelForm = nextPanelForm;
+			if (formContent) {
+				const asRecord = coreToolToPanel(formContent);
+				if (asRecord) panelRecord = asRecord;
+				else panelForm = formContent;
+			}
 		} catch {
 			const message: Message = {
 				id: crypto.randomUUID(),
@@ -576,10 +676,16 @@
 		<p>業務を指示してください</p>
 	</div>
 
+	{#if hasStarted && pastTurns.length > 0}
+		<button class="history-btn" onclick={() => (historyDrawerOpen = true)} aria-label="会話履歴">
+			<Clock size={16} />
+		</button>
+	{/if}
+
 	<!-- Messages list -->
 	<div class="messages" class:visible={hasStarted} bind:this={listEl}>
 		<div class="messages-inner">
-			{#each messages as msg (msg.id)}
+			{#each latestTurnMessages as msg (msg.id)}
 				<div class="message {msg.role}">
 					{#if msg.role === 'user'}
 						<div class="user-bubble">
@@ -595,7 +701,14 @@
 								{:else if content.type === 'form'}
 									<!-- フォームはパネルで表示 -->
 								{:else if content.type === 'table'}
-									<Table columns={content.columns} rows={content.rows} />
+									<Table
+										columns={content.columns}
+										rows={content.rows}
+										onRowClick={content.entity ? (row) => {
+										if (content.entity === 'approvals') panelApprovalId = String(row.id);
+										else panelRecord = { type: content.entity!, recordId: String(row.id), view: 'detail' };
+									} : undefined}
+									/>
 								{:else if content.type === 'actions'}
 									<ActionSelector
 										title={content.title}
@@ -603,7 +716,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent | CustomerDetailContent}
+									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -636,14 +749,6 @@
 												onsubmit={(answer) => handleReplySubmit(msg, extra, answer)}
 											/>
 										{/if}
-									{:else if extra.type === 'customer_detail'}
-										<CustomerDetail
-											customer={extra.customer}
-											contacts={extra.contacts}
-											deals={extra.deals}
-											activities={extra.activities}
-											onOpenForm={(form) => { panelForm = form; }}
-										/>
 									{/if}
 								{/if}
 							{/each}
@@ -663,7 +768,7 @@
 	</div>
 
 	<!-- Floating input card -->
-	<div class="input-wrap" bind:this={inputWrapEl}>
+	<div class="input-wrap" bind:this={inputWrapEl} style:opacity={inputReady ? 1 : 0}>
 		<div class="input-card">
 			<textarea
 				bind:this={textareaEl}
@@ -730,13 +835,41 @@
 		/>
 	{/if}
 	{#if panelWorkflow}
-		<WorkflowDialog
-			workflow={panelWorkflow}
+		<WorkflowEditorDialog
+			id={panelWorkflow.id}
+			initialName={panelWorkflow.name}
+			initialTriggerHour={panelWorkflow.triggerHour}
+			initialTriggerMinute={panelWorkflow.triggerMinute}
+			initialSteps={panelWorkflow.steps}
 			entityTypes={data.entityTypes}
 			slackIntegrations={data.slackIntegrations}
 			onclose={() => (panelWorkflow = null)}
 		/>
 	{/if}
+	{#if panelRecord}
+		<RecordDialog
+			type={panelRecord.type}
+			recordId={panelRecord.recordId}
+			initialView={panelRecord.view}
+			prefill={panelRecord.prefill}
+			onclose={() => (panelRecord = null)}
+			onSaved={() => (panelRecord = null)}
+			onDeleted={(id) => {
+				const entity = panelRecord?.type;
+				panelRecord = null;
+				if (entity) removeRecordRow(entity, id);
+			}}
+		/>
+	{/if}
+	{#if panelApprovalId}
+		<ApprovalDialog
+			mode="detail"
+			id={panelApprovalId}
+			accountId={page.data.account?.id}
+			onclose={() => (panelApprovalId = null)}
+		/>
+	{/if}
+	<TurnHistoryDrawer turns={pastTurns} open={historyDrawerOpen} onclose={() => (historyDrawerOpen = false)} />
 </div>
 
 <style lang="scss">
@@ -778,6 +911,30 @@
 		font-size: 1rem;
 		color: var(--color-text-muted);
 		margin: 0;
+	}
+
+	/* ---- History button ---- */
+	.history-btn {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		z-index: 6;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		background: var(--color-surface);
+		color: var(--color-text-muted);
+		border: 1px solid var(--color-border);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: color 0.15s ease, border-color 0.15s ease;
+	}
+
+	.history-btn:hover {
+		color: var(--color-primary);
+		border-color: var(--color-primary);
 	}
 
 	/* ---- Messages ---- */
@@ -971,11 +1128,13 @@
 	.input-wrap {
 		position: absolute;
 		left: 50%;
-		transform: translateX(-50%);
+		/* 未開始時の初期配置はCSSで中央寄せ（JS不要・SSR時点で正位置）。
+		   開始後はJS(repositionInput)が top(px)/translateX(-50%) を設定して下部へスライドする。 */
+		top: 50%;
+		transform: translate(-50%, -50%);
 		width: min(720px, calc(100% - 48px));
 		z-index: 10;
 		pointer-events: none; /* pass scroll events through to messages behind it */
-		opacity: 0; /* hidden until JS positions it; set to 1 in repositionInput */
 	}
 
 	.input-card {

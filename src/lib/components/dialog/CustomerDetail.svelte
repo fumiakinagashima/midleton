@@ -1,22 +1,64 @@
 <script lang="ts">
 	import type {
-		CustomerDetailContent,
 		CustomerDetailCustomer,
 		CustomerDetailContact,
 		CustomerDetailDeal,
-		CustomerDetailActivity,
-		FormContent
+		CustomerDetailActivity
 	} from '$lib/types/chat';
+	import type { RecordFormSpec } from './field-adapter';
+	import type { CustomerHealthScoreResult } from '../../../routes/api/customers/[id]/health-score/+server';
 
 	type Props = {
 		customer: CustomerDetailCustomer;
 		contacts: CustomerDetailContact[];
 		deals: CustomerDetailDeal[];
 		activities: CustomerDetailActivity[];
-		onOpenForm: (form: FormContent) => void;
+		onOpenForm: (spec: RecordFormSpec) => void;
+		onDelete?: () => void;
 	};
 
-	let { customer, contacts, deals, activities, onOpenForm }: Props = $props();
+	let { customer, contacts, deals, activities, onOpenForm, onDelete }: Props = $props();
+
+	// ---- AIヘルススコア ----
+	const HEALTH_LEVEL_LABELS: Record<string, string> = { good: '良好', warning: '注意', risk: '要注意' };
+
+	type HealthScore = { score: number; level: string; summary: string; positives: string[]; concerns: string[]; updatedAt?: string | number | null };
+
+	// detail 取得時にキャッシュ済みスコアがあれば初期表示する
+	function cachedHealthScore(): HealthScore | null {
+		if (customer.healthScore == null || !customer.healthScoreLevel) return null;
+		return {
+			score: customer.healthScore,
+			level: customer.healthScoreLevel,
+			summary: customer.healthScoreSummary ?? '',
+			positives: JSON.parse(customer.healthScorePositives ?? '[]'),
+			concerns: JSON.parse(customer.healthScoreConcerns ?? '[]'),
+			updatedAt: customer.healthScoreUpdatedAt
+		};
+	}
+
+	let healthScore = $state<HealthScore | null>(cachedHealthScore());
+	let healthLoading = $state(false);
+	let healthError = $state('');
+
+	async function runHealthScore() {
+		if (healthLoading) return;
+		healthLoading = true;
+		healthError = '';
+		try {
+			const res = await fetch(`/api/customers/${customer.id}/health-score`, { method: 'POST' });
+			const result = (await res.json()) as CustomerHealthScoreResult & { error?: string };
+			if (!res.ok) {
+				healthError = result.error ?? 'ヘルススコアの取得に失敗しました。';
+				return;
+			}
+			healthScore = result;
+		} catch (e) {
+			healthError = e instanceof Error ? e.message : String(e);
+		} finally {
+			healthLoading = false;
+		}
+	}
 
 	const CUSTOMER_STATUS_LABELS: Record<string, string> = {
 		active: '有効',
@@ -49,38 +91,20 @@
 		return `¥${amount.toLocaleString()}`;
 	}
 
-	function pf(key: string, value: string | null | undefined) {
-		return { key, label: '', type: 'hidden' as const, value: value ?? '' };
-	}
-
 	function openEditCustomer() {
-		onOpenForm({
-			type: 'form',
-			tool: 'update_customer',
-			fields: [
-				pf('id', customer.id),
-				pf('name', customer.name),
-				pf('email', customer.email),
-				pf('phone', customer.phone),
-				pf('postal_code', customer.postal_code),
-				pf('address', customer.address),
-				pf('website', customer.website),
-				pf('status', customer.status),
-				pf('notes', customer.notes)
-			]
-		});
+		onOpenForm({ type: 'customers', recordId: customer.id });
 	}
 
 	function openNewContact() {
-		onOpenForm({ type: 'form', tool: 'create_contact', fields: [pf('customer_id', customer.id)] });
+		onOpenForm({ type: 'contacts', prefill: { customerId: customer.id } });
 	}
 
 	function openNewDeal() {
-		onOpenForm({ type: 'form', tool: 'create_deal', fields: [pf('customer_id', customer.id)] });
+		onOpenForm({ type: 'deals', prefill: { customerId: customer.id } });
 	}
 
 	function openNewActivity() {
-		onOpenForm({ type: 'form', tool: 'create_activity', fields: [pf('customer_id', customer.id)] });
+		onOpenForm({ type: 'activities', prefill: { customerId: customer.id } });
 	}
 </script>
 
@@ -90,7 +114,12 @@
 	<section class="section">
 		<div class="section-header">
 			<h3 class="section-title">{customer.name}</h3>
-			<button class="action-btn" onclick={openEditCustomer}>情報を修正</button>
+			<div class="header-actions">
+				<button class="action-btn" onclick={openEditCustomer}>情報を修正</button>
+				{#if onDelete}
+					<button class="action-btn danger" onclick={onDelete}>削除</button>
+				{/if}
+			</div>
 		</div>
 		<dl class="info-grid">
 			{#if customer.status}
@@ -196,6 +225,52 @@
 		{/if}
 	</section>
 
+	<!-- AIヘルススコア -->
+	<section class="section">
+		<div class="section-header">
+			<h4 class="section-subtitle">AIヘルススコア</h4>
+			<button class="action-btn" onclick={runHealthScore} disabled={healthLoading}>
+				{healthLoading ? '評価中…' : healthScore ? '再評価' : 'AIで評価'}
+			</button>
+		</div>
+		<div class="health-body">
+			{#if healthError}
+				<p class="health-error">{healthError}</p>
+			{:else if !healthScore}
+				<p class="empty">「AIで評価」を押すと、活動履歴・案件状況からヘルススコアを算出します。</p>
+			{:else}
+				<div class="health-head">
+					<span class="health-score health-{healthScore.level}">{healthScore.score}</span>
+					<span class="health-level-badge health-{healthScore.level}">
+						{HEALTH_LEVEL_LABELS[healthScore.level] ?? healthScore.level}
+					</span>
+					{#if healthScore.updatedAt}
+						<span class="health-date">{fmtDate(healthScore.updatedAt)} 評価</span>
+					{/if}
+				</div>
+				{#if healthScore.summary}
+					<p class="health-summary">{healthScore.summary}</p>
+				{/if}
+				{#if healthScore.positives.length > 0}
+					<div class="health-group">
+						<span class="health-group-title">良い点</span>
+						<ul class="health-list good">
+							{#each healthScore.positives as item}<li>{item}</li>{/each}
+						</ul>
+					</div>
+				{/if}
+				{#if healthScore.concerns.length > 0}
+					<div class="health-group">
+						<span class="health-group-title">懸念点</span>
+						<ul class="health-list risk">
+							{#each healthScore.concerns as item}<li>{item}</li>{/each}
+						</ul>
+					</div>
+				{/if}
+			{/if}
+		</div>
+	</section>
+
 </div>
 
 <style lang="scss">
@@ -204,7 +279,7 @@
 		flex-direction: column;
 		gap: 16px;
 		width: 100%;
-		max-width: 640px;
+		
 	}
 
 	/* ---- セクション ---- */
@@ -240,6 +315,12 @@
 	}
 
 	/* ---- アクションボタン ---- */
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
 	.action-btn {
 		padding: 4px 12px;
 		border: 1px solid var(--color-border);
@@ -254,6 +335,12 @@
 			border-color: var(--color-primary);
 			color: var(--color-primary);
 			background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+		}
+
+		&.danger:hover {
+			border-color: var(--color-error);
+			color: var(--color-error);
+			background: color-mix(in srgb, var(--color-error) 6%, transparent);
 		}
 	}
 
@@ -302,8 +389,8 @@
 		font-size: 0.75rem;
 		font-weight: 500;
 
-		&.status-active  { background: #dcfce7; color: #16a34a; }
-		&.status-inactive { background: #f3f4f6; color: #6b7280; }
+		&.status-active  { background: var(--color-success-bg); color: var(--color-success); }
+		&.status-inactive { background: var(--color-neutral-bg); color: var(--color-neutral); }
 	}
 
 	.deal-status {
@@ -315,9 +402,9 @@
 		font-weight: 500;
 		flex-shrink: 0;
 
-		&.status-open { background: #dbeafe; color: #2563eb; }
-		&.status-won  { background: #dcfce7; color: #16a34a; }
-		&.status-lost { background: #fee2e2; color: #dc2626; }
+		&.status-open { background: var(--color-info-bg); color: var(--color-info); }
+		&.status-won  { background: var(--color-success-bg); color: var(--color-success); }
+		&.status-lost { background: var(--color-error-bg); color: var(--color-error); }
 	}
 
 	.activity-type {
@@ -382,5 +469,87 @@
 		font-size: 0.875rem;
 		color: var(--color-text-muted);
 		margin: 0;
+	}
+
+	/* ---- AIヘルススコア ---- */
+	.health-body {
+		padding: 14px 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.health-error {
+		margin: 0;
+		font-size: 0.875rem;
+		color: var(--color-error);
+	}
+
+	.health-head {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.health-score {
+		font-size: 1.75rem;
+		font-weight: 700;
+		line-height: 1;
+
+		&.health-good { color: var(--color-success); }
+		&.health-warning { color: var(--color-warning); }
+		&.health-risk { color: var(--color-error); }
+	}
+
+	.health-level-badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 2px 10px;
+		border-radius: 20px;
+		border: 1px solid;
+		font-size: 0.75rem;
+		font-weight: 600;
+
+		&.health-good { color: var(--color-success); border-color: var(--color-success); }
+		&.health-warning { color: var(--color-warning); border-color: var(--color-warning); }
+		&.health-risk { color: var(--color-error); border-color: var(--color-error); }
+	}
+
+	.health-date {
+		margin-left: auto;
+		font-size: 0.75rem;
+		color: var(--color-text-muted);
+	}
+
+	.health-summary {
+		margin: 0;
+		font-size: 0.875rem;
+		line-height: 1.7;
+		color: var(--color-text);
+	}
+
+	.health-group {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.health-group-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+	}
+
+	.health-list {
+		margin: 0;
+		padding-left: 1.4em;
+		font-size: 0.875rem;
+		line-height: 1.7;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+
+		&.good li::marker { color: var(--color-success); }
+		&.risk li::marker { color: var(--color-error); }
 	}
 </style>

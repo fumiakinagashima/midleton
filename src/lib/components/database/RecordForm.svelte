@@ -120,7 +120,7 @@
 		color: var(--color-text-muted);
 	}
 
-	.req { color: var(--color-danger, #dc2626); margin-left: 2px; }
+	.req { color: var(--color-danger, var(--color-error)); margin-left: 2px; }
 
 	input, textarea, select {
 		padding: 8px 12px;

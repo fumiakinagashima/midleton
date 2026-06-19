@@ -20,7 +20,7 @@
 		pending: m.reminder_status_pending(), sent: m.reminder_status_sent(), failed: m.reminder_status_failed()
 	};
 	const STATUS_COLORS: Record<string, string> = {
-		pending: '#ca8a04', sent: '#16a34a', failed: '#dc2626'
+		pending: 'var(--color-warning)', sent: 'var(--color-success)', failed: 'var(--color-error)'
 	};
 
 	let formKey = $state(0);
@@ -239,7 +239,7 @@
 	.form-error {
 		margin: 0;
 		font-size: 0.875rem;
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 	}
 
 	.table-wrap {
@@ -282,9 +282,9 @@
 		font-weight: 500;
 		white-space: nowrap;
 
-		&.status-pending { color: #ca8a04; border-color: #ca8a04; }
-		&.status-sent { color: #16a34a; border-color: #16a34a; }
-		&.status-failed { color: #dc2626; border-color: #dc2626; }
+		&.status-pending { color: var(--color-warning); border-color: var(--color-warning); }
+		&.status-sent { color: var(--color-success); border-color: var(--color-success); }
+		&.status-failed { color: var(--color-error); border-color: var(--color-error); }
 	}
 
 	.actions { text-align: right; white-space: nowrap; width: 1%; }
@@ -301,7 +301,7 @@
 	.action-del {
 		background: none;
 		border: none;
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 		font-size: 0.8125rem;
 		cursor: pointer;
 		padding: 0;

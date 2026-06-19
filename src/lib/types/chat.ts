@@ -45,6 +45,9 @@ export type TableContent = {
 	type: 'table';
 	columns: TableColumn[];
 	rows: Record<string, unknown>[];
+	// 行がレコードを表すテーブルの場合、そのテーブル種別（customers/contacts/deals/activities やカスタムテーブル名）。
+	// 設定されていると行クリックで詳細ダイアログを開ける（rows に id が必要）
+	entity?: string;
 };
 
 export type ActionItem = {
@@ -165,6 +168,13 @@ export type CustomerDetailCustomer = {
 	website?: string | null;
 	status?: string | null;
 	notes?: string | null;
+	// キャッシュ済みAIヘルススコア（get_customer_detail の customer 行に含まれる）
+	healthScore?: number | null;
+	healthScoreLevel?: 'good' | 'warning' | 'risk' | null;
+	healthScoreSummary?: string | null;
+	healthScorePositives?: string | null;
+	healthScoreConcerns?: string | null;
+	healthScoreUpdatedAt?: string | number | null;
 };
 
 export type CustomerDetailContact = {
