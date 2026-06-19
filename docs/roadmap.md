@@ -101,7 +101,7 @@
 - [x] 外部API連携ツール（`list_integrations`, `call_external_api`）
 
 
-## フェーズ4：設定・テンプレート画面
+## フェーズ4：設定画面
 
 **目標：AIを介さない管理画面を整備する**
 
@@ -246,18 +246,18 @@
   - `LineChart`（ui/）: 単一・複数系列、凡例表示対応
 - [x] システムプロンプトに Kanban / Chart の仕様を追加（`src/lib/server/ai/prompt.ts`）
 
-### ④ 名刺画像取り込み
-- [x] `/bizcard` ページ実装（ドラッグ&ドロップ / ファイル選択、プレビュー表示）
+### ④ 名刺取り込み（カメラ撮影）
+
+名刺取り込みは**カメラ撮影のみ**で提供する。画像ファイルからの取り込み（ドラッグ&ドロップ・ファイル選択・HEIC検出・クライアント側リサイズ）は v1 で一度実装したが、カメラ撮影で十分と判断し 2026-06-17 に製品から完全撤去した（OpenCV 撤去と同時、`/api/bizcard` エンドポイントはカメラ撮影画像の処理用として継続利用）。
+
+- [x] `/bizcard` ページ実装（カメラスキャン、プレビュー表示）
 - [x] `/api/bizcard` エンドポイント（multipart → base64 → Claude vision → JSON 抽出）
 - [x] 複数枚同時対応（1枚の写真に複数名刺が写っていても全員分を配列で返す）
-- [x] クライアント側リサイズ（Canvas API で長辺 1600px に縮小してから送信）
-- [x] HEIC 形式の検出とエラー表示
 - [x] タイムアウト処理（クライアント 25 秒 AbortController、SDK 20 秒）
 - [x] 抽出結果から「顧客として登録」ボタンで `/database/customers/new` に pre-fill
 - [x] チャット上に名刺スキャナーを直接表示（`bizcard` コンポーネント追加、`BizcardScanner` を `/bizcard` ページとチャットで共有、システムプロンプトに「名刺取り込み」意図のルールを追加）
 - [x] チャット上の名刺読み取り結果から、別画面に遷移せずチャット内フォームで顧客・担当者登録（`create_customer_with_contact` MCPツール追加、「顧客・担当者を登録」「既存の顧客に担当者を追加」の2導線）
 - [x] チャット名刺登録フォームの新規担当者フィールドに「部署」を追加（`contacts.department` と整合）
-- [x] ~~ファイルアップロード（ドラッグ&ドロップ・ファイル選択・HEIC検出・クライアント側リサイズ）~~ → 2026-06-17 削除。カメラ撮影のみで十分と判断し撤去（下記⑤のOpenCV撤去と同時）
 
 ### ⑤ クイックアクション（AIを介さない定型操作）
 - [x] 入力欄左下に「+」アイコンボタン → ポップアップメニュー（Gemini風、クリックで登録済みアクション一覧を表示）
@@ -371,6 +371,23 @@
     - [x] チャット履歴のサーバー永続化（フェーズ6 ⑥で実装）後も、通知センターは「再訪時のエントリポイント」として併用する
 
 
+## v3：UI拡張・AIアシスタント強化（mainマージ後の継続開発）
+
+`feature/chat-turn-ui`（フェーズ6②〜）のmainマージ後に着手した継続開発。UIの作り込みとダイアログAIアシスタントの実用性向上が中心。
+
+### 整理・クリーンアップ（2026-06-19）
+- [x] 死にルートの削除: `WorkflowEditorDialog`化で参照されなくなった `/database/workflows/new`、`ApprovalDialog`化で実質未使用だった `/database/approvals/new`・`/[id]` を削除（全ページルートの流入リンクを確認し、意図的なディープリンクラッパー以外の死にルートが他に無いことも確認済み）
+- [x] 名刺取り込みは「カメラ撮影のみ」に整理（画像ファイル取り込みは製品から完全撤去済み。ROADMAP記述もカメラ前提に更新）
+
+### UI
+- [x] メインチャットのコンテンツ表示幅を100%化（`.messages-inner` の max-width 撤廃）。入力欄（`.input-wrap`）は独立配置のためサイズ据え置き
+- [x] `Timeline` コンポーネント（活動履歴の時系列ビジュアル）。新しい順の縦型タイムラインで、種別（メモ/電話/メール/面談/案件登録）を `--chart-*` で色分け。`<ui type="timeline">`（filter: customerId / type）でAIが返す。データは `/api/database/activities|customers/records` から自動取得（Ganttと同方式）
+
+### AI・チャット
+- [x] AI絞り込み一覧の行クリックで詳細ダイアログが確実に開くよう修正。AIが `<ui type="table">` に `entity` を付け忘れても、`streamChat` がそのリクエストで使われたレコード一覧系ツール（`RECORD_LIST_TOOL_ENTITY`）が1種類だけの場合に限り `entity` を補完する（`rows[0]` に id があるときのみ。複数種別混在時は誤割り当て防止のため補完しない）
+- [x] ダイアログ左のAIアシスタント（`DialogChatSide` + `/api/form-chat`）が表示中レコードを認識。`recordContext`（type/typeLabel/id/label/data）をシステムプロンプトに埋め込み、「この顧客の案件の合計金額は？」のように指示語で質問できる。AIは読み取り専用ツール（`summarize_deals`/`search_deals` の `customer_id` 等）にそのIDを渡して集計する。`RecordDialog`（詳細）・`ApprovalDialog`（申請詳細）が渡し、フォーム表示時は従来どおり入力支援
+
+
 ## v2 TODO
 
 v1リリース時点で未着手・保留となっている項目を集約する。優先度は未定。
@@ -404,7 +421,7 @@ v1リリース時点で未着手・保留となっている項目を集約する
   - **カスタムテーブルもダイアログ化**: `RecordDialog.type` を文字列化し、`/database/[type]` 一覧は全テーブル（コア＋カスタム）で詳細/編集/登録をダイアログで開く（`getTableInfo` + REST が entity テーブルも扱うため汎用詳細・フォームがそのまま動作）。一覧の行アクションは「編集」のみ（詳細=行クリック、削除=ダイアログ内）に整理
   - **チャットで全テーブル同一動作**: `TableContent.entity` をテーブル種別文字列に一般化（`customers`/`contacts`/`deals`/`activities`/カスタム名）。`get_customers`/`get_contacts`/`search_deals` の record 系クイックアクションに付与、システムプロンプトも更新。行クリックで `RecordDialog` を開く（`removeRecordRow` で削除時の行除去も汎用化）
   - **ワークフロー編集のダイアログ化**: `WorkflowEditor` をラップした `WorkflowEditorDialog.svelte` を新設し、`/database/workflows` の新規作成・編集とチャットの `workflow` UI が同じダイアログを開く。有効化トグル・今すぐ実行・AIレビュー・実行ログを維持（実行ログは新 `GET /api/workflows/[id]/runs` でクライアント取得）。機能の少ない旧 `chat/WorkflowDialog.svelte` は廃止
-  - **申請管理のダイアログ化**: `/database/approvals` の詳細・新規申請を `ApprovalDialog.svelte`（中身は抽出した `ApprovalDetail.svelte`/`ApprovalForm.svelte`）で開く。承認/否決/取り消し・AIレビュー・添付は従来API。スタンドアロン `[id]`・`/new` ルートは薄いラッパーとして残置（同コンポーネントを描画）
+  - **申請管理のダイアログ化**: `/database/approvals` の詳細・新規申請を `ApprovalDialog.svelte`（中身は抽出した `ApprovalDetail.svelte`/`ApprovalForm.svelte`）で開く。承認/否決/取り消し・AIレビュー・添付は従来API。スタンドアロン `[id]`・`/new` ルートはダイアログ化で実質未使用となったため削除（`ApprovalDetail`/`ApprovalForm` はダイアログからのみ利用、`/api/approvals/[id]` API は存続）
 - [x] **ダイアログUIの仕上げ・共通化と一覧ページネーション（2026-06-19実装、UI変更はいったんここで区切り）**
   上記ダイアログ統一の総仕上げ。
   - **コンポーネント集約**: チャットと `/database` で共有するダイアログ群を `src/lib/components/dialog/` に集約（`RecordDialog`/`RecordDetail`/`CustomerDetail`/`FormDialog`/`DialogChatSide`/`ApprovalDialog`/`ApprovalDetail`/`ApprovalForm`/`WorkflowEditorDialog`/`field-adapter.ts`）
@@ -416,7 +433,7 @@ v1リリース時点で未着手・保留となっている項目を集約する
   - **バグ修正**: UIのみのアシスタント応答も会話履歴に残すようにし、連続入力で過去のコンポーネントが累積表示される問題を修正（`/api/chat` の履歴構築）
   - **一覧ページネーション**: チャットの `Table` と `/database/[type]` 一覧をクライアント側で `LIST_PAGE_SIZE`（20件/ページ、`ui/Pagination.svelte` 再利用）にページング。一覧系クイックアクションの limit を 100 に引き上げ
 - [ ] サジェストプロンプトチップ（初期画面・入力欄）
-- [ ] `Timeline` コンポーネント（活動履歴の時系列ビジュアル）— 要検討
+- [x] `Timeline` コンポーネント（活動履歴の時系列ビジュアル）→ 上記「v3：UI拡張」で実装
 - [ ] `Stats` / `Scorecard` コンポーネント（KPI 数値表示）— KPI 設定の設計が先
 - [x] フォローアップ提案（案件・活動履歴から次のアクションをAIが提案）
 - [ ] 議事録/メモ → 活動記録の自動生成（自由記述から activities への構造化登録）
@@ -427,18 +444,8 @@ v1リリース時点で未着手・保留となっている項目を集約する
 
 - [x] 顧客の基本情報・担当者・案件・活動履歴・AIヘルススコアを一画面で確認できるリッチ表示 → `RecordDialog`（`CustomerDetail`）で提供（行クリック/チャット/AI `customer_detail` から開く）。スタンドアロンの `/database/customers/[id]` ページは汎用 `[type]/[id]`（health-score/handover セクション付き）のまま残置
 
-### 名刺画像取り込み
-- [ ] 複数画像の一括アップロード対応（精度向上のため1枚ずつ処理する方式を検討中）
-- [ ] チャット入力欄からの画像送信（チャット UI に統合する場合）
-- [ ] 透視変換による高解像度トリミングで OCR 精度向上を確認（既存のフルサイズ画像方式との比較）
-
 ### 認証・セッション
 - [ ] 管理者がアカウントのパスワードを変更した際、該当ユーザーの既存セッションを即時破棄する仕組み（現状はKVのTTL失効まで有効なまま。フェーズ5「認証・認可」ステップ1のTODO）
-
-### テンプレート管理（`/templates`）
-- [ ] テンプレート一覧・作成・編集・削除
-- [ ] フォームテンプレートの定義 UI
-- [ ] テンプレートを AI が選択できるように MCP ツールに追加
 
 ### ワークフロー生成・定期実行
 一般的なノーコードツールでは「データモデル（CRUD）」と「トリガー→アクションのワークフロー」がセットで提供される。フェーズ8でアプリ生成（CRUD）は実装済みだが、ワークフローは未着手。
@@ -483,7 +490,7 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [x] 案件・案件集計・活動履歴集計のワークフローパラメータに顧客ID（`customer_id`）を追加（担当者・活動履歴検索は既に対応済み）。`search_deals`はMCPツール本体にも`customer_id`フィルタを追加
 - [x] 保存ボタン押下時に一覧画面へ遷移せず、その場でトースト表示のみに変更（新規作成時はサーバー発行idを`currentId`として保持し、以降の保存は更新扱いにして重複作成を防止）
 - [x] セキュリティレビュー対応: `get_workflow`のidルックアップにオーナーチェック追加（IDOR修正）、ネストしたforeachの組み合わせ爆発を防ぐ`WORKFLOW_MAX_ACTIONS_PER_RUN`（1回の実行あたりアクション実行数の総量上限）、「今すぐ実行」とCron tickの同時実行を防ぐKVベースのベストエフォートロック、Slack送信時のmrkdwn特殊文字エスケープ（`@item`等のユーザー入力データ経由の偽装リンク埋め込み対策）
-- [ ] TODO: `/database/workflows/new`が`WorkflowDialog`化により現在どこからもリンクされていない死んだルートとして残っている。削除するか`[id]`ページと同様に`+page.server.ts`（`entityTypes`/`slackIntegrations`の取得）を追加するか対応する
+- [x] `WorkflowDialog`化で死んだルートになっていた`/database/workflows/new`を削除（一覧の「新規作成」・チャットの`workflow`UIはダイアログで起動するため不要）
 
 ### 資料生成
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）

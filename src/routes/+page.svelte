@@ -4,6 +4,7 @@
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
 	import Gantt from '$lib/components/chat/Gantt.svelte';
+	import Timeline from '$lib/components/chat/Timeline.svelte';
 	import Chart from '$lib/components/chat/Chart.svelte';
 	import Kanban from '$lib/components/chat/Kanban.svelte';
 	import Link from '$lib/components/chat/Link.svelte';
@@ -16,7 +17,7 @@
 	import { type CoreType } from '$lib/components/dialog/field-adapter';
 	import TurnHistoryDrawer from '$lib/components/chat/TurnHistoryDrawer.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
+	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, TimelineContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick, untrack } from 'svelte';
@@ -716,11 +717,13 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent}
+									{@const extra = content as ValuesContent | GanttContent | TimelineContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
 										<Gantt title={extra.title} filter={extra.filter} />
+									{:else if extra.type === 'timeline'}
+										<Timeline title={extra.title} filter={extra.filter} />
 									{:else if extra.type === 'chart'}
 										<Chart chartType={extra.chartType} title={extra.title} data={extra.data} />
 									{:else if extra.type === 'kanban'}
@@ -968,7 +971,7 @@
 	}
 
 	.messages-inner {
-		max-width: 820px;
+		max-width: none;
 		margin: 0 auto;
 		padding: 0 24px 200px;
 		display: flex;

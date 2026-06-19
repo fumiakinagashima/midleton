@@ -202,6 +202,43 @@
 	const chatContextFields = $derived(
 		currentView.kind === 'form' ? formFields.map((f) => ({ key: f.key, label: f.label })) : []
 	);
+
+	// 詳細表示中のレコードを AI アシスタントに渡し、「この顧客」等の指示語を解決できるようにする
+	const chatRecordContext = $derived.by(() => {
+		if (currentView.kind !== 'detail') return null;
+		if (type === 'customers' && customerDetail) {
+			const c = customerDetail.customer;
+			return {
+				type: 'customers',
+				typeLabel: '顧客',
+				id: c.id,
+				label: c.name,
+				data: {
+					会社名: c.name,
+					メール: c.email,
+					電話: c.phone,
+					住所: c.address,
+					ステータス: c.status,
+					メモ: c.notes
+				} as Record<string, unknown>
+			};
+		}
+		if (genericRecord) {
+			const data: Record<string, unknown> = {};
+			for (const f of genericFields) {
+				const v = genericRecord[f.key];
+				if (v != null && v !== '') data[f.label] = v;
+			}
+			return {
+				type,
+				typeLabel: labelFor(type),
+				id: String(genericRecord.id),
+				label: dialogTitle,
+				data
+			};
+		}
+		return null;
+	});
 </script>
 
 <div class="overlay" role="presentation"></div>
@@ -219,7 +256,7 @@
 	</div>
 
 	<div class="dialog-body">
-		<DialogChatSide contextTitle={dialogTitle} contextFields={chatContextFields} />
+		<DialogChatSide contextTitle={dialogTitle} contextFields={chatContextFields} recordContext={chatRecordContext} />
 
 		<div class="content-side">
 			{#if currentView.kind === 'detail'}
