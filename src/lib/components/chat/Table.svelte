@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { TableColumn } from '$lib/types/chat';
 	import * as m from '$lib/paraglide/messages.js';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import { LIST_PAGE_SIZE } from '$lib/constants';
 
 	type Props = {
 		columns: TableColumn[];
@@ -9,6 +11,18 @@
 	};
 
 	let { columns, rows, onRowClick }: Props = $props();
+
+	let page = $state(1);
+	const totalPages = $derived(Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE)));
+	// rows が変わった時に範囲外ページを補正
+	$effect(() => {
+		if (page > totalPages) page = totalPages;
+	});
+	const pagedRows = $derived(
+		rows.length > LIST_PAGE_SIZE
+			? rows.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE)
+			: rows
+	);
 </script>
 
 <div class="table-wrapper">
@@ -26,7 +40,7 @@
 					<td colspan={columns.length} class="empty">{m.table_empty()}</td>
 				</tr>
 			{:else}
-				{#each rows as row}
+				{#each pagedRows as row}
 					<tr
 						class:clickable={!!onRowClick}
 						role={onRowClick ? 'button' : undefined}
@@ -42,7 +56,12 @@
 			{/if}
 		</tbody>
 	</table>
-	<p class="count">{m.table_count({ count: rows.length })}</p>
+	<div class="table-footer">
+		<p class="count">{m.table_count({ count: rows.length })}</p>
+		{#if totalPages > 1}
+			<Pagination bind:page {totalPages} />
+		{/if}
+	</div>
 </div>
 
 <style lang="scss">
@@ -84,10 +103,17 @@
 		padding: 24px;
 	}
 
+	.table-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-top: 8px;
+	}
+
 	.count {
 		font-size: 0.8125rem;
 		color: var(--color-text-muted);
-		margin: 8px 0 0;
-		text-align: right;
+		margin: 0;
 	}
 </style>

@@ -54,7 +54,7 @@ function isDynamicHandler(handler: QuickActionHandler): handler is DynamicQuickA
 const handlers: Record<QuickActionId, QuickActionHandler> = {
 	get_customers: {
 		tool: 'get_customers',
-		input: { limit: 10 },
+		input: { limit: 100 },
 		format: (result) => {
 			const rows = result as Record<string, unknown>[];
 			if (rows.length === 0) return [{ type: 'text', text: '顧客が登録されていません。' }];
@@ -76,7 +76,7 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 
 	search_deals: {
 		tool: 'search_deals',
-		input: { limit: 10 },
+		input: { limit: 100 },
 		format: (result) => {
 			const rows = result as Record<string, unknown>[];
 			if (rows.length === 0) return [{ type: 'text', text: '案件が登録されていません。' }];
@@ -125,7 +125,7 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 
 	get_contacts: {
 		tool: 'get_contacts',
-		input: { limit: 10 },
+		input: { limit: 100 },
 		format: (result) => {
 			const rows = result as Record<string, unknown>[];
 			if (rows.length === 0) return [{ type: 'text', text: '担当者が登録されていません。' }];

@@ -5,6 +5,8 @@
 	import type { PageData } from './$types';
 	import type { RecordRow } from '$lib/server/db/table-service';
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import { LIST_PAGE_SIZE } from '$lib/constants';
 
 	let { data }: { data: PageData } = $props();
 
@@ -29,9 +31,24 @@
 	}
 
 	let rows = $state<RecordRow[]>(untrack(() => data.rows));
+	let pageNum = $state(1);
 	$effect(() => {
 		rows = data.rows;
 	});
+	// テーブル切り替え時はページを先頭へ
+	$effect(() => {
+		void type;
+		pageNum = 1;
+	});
+	const totalPages = $derived(Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE)));
+	$effect(() => {
+		if (pageNum > totalPages) pageNum = totalPages;
+	});
+	const pagedRows = $derived(
+		rows.length > LIST_PAGE_SIZE
+			? rows.slice((pageNum - 1) * LIST_PAGE_SIZE, pageNum * LIST_PAGE_SIZE)
+			: rows
+	);
 
 	const listCols = $derived(info?.fields.filter(f => f.listable) ?? []);
 	const refLabels = $derived(data.refLabels);
@@ -87,7 +104,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each rows as row}
+					{#each pagedRows as row}
 						<tr onclick={() => openDetail(String(row.id))} class="clickable-row">
 							{#each listCols as col}
 								<td>{displayValue(row, col.key)}</td>
@@ -99,6 +116,12 @@
 					{/each}
 				</tbody>
 			</table>
+		</div>
+		<div class="list-footer">
+			<span class="count">{rows.length}件</span>
+			{#if totalPages > 1}
+				<Pagination bind:page={pageNum} {totalPages} />
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -177,6 +200,19 @@
 		border-radius: 8px;
 		overflow: hidden;
 		flex-shrink: 0;
+	}
+
+	.list-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-top: 12px;
+	}
+
+	.list-footer .count {
+		font-size: 0.8125rem;
+		color: var(--color-text-muted);
 	}
 
 	table {
