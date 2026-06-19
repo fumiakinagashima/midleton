@@ -106,6 +106,7 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		value: 'search_deals',
 		label: '案件を検索',
 		params: [
+			{ key: 'customer_id', label: '顧客ID', type: 'text' },
 			{ key: 'customer_name', label: '顧客名（部分一致）', type: 'text' },
 			{
 				key: 'status',
@@ -190,6 +191,7 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		value: 'summarize_deals',
 		label: '案件を集計',
 		params: [
+			{ key: 'customer_id', label: '顧客ID', type: 'text' },
 			{ key: 'since', label: '集計開始日', type: 'date' },
 			{ key: 'until', label: '集計終了日', type: 'date' },
 			{
@@ -210,6 +212,7 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		value: 'summarize_activities',
 		label: '活動履歴を集計',
 		params: [
+			{ key: 'customer_id', label: '顧客ID', type: 'text' },
 			{ key: 'since', label: '集計開始日', type: 'date' },
 			{ key: 'until', label: '集計終了日', type: 'date' }
 		],
