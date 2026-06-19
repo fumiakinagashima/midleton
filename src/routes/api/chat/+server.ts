@@ -158,8 +158,13 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 				.map((c) => (c.type === 'text' ? c.text : ''))
 				.join('\n')
 				.trim();
-			if (!text) return [];
-			return [{ role: m.role as 'user' | 'assistant', content: text }];
+			if (text) return [{ role: m.role as 'user' | 'assistant', content: text }];
+			// UIのみ（テキストなし）のアシスタント応答も履歴に残す。
+			// 落とすと直前のユーザー要求が未応答に見え、AIが次の応答で過去分まで再表示（累積）してしまう。
+			if (m.role === 'assistant' && m.contents.length > 0) {
+				return [{ role: 'assistant', content: '（依頼された内容をUIで表示しました）' }];
+			}
+			return [];
 		});
 	history.push({ role: 'user', content: userMessage });
 
