@@ -6,7 +6,7 @@ import { recordWorkflowRun } from '../db/workflow-run-service';
 import { getAccount } from '../db/account-service';
 import { getJstHourMinute } from '$lib/datetime';
 import { getWorkflowActionTool, parseStepRef, parseItemRef } from '$lib/workflow-tools';
-import { WORKFLOW_FOREACH_MAX_ITEMS } from '$lib/constants';
+import { WORKFLOW_FOREACH_MAX_ITEMS, WORKFLOW_MAX_ACTIONS_PER_RUN } from '$lib/constants';
 import type {
 	WorkflowStep,
 	WorkflowActionStep,
@@ -21,6 +21,21 @@ type ItemStack = { foreachStepId: string; item: Record<string, unknown> }[];
 
 /** ワークフロー実行を即時中断させるためのエラー（未定義の変数参照・未対応ツール等）。 */
 class WorkflowAbortError extends Error {}
+
+/**
+ * ネストしたforeachの組み合わせ爆発（例: 50件×50件×50件の3段ネスト）を防ぐための、
+ * 1回の実行全体で許容するアクション実行回数の残量。runSteps/runForeachの再帰全体で1つを共有する。
+ */
+type Budget = { remaining: number };
+
+function consumeBudget(budget: Budget): void {
+	if (budget.remaining <= 0) {
+		throw new WorkflowAbortError(
+			`1回の実行で許容するアクション数の上限（${WORKFLOW_MAX_ACTIONS_PER_RUN}）を超えました。foreachのネストを減らしてください`
+		);
+	}
+	budget.remaining--;
+}
 
 function resolveOperand(operand: string, results: Map<string, StepResult>, itemStack: ItemStack): StepResult {
 	const itemRef = parseItemRef(operand);
@@ -71,8 +86,10 @@ async function runAction(
 	listResults: ListResults,
 	env: ToolEnv | undefined,
 	selfEmail: string | null,
-	itemStack: ItemStack
+	itemStack: ItemStack,
+	budget: Budget
 ): Promise<void> {
+	consumeBudget(budget);
 	const toolDef = getWorkflowActionTool(step.tool);
 	if (!toolDef) throw new WorkflowAbortError(`未対応のツールです: ${step.tool}`);
 
@@ -125,14 +142,15 @@ async function runForeach(
 	listResults: ListResults,
 	env: ToolEnv | undefined,
 	selfEmail: string | null,
-	itemStack: ItemStack
+	itemStack: ItemStack,
+	budget: Budget
 ): Promise<void> {
 	const refId = parseStepRef(step.source);
 	if (!refId) throw new WorkflowAbortError(`「${step.label}」の対象が選択されていません`);
 	const items = listResults.get(refId);
 	if (!items) throw new WorkflowAbortError(`「${step.label}」の参照先のリスト結果が見つかりません: ${refId}`);
 	for (const item of items.slice(0, WORKFLOW_FOREACH_MAX_ITEMS)) {
-		await runSteps(db, step.body, results, listResults, env, selfEmail, [...itemStack, { foreachStepId: step.id, item }]);
+		await runSteps(db, step.body, results, listResults, env, selfEmail, [...itemStack, { foreachStepId: step.id, item }], budget);
 	}
 }
 
@@ -143,19 +161,20 @@ async function runSteps(
 	listResults: ListResults,
 	env: ToolEnv | undefined,
 	selfEmail: string | null,
-	itemStack: ItemStack = []
+	itemStack: ItemStack = [],
+	budget: Budget = { remaining: WORKFLOW_MAX_ACTIONS_PER_RUN }
 ): Promise<void> {
 	for (const step of steps) {
 		if (step.kind === 'action') {
-			await runAction(db, step, results, listResults, env, selfEmail, itemStack);
+			await runAction(db, step, results, listResults, env, selfEmail, itemStack, budget);
 		} else if (step.kind === 'condition') {
 			const left = resolveOperand(step.left, results, itemStack);
 			const right = resolveOperand(step.right, results, itemStack);
 			if (compare(left, step.operator, right)) {
-				await runSteps(db, step.then, results, listResults, env, selfEmail, itemStack);
+				await runSteps(db, step.then, results, listResults, env, selfEmail, itemStack, budget);
 			}
 		} else {
-			await runForeach(db, step, results, listResults, env, selfEmail, itemStack);
+			await runForeach(db, step, results, listResults, env, selfEmail, itemStack, budget);
 		}
 	}
 }
