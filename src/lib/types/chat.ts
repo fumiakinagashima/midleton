@@ -85,6 +85,16 @@ export type GanttContent = {
 	};
 };
 
+export type TimelineContent = {
+	type: 'timeline';
+	title?: string;
+	filter?: {
+		customerId?: string;
+		// 活動種別（note/call/email/meeting/deal_created）で絞り込む
+		type?: string[];
+	};
+};
+
 export type ChartSeries = { name: string; data: { label: string; value: number }[] };
 
 export type ChartContent = {
@@ -273,6 +283,7 @@ export type MessageContent =
 	| ActionContent
 	| ValuesContent
 	| GanttContent
+	| TimelineContent
 	| ChartContent
 	| KanbanContent
 	| LinkContent

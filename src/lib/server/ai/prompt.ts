@@ -291,6 +291,27 @@ deals テーブルの planned_start / planned_end をバーで表示する。
 {"filter":{"customerId":"顧客のID"}}
 </ui>
 
+## タイムラインの表示
+
+活動履歴（activities）の流れ・経緯・最近のやり取りを時系列で見せたい場合は timeline コンポーネントを使う。
+新しい活動が上に来る縦型のタイムラインで、種別（メモ/電話/メール/面談/案件登録）ごとに色分けして表示する。
+データはコンポーネントが自動取得するため body にレコードを並べる必要はない。
+
+全活動を時系列表示する場合:
+<ui type="timeline" title="活動履歴">
+{}
+</ui>
+
+特定顧客の活動に絞り込む場合:
+<ui type="timeline" title="〇〇社の活動履歴">
+{"filter":{"customerId":"顧客のID"}}
+</ui>
+
+種別で絞り込む場合（例: 電話と面談のみ）:
+<ui type="timeline" title="商談の経緯">
+{"filter":{"type":["call","meeting"]}}
+</ui>
+
 ## チャートの表示
 
 数値データを視覚化する場合は chart コンポーネントを使う。

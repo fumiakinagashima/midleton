@@ -130,7 +130,7 @@ midleton/
 
 メインチャット（`/`）は「直前の1往復のみ表示＋過去はドロワー」構成。`+page.svelte` で `messages` をユーザー発言起点のターンに `$derived` でグルーピングし、最新ターンのみをメイン表示、それ以前は `TurnHistoryDrawer.svelte`（右ドロワー）に簡易ログ（テキストのみはコピー可、UIを含むものは `[○○を表示]` 表記）として表示する。**右ドロワーは会話履歴の閲覧専用**（詳細・編集系のUIはここには出さない）。
 
-- `TableContent.entity`（テーブル種別文字列）が設定された一覧テーブルは、行クリックでダイアログを開く（`rows` に `id` が必要）。クイックアクションは `quick-actions/registry.ts` の record系ハンドラ（`get_customers`→`customers`、`get_contacts`→`contacts`、`search_deals`→`deals`、`list_approvals`→`approvals`）で付与済み。`entity === 'approvals'` は `ApprovalDialog`（詳細）を、それ以外は `RecordDialog` を開く（`+page.svelte` の `onRowClick` で分岐）。集計・サマリー・カスタムテーブル一覧（`list_entity_types`）など「レコードでないテーブル」には付けない。AI生成テーブルはシステムプロンプト（`prompt.ts`）の指示依存
+- `TableContent.entity`（テーブル種別文字列）が設定された一覧テーブルは、行クリックでダイアログを開く（`rows` に `id` が必要）。クイックアクションは `quick-actions/registry.ts` の record系ハンドラ（`get_customers`→`customers`、`get_contacts`→`contacts`、`search_deals`→`deals`、`list_approvals`→`approvals`）で付与済み。`entity === 'approvals'` は `ApprovalDialog`（詳細）を、それ以外は `RecordDialog` を開く（`+page.svelte` の `onRowClick` で分岐）。集計・サマリー・カスタムテーブル一覧（`list_entity_types`）など「レコードでないテーブル」には付けない。AI生成テーブルはシステムプロンプト（`prompt.ts`）で `entity` 付与を指示しているが、付け忘れると行クリックが無効になるため、`stream.ts` の `streamChat` がフォールバックとして補完する: そのリクエストで使われたレコード一覧系ツール（`RECORD_LIST_TOOL_ENTITY`: `get_customers`/`search_customers`→`customers`、`get_contacts`→`contacts`、`get_deals`/`search_deals`→`deals`、`get_activities`/`search_activities`→`activities`、`list_approvals`→`approvals`）が**1種類だけ**の場合に限り、`entity` 未指定で `rows[0]` に `id` を持つテーブルへその種別を注入する（複数種別が混在する場合は誤割り当て防止のため注入しない。カスタムテーブルの `get_entities` は対象外＝従来どおりAIの明示指定が必要）
 
 ## ワークフロー編集ダイアログ
 
