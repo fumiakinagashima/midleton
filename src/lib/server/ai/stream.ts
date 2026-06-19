@@ -98,6 +98,32 @@ function sanitizeWorkflowSteps(steps: unknown): WorkflowStep[] {
 	});
 }
 
+// レコード一覧を返す検索系ツール → 詳細ダイアログを開くためのテーブル種別（entity）。
+// AIが <ui type="table"> の body に entity を付け忘れても、直前に使った検索ツールから補完する。
+const RECORD_LIST_TOOL_ENTITY: Record<string, string> = {
+	get_customers: 'customers',
+	search_customers: 'customers',
+	get_contacts: 'contacts',
+	get_deals: 'deals',
+	search_deals: 'deals',
+	get_activities: 'activities',
+	search_activities: 'activities',
+	list_approvals: 'approvals'
+};
+
+// entity 未指定のレコード一覧テーブルに、リクエストで使われた検索ツール由来の entity を補完する。
+// 行クリックで詳細ダイアログを開けるようにするためのフォールバック（rows に id がある場合のみ）。
+function applyEntityHint(events: StreamEvent[], entity: string | undefined): void {
+	if (!entity) return;
+	for (const e of events) {
+		if (e.type !== 'ui' || e.content.type !== 'table' || e.content.entity) continue;
+		const first = e.content.rows[0];
+		if (e.content.rows.length > 0 && first && typeof first === 'object' && 'id' in first) {
+			e.content.entity = entity;
+		}
+	}
+}
+
 export function parseUITag(tag: string): MessageContent | null {
 	const attrStr = /^<ui\s([^>]*)>/.exec(tag)?.[1] ?? '';
 	const body = tag.replace(/^<ui[^>]*>/, '').replace(/<\/ui>$/, '').trim();
@@ -128,6 +154,9 @@ export function parseUITag(tag: string): MessageContent | null {
 		} else if (type === 'gantt') {
 			const opts = body ? JSON.parse(body) : {};
 			return { type: 'gantt', title, filter: opts.filter };
+		} else if (type === 'timeline') {
+			const opts = body ? JSON.parse(body) : {};
+			return { type: 'timeline', title, filter: opts.filter };
 		} else if (type === 'chart') {
 			const parsed = JSON.parse(body);
 			const isSeries = Array.isArray(parsed) && parsed[0] && 'data' in parsed[0];
@@ -181,6 +210,9 @@ export async function streamChat(
 	const anthropic = new Anthropic({ apiKey });
 	let messages: MessageParam[] = [...history];
 	let lastTurnEvents: StreamEvent[] = [];
+	// このリクエストで使われたレコード一覧系ツールの entity。1種類だけ使われた場合のみ
+	// table への entity 補完に使う（複数種別が混在する場合は誤った種別を割り当てないよう補完しない）。
+	const recordEntities = new Set<string>();
 
 	for (let turn = 0; turn < 10; turn++) {
 		const processor = new TextStreamProcessor();
@@ -216,8 +248,15 @@ export async function streamChat(
 		turnEvents.push(...processor.flush());
 		lastTurnEvents = turnEvents;
 
+		for (const b of toolBlocks) {
+			const ent = RECORD_LIST_TOOL_ENTITY[b.name];
+			if (ent) recordEntities.add(ent);
+		}
+		const soleRecordEntity = recordEntities.size === 1 ? [...recordEntities][0] : undefined;
+
 		const finalMsg = await stream.finalMessage();
 		if (finalMsg.stop_reason !== 'tool_use') {
+			applyEntityHint(turnEvents, soleRecordEntity);
 			for (const e of turnEvents) emit(e);
 			return;
 		}
@@ -249,5 +288,6 @@ export async function streamChat(
 	}
 
 	// ターン上限に達した場合は最後のターンの内容を表示する
+	applyEntityHint(lastTurnEvents, recordEntities.size === 1 ? [...recordEntities][0] : undefined);
 	for (const e of lastTurnEvents) emit(e);
 }

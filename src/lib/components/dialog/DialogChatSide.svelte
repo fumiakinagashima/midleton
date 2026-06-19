@@ -6,12 +6,22 @@
 
 	type DialogMessage = { role: 'user' | 'assistant'; text: string };
 
+	type RecordContext = {
+		type: string;
+		typeLabel: string;
+		id: string;
+		label: string;
+		data?: Record<string, unknown>;
+	};
+
 	type Props = {
 		contextTitle: string;
 		contextFields: { key: string; label: string }[];
+		// 詳細表示中のレコード。指示語「この顧客」等を解決できるようにする
+		recordContext?: RecordContext | null;
 	};
 
-	let { contextTitle, contextFields }: Props = $props();
+	let { contextTitle, contextFields, recordContext = null }: Props = $props();
 
 	let chatMessages = $state<DialogMessage[]>([]);
 	let chatInput = $state('');
@@ -47,6 +57,7 @@
 					message: text,
 					formTitle: contextTitle,
 					formFields: contextFields,
+					recordContext,
 					history: chatMessages.slice(0, -2)
 				})
 			});
@@ -102,7 +113,13 @@
 	<div class="chat-header">AI アシスタント</div>
 	<div class="chat-messages" bind:this={chatListEl}>
 		{#if chatMessages.length === 0}
-			<p class="chat-empty">ご質問・ご相談があればどうぞ。</p>
+			<p class="chat-empty">
+				{#if recordContext}
+					「{recordContext.label}」について質問できます（関連する案件・活動の集計など）。
+				{:else}
+					ご質問・ご相談があればどうぞ。
+				{/if}
+			</p>
 		{/if}
 		{#each chatMessages as msg}
 			<div class="chat-msg {msg.role}">
