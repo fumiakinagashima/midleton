@@ -119,8 +119,8 @@ export function parseUITag(tag: string): MessageContent | null {
 		if (type === 'form' && tool) {
 			return { type: 'form', title, fields: body ? JSON.parse(body) : [], tool, submitLabel };
 		} else if (type === 'table') {
-			const { columns, rows } = JSON.parse(body);
-			return { type: 'table', columns, rows };
+			const { columns, rows, entity } = JSON.parse(body);
+			return { type: 'table', columns, rows, entity };
 		} else if (type === 'actions') {
 			return { type: 'actions', title, actions: JSON.parse(body) };
 		} else if (type === 'values') {

@@ -5,9 +5,10 @@
 	type Props = {
 		columns: TableColumn[];
 		rows: Record<string, unknown>[];
+		onRowClick?: (row: Record<string, unknown>) => void;
 	};
 
-	let { columns, rows }: Props = $props();
+	let { columns, rows, onRowClick }: Props = $props();
 </script>
 
 <div class="table-wrapper">
@@ -26,7 +27,13 @@
 				</tr>
 			{:else}
 				{#each rows as row}
-					<tr>
+					<tr
+						class:clickable={!!onRowClick}
+						role={onRowClick ? 'button' : undefined}
+						tabindex={onRowClick ? 0 : undefined}
+						onclick={onRowClick ? () => onRowClick(row) : undefined}
+						onkeydown={onRowClick ? (e) => { if (e.key === 'Enter') onRowClick(row); } : undefined}
+					>
 						{#each columns as col}
 							<td>{row[col.key] ?? '—'}</td>
 						{/each}
@@ -65,6 +72,10 @@
 
 	tr:hover td {
 		background: var(--color-surface);
+	}
+
+	tr.clickable {
+		cursor: pointer;
 	}
 
 	.empty {

@@ -61,6 +61,7 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 			return [
 				{
 					type: 'table',
+					entity: 'customer',
 					columns: [
 						{ key: 'name', label: '会社名' },
 						{ key: 'email', label: 'メール' },

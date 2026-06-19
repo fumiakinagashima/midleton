@@ -14,9 +14,10 @@
 		deals: CustomerDetailDeal[];
 		activities: CustomerDetailActivity[];
 		onOpenForm: (form: FormContent) => void;
+		onDelete?: () => void;
 	};
 
-	let { customer, contacts, deals, activities, onOpenForm }: Props = $props();
+	let { customer, contacts, deals, activities, onOpenForm, onDelete }: Props = $props();
 
 	const CUSTOMER_STATUS_LABELS: Record<string, string> = {
 		active: '有効',
@@ -90,7 +91,12 @@
 	<section class="section">
 		<div class="section-header">
 			<h3 class="section-title">{customer.name}</h3>
-			<button class="action-btn" onclick={openEditCustomer}>情報を修正</button>
+			<div class="header-actions">
+				<button class="action-btn" onclick={openEditCustomer}>情報を修正</button>
+				{#if onDelete}
+					<button class="action-btn danger" onclick={onDelete}>削除</button>
+				{/if}
+			</div>
 		</div>
 		<dl class="info-grid">
 			{#if customer.status}
@@ -204,7 +210,7 @@
 		flex-direction: column;
 		gap: 16px;
 		width: 100%;
-		max-width: 640px;
+		
 	}
 
 	/* ---- セクション ---- */
@@ -240,6 +246,12 @@
 	}
 
 	/* ---- アクションボタン ---- */
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
 	.action-btn {
 		padding: 4px 12px;
 		border: 1px solid var(--color-border);
@@ -254,6 +266,12 @@
 			border-color: var(--color-primary);
 			color: var(--color-primary);
 			background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+		}
+
+		&.danger:hover {
+			border-color: #dc2626;
+			color: #dc2626;
+			background: color-mix(in srgb, #dc2626 6%, transparent);
 		}
 	}
 

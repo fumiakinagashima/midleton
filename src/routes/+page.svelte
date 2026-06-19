@@ -11,7 +11,8 @@
 	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
 	import Reply from '$lib/components/chat/Reply.svelte';
 	import FormDialog from '$lib/components/chat/FormDialog.svelte';
-	import CustomerDetail from '$lib/components/chat/CustomerDetail.svelte';
+	import CustomerDialog from '$lib/components/chat/CustomerDialog.svelte';
+	import TurnHistoryDrawer from '$lib/components/chat/TurnHistoryDrawer.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
 	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
@@ -34,6 +35,7 @@
 	} from '$lib/quick-actions/catalog';
 	import Plus from '$lib/components/icon/Plus.svelte';
 	import ArrowUp from '$lib/components/icon/ArrowUp.svelte';
+	import Clock from '$lib/components/icon/Clock.svelte';
 	import { CHAT_TITLE_MAX_LENGTH, CHAT_TEXTAREA_MAX_HEIGHT_PX, DEAL_STATUS_IDS } from '$lib/constants';
 
 	function renderMarkdown(text: string): string {
@@ -89,6 +91,33 @@
 	let quickActionMenuOpen = $state(false);
 	let panelForm = $state<FormContent | null>(null);
 	let panelWorkflow = $state<WorkflowContent | null>(null);
+	let panelCustomerId = $state<string | null>(null);
+	let historyDrawerOpen = $state(false);
+
+	// メッセージを「ユーザー発言1件＋それに続くAI応答群」のターン単位にまとめる。
+	// 直前のターンのみをメイン画面に表示し、それ以前は履歴ドロワーに回す。
+	type Turn = { id: string; userMsg: Message | null; assistantMsgs: Message[] };
+	let turns = $derived.by(() => {
+		const result: Turn[] = [];
+		let current: Turn | null = null;
+		for (const msg of messages) {
+			if (msg.role === 'user') {
+				current = { id: msg.id, userMsg: msg, assistantMsgs: [] };
+				result.push(current);
+			} else if (current) {
+				current.assistantMsgs.push(msg);
+			} else {
+				current = { id: msg.id, userMsg: null, assistantMsgs: [msg] };
+				result.push(current);
+			}
+		}
+		return result;
+	});
+	let latestTurn = $derived<Turn | null>(turns.length > 0 ? turns[turns.length - 1] : null);
+	let pastTurns = $derived(turns.slice(0, -1));
+	let latestTurnMessages = $derived<Message[]>(
+		latestTurn ? [...(latestTurn.userMsg ? [latestTurn.userMsg] : []), ...latestTurn.assistantMsgs] : []
+	);
 
 	let streamingText = $state('');
 	let streamingUIContents = $state<MessageContent[]>([]);
@@ -294,6 +323,7 @@
 	function finalizeStreamingMessage() {
 		let nextPanelForm: FormContent | null = null;
 		let nextPanelWorkflow: WorkflowContent | null = null;
+		let nextPanelCustomerId: string | null = null;
 		const contents: MessageContent[] = [];
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
 		for (const c of streamingUIContents) {
@@ -301,11 +331,15 @@
 				nextPanelForm = c as FormContent;
 			} else if (c.type === 'workflow') {
 				nextPanelWorkflow = c as WorkflowContent;
+			} else if (c.type === 'customer_detail') {
+				nextPanelCustomerId = (c as CustomerDetailContent).customer.id;
 			} else {
 				contents.push(c);
 			}
 		}
-		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow) contents.push({ type: 'text', text: m.chat_error() });
+		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow && !nextPanelCustomerId) {
+			contents.push({ type: 'text', text: m.chat_error() });
+		}
 		hidePreviousDealKanban(contents);
 		if (contents.length > 0) {
 			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() };
@@ -314,6 +348,7 @@
 		}
 		if (nextPanelForm) panelForm = nextPanelForm;
 		if (nextPanelWorkflow) panelWorkflow = nextPanelWorkflow;
+		if (nextPanelCustomerId) panelCustomerId = nextPanelCustomerId;
 		streamingText = '';
 		streamingUIContents = [];
 	}
@@ -361,6 +396,20 @@
 				if (content.type === 'kanban' && isDealStatusKanban(content) && !content.completed) {
 					content.completed = true;
 					changed = true;
+				}
+			}
+			if (changed) persistMessage(msg);
+		}
+	}
+
+	function removeCustomerRow(customerId: string) {
+		for (const msg of messages) {
+			let changed = false;
+			for (const content of msg.contents) {
+				if (content.type === 'table' && content.entity === 'customer') {
+					const before = content.rows.length;
+					content.rows = content.rows.filter((r) => String(r.id) !== customerId);
+					if (content.rows.length !== before) changed = true;
 				}
 			}
 			if (changed) persistMessage(msg);
@@ -576,10 +625,16 @@
 		<p>業務を指示してください</p>
 	</div>
 
+	{#if hasStarted && pastTurns.length > 0}
+		<button class="history-btn" onclick={() => (historyDrawerOpen = true)} aria-label="会話履歴">
+			<Clock size={16} />
+		</button>
+	{/if}
+
 	<!-- Messages list -->
 	<div class="messages" class:visible={hasStarted} bind:this={listEl}>
 		<div class="messages-inner">
-			{#each messages as msg (msg.id)}
+			{#each latestTurnMessages as msg (msg.id)}
 				<div class="message {msg.role}">
 					{#if msg.role === 'user'}
 						<div class="user-bubble">
@@ -595,7 +650,11 @@
 								{:else if content.type === 'form'}
 									<!-- フォームはパネルで表示 -->
 								{:else if content.type === 'table'}
-									<Table columns={content.columns} rows={content.rows} />
+									<Table
+										columns={content.columns}
+										rows={content.rows}
+										onRowClick={content.entity === 'customer' ? (row) => (panelCustomerId = String(row.id)) : undefined}
+									/>
 								{:else if content.type === 'actions'}
 									<ActionSelector
 										title={content.title}
@@ -603,7 +662,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent | CustomerDetailContent}
+									{@const extra = content as ValuesContent | GanttContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -636,14 +695,6 @@
 												onsubmit={(answer) => handleReplySubmit(msg, extra, answer)}
 											/>
 										{/if}
-									{:else if extra.type === 'customer_detail'}
-										<CustomerDetail
-											customer={extra.customer}
-											contacts={extra.contacts}
-											deals={extra.deals}
-											activities={extra.activities}
-											onOpenForm={(form) => { panelForm = form; }}
-										/>
 									{/if}
 								{/if}
 							{/each}
@@ -737,6 +788,17 @@
 			onclose={() => (panelWorkflow = null)}
 		/>
 	{/if}
+	{#if panelCustomerId}
+		<CustomerDialog
+			customerId={panelCustomerId}
+			onclose={() => (panelCustomerId = null)}
+			onDeleted={(id) => {
+				panelCustomerId = null;
+				removeCustomerRow(id);
+			}}
+		/>
+	{/if}
+	<TurnHistoryDrawer turns={pastTurns} open={historyDrawerOpen} onclose={() => (historyDrawerOpen = false)} />
 </div>
 
 <style lang="scss">
@@ -778,6 +840,30 @@
 		font-size: 1rem;
 		color: var(--color-text-muted);
 		margin: 0;
+	}
+
+	/* ---- History button ---- */
+	.history-btn {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		z-index: 6;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		background: var(--color-surface);
+		color: var(--color-text-muted);
+		border: 1px solid var(--color-border);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: color 0.15s ease, border-color 0.15s ease;
+	}
+
+	.history-btn:hover {
+		color: var(--color-primary);
+		border-color: var(--color-primary);
 	}
 
 	/* ---- Messages ---- */

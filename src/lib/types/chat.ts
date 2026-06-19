@@ -45,6 +45,7 @@ export type TableContent = {
 	type: 'table';
 	columns: TableColumn[];
 	rows: Record<string, unknown>[];
+	entity?: 'customer';
 };
 
 export type ActionItem = {

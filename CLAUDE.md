@@ -110,6 +110,19 @@ midleton/
 - 例外として、顧客登録（`create_customer`）・名刺読取（`scan_bizcard`）・リマインダー設定（`create_reminder`）は登録系だが追加済み。`create_customer`/`scan_bizcard` は `dispatchTool` を呼ばず、`registry.ts` の静的ハンドラ（`StaticQuickActionHandler`）として `form` / `bizcard` の `MessageContent` を直接返す。`create_reminder` はDB参照結果（設定済み連携など）に応じてフォーム内容を動的に組み立てる必要があるため、`DynamicQuickActionHandler`（`build(db, env?)`）として実装する（実際のツール呼び出しはユーザーがフォーム送信した時点で発生）
 - Slack連携の検出: `integrations` テーブルの `base_url` に `hooks.slack.com` を含むレコードを Slack Incoming Webhook 連携として扱う（`src/lib/server/slack/index.ts`）。通知先選択肢のラベルにはその連携の `name`、値には `slack:<integration_id>` を使う
 
+## チャットのターン単位UI・行アクションダイアログ
+
+メインチャット（`/`）は「直前の1往復のみ表示＋過去はドロワー」構成。`+page.svelte` で `messages` をユーザー発言起点のターンに `$derived` でグルーピングし、最新ターンのみをメイン表示、それ以前は `TurnHistoryDrawer.svelte`（右ドロワー）に簡易ログ（テキストのみはコピー可、UIを含むものは `[○○を表示]` 表記）として表示する。**右ドロワーは会話履歴の閲覧専用**（詳細・編集系のUIはここには出さない）。
+
+顧客一覧（`TableContent.entity === 'customer'` を付与したテーブル）の行クリックは、クイックアクションと同じ思想でAIを呼ばず直接 `GET /api/customers/[id]/detail` を叩き、**中央ダイアログ `CustomerDialog.svelte`** を開く。顧客登録などの `FormDialog.svelte` と同じ中央モーダル＋左AIチャット欄の見た目に揃えてある。
+
+- `entity: 'customer'` は `quick-actions/registry.ts` の `get_customers` ハンドラで付与済み。AIが自分でテーブルを生成する場合はシステムプロンプト（`prompt.ts`）の指示に従うかどうかに依存するため必須ではない（フォロー有無は将来のプロンプト調整課題）
+- ダイアログの外枠（オーバーレイ・中央配置・ヘッダー・左AIチャット欄）は `FormDialog.svelte` と `CustomerDialog.svelte` で共通。左のAIチャット相談欄は `DialogChatSide.svelte`（`/api/form-chat` を叩くSSEチャット）に抽出して両者で再利用する
+- `CustomerDialog.svelte` は内部に `{kind:'detail'} | {kind:'form', form}` のビュースタックを持ち、ブレッドクラム（戻る矢印）で `CustomerDetail.svelte`（既存コンポーネントをそのまま再利用）と編集/新規登録フォーム（`Form.svelte`）を往復する。フォーム送信は既存の `POST /api/chat`（`tool`+`data`、AIを呼ばずdispatchToolを直接実行）を使い、成功後に詳細を再取得してビューを戻す
+- 顧客の削除は既存の汎用 `DELETE /api/database/customers/records/[id]` を再利用（新規エンドポイントは作らない）
+- AIが返す `customer_detail` UIタイプも、`form`/`workflow` と同様に `finalizeStreamingMessage` でインラインcontentsから抜き出し、自動的に同じ `CustomerDialog` を開く（インライン表示は廃止）
+- 現状は顧客一覧のみの試作。他エンティティ（担当者・案件・活動履歴等）の一覧へ同パターンを展開する場合は `TableContent.entity` の取り得る値を拡張し、対応する `/api/<entity>/[id]/detail` と専用ダイアログコンポーネントを追加する
+
 ## リマインダー配信
 
 `reminders` テーブルの `pending` レコードを監視し、`remind_at` に達したものを `channels`（通知センター／メール／Slack）へ送信する（`src/lib/server/reminders/delivery.ts` の `processDueReminders`）。送信後 `status` を `sent` / `failed` に更新する。
