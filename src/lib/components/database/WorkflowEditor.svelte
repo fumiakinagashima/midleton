@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 	import { toast } from '$lib/stores/toast.svelte';
 	import Workflow, { type WorkflowState } from '$lib/components/chat/Workflow.svelte';
 	import WorkflowChatPanel from './WorkflowChatPanel.svelte';
@@ -38,6 +38,8 @@
 		slackIntegrations = []
 	}: Props = $props();
 
+	// 保存後も画面遷移しないため、新規作成時に発行されたidを保持して以降の保存をPATCH（更新）に切り替える
+	let currentId = $state(untrack(() => id));
 	let enabled = $state(untrack(() => initialEnabled));
 	let saving = $state(false);
 
@@ -47,6 +49,32 @@
 	let aiReview = $state<WorkflowReviewResult | null>(null);
 	let aiReviewLoading = $state(false);
 	let aiReviewError = $state('');
+
+	let runningNow = $state(false);
+
+	async function runNow() {
+		if (runningNow || !currentId) return;
+		if (!confirm('保存されている状態で実行されます。よろしいですか？')) return;
+		runningNow = true;
+		try {
+			const res = await fetch(`/api/workflows/${currentId}/run`, { method: 'POST' });
+			const result = (await res.json()) as { ok?: boolean; name?: string; error?: string };
+			if (!res.ok) {
+				toast.error(result.error ?? '実行に失敗しました');
+				return;
+			}
+			if (result.ok) {
+				toast.success(`「${result.name}」を実行しました`);
+			} else {
+				toast.error(`「${result.name}」の実行に失敗しました: ${result.error ?? ''}`);
+			}
+			await invalidateAll();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '実行に失敗しました');
+		} finally {
+			runningNow = false;
+		}
+	}
 
 	async function runAiReview() {
 		if (aiReviewLoading || !wfRef) return;
@@ -93,8 +121,8 @@
 		saving = true;
 		try {
 			const body = JSON.stringify({ ...state, name, enabled });
-			if (id) {
-				const res = await fetch(`/api/workflows/${id}`, {
+			if (currentId) {
+				const res = await fetch(`/api/workflows/${currentId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
 					body
@@ -112,9 +140,11 @@
 				if (!res.ok) {
 					throw new Error(((await res.json()) as { error?: string }).error ?? '保存に失敗しました');
 				}
+				const row = (await res.json()) as { id: string };
+				currentId = row.id;
 				toast.success(`「${name}」を保存しました`);
 			}
-			goto('/database/workflows');
+			await invalidateAll();
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : '保存に失敗しました');
 		} finally {
@@ -127,18 +157,25 @@
 	<div class="editor-row1">
 		<a href="/database/workflows" class="btn-back">← 一覧に戻る</a>
 		<Toggle bind:checked={enabled} label="有効化（毎日指定時刻に実行）" />
-		<button class="btn-ai-review" onclick={runAiReview} disabled={aiReviewLoading}>
-			{#if aiReviewLoading}
-				レビュー中...
-			{:else if aiReview}
-				✨ 再レビュー
-			{:else}
-				✨ AIレビュー
+		<div class="editor-row1-actions">
+			{#if currentId}
+				<button class="btn-run-now" onclick={runNow} disabled={runningNow}>
+					{runningNow ? '実行中...' : '▶ 今すぐ実行'}
+				</button>
 			{/if}
-		</button>
-		<button class="btn-save" onclick={handleSave} disabled={saving}>
-			{saving ? '保存中…' : '保存'}
-		</button>
+			<button class="btn-ai-review" onclick={runAiReview} disabled={aiReviewLoading}>
+				{#if aiReviewLoading}
+					レビュー中...
+				{:else if aiReview}
+					✨ 再レビュー
+				{:else}
+					✨ AIレビュー
+				{/if}
+			</button>
+			<button class="btn-save" onclick={handleSave} disabled={saving}>
+				{saving ? '保存中…' : '保存'}
+			</button>
+		</div>
 	</div>
 
 	{#if aiReviewError}
@@ -189,7 +226,7 @@
 		</div>
 	</div>
 
-	{#if id}
+	{#if currentId}
 		<div class="run-log">
 			<h3>実行ログ</h3>
 			{#if runs.length === 0}
@@ -236,6 +273,13 @@
 		gap: 16px;
 	}
 
+	.editor-row1-actions {
+		margin-left: auto;
+		display: flex;
+		align-items: center;
+		gap: 16px;
+	}
+
 	.btn-back {
 		padding: 5px 12px;
 		border-radius: 5px;
@@ -251,8 +295,25 @@
 		}
 	}
 
+	.btn-run-now {
+		padding: 6px 14px;
+		background: none;
+		border: 1px solid var(--color-border);
+		color: var(--color-text);
+		border-radius: 6px;
+		font-size: 0.8125rem;
+		cursor: pointer;
+		white-space: nowrap;
+		&:hover:not(:disabled) {
+			background: color-mix(in srgb, var(--color-text) 8%, transparent);
+		}
+		&:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+	}
+
 	.btn-ai-review {
-		margin-left: auto;
 		padding: 6px 14px;
 		background: none;
 		border: 1px solid var(--color-primary);

@@ -37,10 +37,11 @@ export const tools: Tool[] = [
 	{
 		name: 'search_deals',
 		description:
-			'案件を複合条件で検索する。顧客名（JOIN）・金額範囲・期間など get_deals より柔軟な絞り込みができる。',
+			'案件を複合条件で検索する。顧客ID・顧客名（JOIN）・金額範囲・期間など get_deals より柔軟な絞り込みができる。',
 		input_schema: {
 			type: 'object',
 			properties: {
+				customer_id: { type: 'string', description: '顧客のIDで絞り込む' },
 				customer_name: { type: 'string', description: '顧客名（部分一致）' },
 				status: { type: 'string', enum: ['open', 'won', 'lost'] },
 				amount_min: { type: 'number', description: '金額の下限（円）' },
@@ -188,6 +189,7 @@ export async function handleSearchCustomers(db: Db, input: unknown) {
 }
 
 const searchDealsSchema = z.object({
+	customer_id: z.string().optional(),
 	customer_name: z.string().optional(),
 	status: z.enum(['open', 'won', 'lost']).optional(),
 	amount_min: z.number().optional(),
@@ -220,6 +222,7 @@ export async function handleSearchDeals(db: Db, input: unknown) {
 		.leftJoin(customers, eq(deals.customerId, customers.id))
 		.where(
 			and(
+				p.customer_id ? eq(deals.customerId, p.customer_id) : undefined,
 				p.customer_name ? like(customers.name, `%${p.customer_name}%`) : undefined,
 				p.status ? eq(deals.status, p.status) : undefined,
 				p.amount_min !== undefined ? gte(deals.amount, p.amount_min) : undefined,

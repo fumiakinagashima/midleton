@@ -1,7 +1,7 @@
 import type { Db } from '../db';
 import type { ToolEnv } from '../mcp/shared';
 import { dispatchTool, type ToolName } from '../mcp';
-import { getEnabledWorkflows } from '../db/workflow-service';
+import { getEnabledWorkflows, getWorkflow, type WorkflowRow } from '../db/workflow-service';
 import { recordWorkflowRun } from '../db/workflow-run-service';
 import { getAccount } from '../db/account-service';
 import { getJstHourMinute } from '$lib/datetime';
@@ -162,6 +162,25 @@ async function runSteps(
 
 export type WorkflowRunResult = { id: string; name: string; ok: boolean; error?: string };
 
+async function executeWorkflow(db: Db, workflow: WorkflowRow, env?: ToolEnv): Promise<WorkflowRunResult> {
+	const startedAt = new Date();
+	try {
+		const account = workflow.accountId ? await getAccount(db, workflow.accountId) : null;
+		// send_notification 等、env.accountId を「通知・登録の宛先」として参照するツールのために、
+		// ワークフローの登録者をこの実行スコープのアカウントとして引き渡す
+		const toolEnv: ToolEnv | undefined = workflow.accountId
+			? { ...(env ?? {}), accountId: workflow.accountId }
+			: env;
+		await runSteps(db, workflow.steps, new Map(), new Map(), toolEnv, account?.email ?? null);
+		await recordWorkflowRun(db, { workflowId: workflow.id, ok: true, startedAt, finishedAt: new Date() });
+		return { id: workflow.id, name: workflow.name, ok: true };
+	} catch (e) {
+		const error = e instanceof Error ? e.message : String(e);
+		await recordWorkflowRun(db, { workflowId: workflow.id, ok: false, error, startedAt, finishedAt: new Date() });
+		return { id: workflow.id, name: workflow.name, ok: false, error };
+	}
+}
+
 /** 毎分のCronから呼ばれる。現在のJST時刻に一致する有効なワークフローを実行する。 */
 export async function processDueWorkflows(
 	db: Db,
@@ -172,36 +191,15 @@ export async function processDueWorkflows(
 	const due = (await getEnabledWorkflows(db)).filter(
 		(w) => w.triggerHour === hour && w.triggerMinute === minute
 	);
+	return Promise.all(due.map((workflow) => executeWorkflow(db, workflow, env)));
+}
 
-	const results: WorkflowRunResult[] = [];
-	for (const workflow of due) {
-		const startedAt = new Date();
-		try {
-			const account = workflow.accountId ? await getAccount(db, workflow.accountId) : null;
-			// send_notification 等、env.accountId を「通知・登録の宛先」として参照するツールのために、
-			// ワークフローの登録者をこの実行スコープのアカウントとして引き渡す
-			const toolEnv: ToolEnv | undefined = workflow.accountId
-				? { ...(env ?? {}), accountId: workflow.accountId }
-				: env;
-			await runSteps(db, workflow.steps, new Map(), new Map(), toolEnv, account?.email ?? null);
-			results.push({ id: workflow.id, name: workflow.name, ok: true });
-			await recordWorkflowRun(db, {
-				workflowId: workflow.id,
-				ok: true,
-				startedAt,
-				finishedAt: new Date()
-			});
-		} catch (e) {
-			const error = e instanceof Error ? e.message : String(e);
-			results.push({ id: workflow.id, name: workflow.name, ok: false, error });
-			await recordWorkflowRun(db, {
-				workflowId: workflow.id,
-				ok: false,
-				error,
-				startedAt,
-				finishedAt: new Date()
-			});
-		}
-	}
-	return results;
+/**
+ * 「今すぐ実行」用。トリガー時刻・有効化フラグを無視し、DBに保存されている内容をそのまま即時実行する
+ * （編集中の画面上の未保存の内容ではない）。テスト目的の手動実行。
+ */
+export async function runWorkflowNow(db: Db, workflowId: string, env?: ToolEnv): Promise<WorkflowRunResult> {
+	const workflow = await getWorkflow(db, workflowId);
+	if (!workflow) throw new Error('ワークフローが見つかりません');
+	return executeWorkflow(db, workflow, env);
 }
