@@ -171,19 +171,19 @@
 	}
 
 	input[type="text"]:focus { border-color: var(--color-primary); }
-	input.invalid { border-color: var(--color-danger, #dc2626); }
+	input.invalid { border-color: var(--color-danger, var(--color-error)); }
 
 	.field-error {
 		font-size: 0.75rem;
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 		margin: 0;
 	}
 
 	.error {
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 		font-size: 0.875rem;
 		padding: 10px 14px;
-		background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent);
+		background: color-mix(in srgb, var(--color-danger, var(--color-error)) 10%, transparent);
 		border-radius: 6px;
 	}
 

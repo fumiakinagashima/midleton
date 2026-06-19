@@ -488,6 +488,13 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 		const [existing] = await db.select({ custom: deals.custom }).from(deals).where(eq(deals.id, id));
 		const existingCustom = JSON.parse(existing?.custom ?? '{}') as Record<string, unknown>;
 		const mergedCustom = { ...existingCustom, ...extractCustomData('deals', data) };
+		// ステータス変更に応じて closedAt を更新する（ツール経路 handleUpdateDeal と挙動を揃える）
+		const closedAt =
+			data.status === 'won' || data.status === 'lost'
+				? new Date()
+				: data.status === 'open'
+					? null
+					: undefined;
 		await db.update(deals).set({
 			...(data.customerId != null ? { customerId: String(data.customerId) } : {}),
 			...(data.title != null ? { title: String(data.title) } : {}),
@@ -495,6 +502,7 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 			...(data.status != null ? { status: data.status as 'open' | 'won' | 'lost' } : {}),
 			...(data.plannedStart !== undefined ? { plannedStart: s('plannedStart') } : {}),
 			...(data.plannedEnd !== undefined ? { plannedEnd: s('plannedEnd') } : {}),
+			...(closedAt !== undefined ? { closedAt } : {}),
 			notes: s('notes'), custom: JSON.stringify(mergedCustom), updatedAt: new Date()
 		}).where(eq(deals.id, id));
 		return (await getRecord(db, 'deals', id))!;

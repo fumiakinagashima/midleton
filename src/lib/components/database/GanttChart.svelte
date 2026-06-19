@@ -122,8 +122,8 @@
 	// ── Status colors ────────────────────────────────────────────────────────
 	const STATUS: Record<string, { bg: string; border: string; label: string }> = {
 		open: { bg: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', border: 'var(--color-primary)', label: '商談中' },
-		won:  { bg: 'color-mix(in srgb, #16a34a 18%, transparent)', border: '#16a34a', label: '受注' },
-		lost: { bg: 'color-mix(in srgb, #dc2626 18%, transparent)', border: '#dc2626', label: '失注' }
+		won:  { bg: 'color-mix(in srgb, var(--color-success) 18%, transparent)', border: 'var(--color-success)', label: '受注' },
+		lost: { bg: 'color-mix(in srgb, var(--color-error) 18%, transparent)', border: 'var(--color-error)', label: '失注' }
 	};
 
 	// ── Customer lookup ──────────────────────────────────────────────────────
@@ -547,8 +547,8 @@
 		white-space: nowrap;
 
 		&.status-open { color: var(--color-primary); border-color: var(--color-primary); }
-		&.status-won { color: #16a34a; border-color: #16a34a; }
-		&.status-lost { color: #dc2626; border-color: #dc2626; }
+		&.status-won { color: var(--color-success); border-color: var(--color-success); }
+		&.status-lost { color: var(--color-error); border-color: var(--color-error); }
 	}
 
 	/* Left column widths */

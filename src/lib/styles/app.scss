@@ -12,6 +12,25 @@
 }
 
 // ─────────────────────────────────────────
+// Semantic / status colors (fixed across themes)
+// ステータスバッジ・リスク表示・承認結果などで共通利用する配色。
+// 各コンポーネントで直接 hex を書かず、これらの変数を参照する。
+// ─────────────────────────────────────────
+
+:root {
+  --color-success:       #16a34a;
+  --color-success-bg:    #dcfce7;
+  --color-success-hover: #15803d;
+  --color-warning:       #ca8a04;
+  --color-error:         #dc2626;
+  --color-error-bg:      #fee2e2;
+  --color-info:          #2563eb;
+  --color-info-bg:       #dbeafe;
+  --color-neutral:       #6b7280;
+  --color-neutral-bg:    #f3f4f6;
+}
+
+// ─────────────────────────────────────────
 // Color tokens
 // ─────────────────────────────────────────
 

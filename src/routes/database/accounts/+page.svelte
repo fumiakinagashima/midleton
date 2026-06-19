@@ -302,7 +302,7 @@
 	.action-del {
 		background: none;
 		border: none;
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 		font-size: 0.8125rem;
 		cursor: pointer;
 		padding: 0;

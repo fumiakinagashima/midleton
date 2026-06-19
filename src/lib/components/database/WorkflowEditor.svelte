@@ -24,6 +24,8 @@
 		runs?: WorkflowRunRow[];
 		entityTypes?: EntityTypeForWorkflow[];
 		slackIntegrations?: SlackIntegrationOption[];
+		// ダイアログ内で使う場合に指定。指定時は「一覧に戻る」リンクを出さない（ダイアログのヘッダーで閉じる）
+		inDialog?: boolean;
 	};
 
 	let {
@@ -35,7 +37,8 @@
 		initialEnabled = false,
 		runs = [],
 		entityTypes = [],
-		slackIntegrations = []
+		slackIntegrations = [],
+		inDialog = false
 	}: Props = $props();
 
 	// 保存後も画面遷移しないため、新規作成時に発行されたidを保持して以降の保存をPATCH（更新）に切り替える
@@ -155,7 +158,9 @@
 
 <div class="editor-wrap">
 	<div class="editor-row1">
-		<a href="/database/workflows" class="btn-back">← 一覧に戻る</a>
+		{#if !inDialog}
+			<a href="/database/workflows" class="btn-back">← 一覧に戻る</a>
+		{/if}
 		<Toggle bind:checked={enabled} label="有効化（毎日指定時刻に実行）" />
 		<div class="editor-row1-actions">
 			{#if currentId}
@@ -334,10 +339,10 @@
 	.ai-review-error {
 		margin: 0;
 		padding: 10px 14px;
-		background: color-mix(in srgb, #dc2626 10%, transparent);
-		border: 1px solid #dc2626;
+		background: color-mix(in srgb, var(--color-error) 10%, transparent);
+		border: 1px solid var(--color-error);
 		border-radius: 6px;
-		color: #dc2626;
+		color: var(--color-error);
 		font-size: 0.875rem;
 	}
 
@@ -435,7 +440,7 @@
 	}
 
 	.run-log-error {
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 	}
 
 	.run-log-badge {
@@ -447,12 +452,12 @@
 		white-space: nowrap;
 
 		&.ok {
-			color: #16a34a;
-			border-color: #16a34a;
+			color: var(--color-success);
+			border-color: var(--color-success);
 		}
 		&.fail {
-			color: #dc2626;
-			border-color: #dc2626;
+			color: var(--color-error);
+			border-color: var(--color-error);
 		}
 	}
 </style>

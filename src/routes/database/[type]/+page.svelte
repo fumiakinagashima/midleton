@@ -1,18 +1,54 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { RecordRow } from '$lib/server/db/table-service';
+	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import { LIST_PAGE_SIZE } from '$lib/constants';
 
 	let { data }: { data: PageData } = $props();
 
 	const type = $derived($page.params.type);
 	const info = $derived(data.info);
 
+	// 全テーブル（コア＋カスタム）の詳細/編集/登録をダイアログで開く
+	let dialog = $state<{ recordId: string | null; view: 'detail' | 'form' } | null>(null);
+
+	function openDetail(id: string) {
+		dialog = { recordId: id, view: 'detail' };
+	}
+	function openCreate() {
+		dialog = { recordId: null, view: 'form' };
+	}
+	function openEdit(id: string) {
+		dialog = { recordId: id, view: 'form' };
+	}
+	async function refreshAfterDialog() {
+		dialog = null;
+		await invalidateAll();
+	}
+
 	let rows = $state<RecordRow[]>(untrack(() => data.rows));
+	let pageNum = $state(1);
 	$effect(() => {
 		rows = data.rows;
 	});
+	// テーブル切り替え時はページを先頭へ
+	$effect(() => {
+		void type;
+		pageNum = 1;
+	});
+	const totalPages = $derived(Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE)));
+	$effect(() => {
+		if (pageNum > totalPages) pageNum = totalPages;
+	});
+	const pagedRows = $derived(
+		rows.length > LIST_PAGE_SIZE
+			? rows.slice((pageNum - 1) * LIST_PAGE_SIZE, pageNum * LIST_PAGE_SIZE)
+			: rows
+	);
 
 	const listCols = $derived(info?.fields.filter(f => f.listable) ?? []);
 	const refLabels = $derived(data.refLabels);
@@ -33,11 +69,6 @@
 		return String(val);
 	}
 
-	async function deleteRow(id: string) {
-		if (!confirm('このレコードを削除しますか？')) return;
-		await fetch(`/api/database/${type}/records/${id}`, { method: 'DELETE' });
-		rows = rows.filter(r => r.id !== id);
-	}
 </script>
 
 <div class="page">
@@ -52,14 +83,14 @@
 				<a href="/database/{type}/gantt" class="btn-schema">ガントチャート</a>
 			{/if}
 			<a href="/database/{type}/schema" class="btn-schema">スキーマ編集</a>
-			<a href="/database/{type}/new" class="btn-primary">+ 新規作成</a>
+			<button class="btn-primary" onclick={openCreate}>+ 新規作成</button>
 		</div>
 	</header>
 
 	{#if rows.length === 0}
 		<div class="empty">
 			<p>レコードがありません。</p>
-			<a href="/database/{type}/new" class="btn-primary">最初のレコードを作成</a>
+			<button class="btn-primary" onclick={openCreate}>最初のレコードを作成</button>
 		</div>
 	{:else}
 		<div class="table-wrap">
@@ -73,23 +104,38 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each rows as row}
-						<tr onclick={() => location.href = `/database/${type}/${row.id}`} class="clickable-row">
+					{#each pagedRows as row}
+						<tr onclick={() => openDetail(String(row.id))} class="clickable-row">
 							{#each listCols as col}
 								<td>{displayValue(row, col.key)}</td>
 							{/each}
 							<td class="actions" onclick={(e) => e.stopPropagation()}>
-								<a href="/database/{type}/{row.id}" class="action-link">詳細</a>
-								<a href="/database/{type}/{row.id}/edit" class="action-link">編集</a>
-								<button class="action-del" onclick={() => deleteRow(String(row.id))}>削除</button>
+								<button class="action-link" onclick={() => openEdit(String(row.id))}>編集</button>
 							</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
 		</div>
+		<div class="list-footer">
+			<span class="count">{rows.length}件</span>
+			{#if totalPages > 1}
+				<Pagination bind:page={pageNum} {totalPages} />
+			{/if}
+		</div>
 	{/if}
 </div>
+
+{#if dialog && type}
+	<RecordDialog
+		{type}
+		recordId={dialog.recordId}
+		initialView={dialog.view}
+		onclose={() => (dialog = null)}
+		onSaved={refreshAfterDialog}
+		onDeleted={refreshAfterDialog}
+	/>
+{/if}
 
 <style lang="scss">
 	.page {
@@ -156,6 +202,19 @@
 		flex-shrink: 0;
 	}
 
+	.list-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-top: 12px;
+	}
+
+	.list-footer .count {
+		font-size: 0.8125rem;
+		color: var(--color-text-muted);
+	}
+
 	table {
 		width: 100%;
 		border-collapse: collapse;
@@ -199,20 +258,14 @@
 		text-decoration: none;
 		font-size: 0.8125rem;
 		margin-right: 10px;
+		background: none;
+		border: none;
+		padding: 0;
+		font-family: inherit;
+		cursor: pointer;
 	}
 
 	.action-link:hover { text-decoration: underline; }
-
-	.action-del {
-		background: none;
-		border: none;
-		color: var(--color-danger, #dc2626);
-		font-size: 0.8125rem;
-		cursor: pointer;
-		padding: 0;
-	}
-
-	.action-del:hover { text-decoration: underline; }
 
 	.empty {
 		display: flex;
