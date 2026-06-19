@@ -181,7 +181,37 @@ async function runSteps(
 
 export type WorkflowRunResult = { id: string; name: string; ok: boolean; error?: string };
 
+const WORKFLOW_RUN_LOCK_PREFIX = 'workflow-run-lock:';
+/** ロックの取り忘れ（異常終了等）に備えたフェイルセーフのTTL。通常は実行完了時にreleaseRunLockで即時解放する。 */
+const WORKFLOW_RUN_LOCK_TTL_SECONDS = 90;
+
+/**
+ * 「今すぐ実行」とCron tickが同じワークフローを同時に実行してしまう（通知の重複送信等）のを防ぐ、
+ * KVを使ったベストエフォートのロック。KVはアトミックなcompare-and-swapを提供しないため完全な排他制御ではないが、
+ * 実用上の同時実行（同じ分の重複発火・連打）はこれで十分防げる。KV未設定（ローカル開発等）の場合は実行を許可する。
+ */
+async function acquireRunLock(kv: KVNamespace | undefined, workflowId: string): Promise<boolean> {
+	if (!kv) return true;
+	const key = `${WORKFLOW_RUN_LOCK_PREFIX}${workflowId}`;
+	if (await kv.get(key)) return false;
+	await kv.put(key, '1', { expirationTtl: WORKFLOW_RUN_LOCK_TTL_SECONDS });
+	return true;
+}
+
+async function releaseRunLock(kv: KVNamespace | undefined, workflowId: string): Promise<void> {
+	if (!kv) return;
+	await kv.delete(`${WORKFLOW_RUN_LOCK_PREFIX}${workflowId}`);
+}
+
 async function executeWorkflow(db: Db, workflow: WorkflowRow, env?: ToolEnv): Promise<WorkflowRunResult> {
+	if (!(await acquireRunLock(env?.KV, workflow.id))) {
+		return {
+			id: workflow.id,
+			name: workflow.name,
+			ok: false,
+			error: '他の処理がこのワークフローを実行中のため今回はスキップしました。しばらく待ってから再度お試しください'
+		};
+	}
 	const startedAt = new Date();
 	try {
 		const account = workflow.accountId ? await getAccount(db, workflow.accountId) : null;
@@ -197,6 +227,8 @@ async function executeWorkflow(db: Db, workflow: WorkflowRow, env?: ToolEnv): Pr
 		const error = e instanceof Error ? e.message : String(e);
 		await recordWorkflowRun(db, { workflowId: workflow.id, ok: false, error, startedAt, finishedAt: new Date() });
 		return { id: workflow.id, name: workflow.name, ok: false, error };
+	} finally {
+		await releaseRunLock(env?.KV, workflow.id);
 	}
 }
 

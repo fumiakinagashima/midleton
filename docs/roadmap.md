@@ -449,6 +449,11 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [x] Slack（通知）の対象追加。「通知」カテゴリに`includeSlackTargets`フラグを追加し、自作テーブル（`includeEntityTargets`）と同じ「カテゴリに動的に対象を追加する」パターンを再利用。設定済みのSlack連携（`hooks.slack.com`のwebhook）が個別の対象選択肢として並ぶ（`listSlackIntegrationsForWorkflow`、webhook URLはクライアントに渡さずid/nameのみ返す）。対象選択時に`step.tool='send_slack_notification'`・`step.params.integration_id`を直接設定し、`validateWorkflow`で連携削除時の参照チェックも追加（`get_entities`と同様のパターン）。`send_slack_notification`はワークフロー専用ツールとしてMCPに追加し、AIチャットには公開しない（AIがSlackに送る場合は既存の`list_integrations`+`call_external_api`を使うため、別ツールを公開すると重複になる）
 - [x] カスタムテーブル削除時にワークフローでの参照有無をチェックし、使用中なら削除前に警告する。`findWorkflowsUsingEntityType`（`workflow-service.ts`、全ワークフローのステップを再帰的に走査）を追加し、`DELETE /api/database/tables/[name]`は使用中の場合409（使用ワークフロー一覧付き）を返す。`/database/[type]/schema`の削除ボタンは409時にワークフロー名を含む確認ダイアログを表示し、同意後`?force=1`で再送信して削除する
 - [x] `get_contacts`が検索・集計2カテゴリから参照されるため、保存済みステップ再読込時のカテゴリ表示が常に「検索」になる見た目の制約 → `WorkflowActionStep`に`category?: string`を追加し、対象選択時に選択中のカテゴリキーを保存。再読込時は`step.category`を優先し、未設定（旧データ・AI生成）の場合のみtoolからの逆引きにフォールバックする
+- [x] 「今すぐ実行」ボタン（`/database/workflows/[id]`、AIレビューの左）。トリガー時刻・有効化フラグを無視し、DBに保存済みの内容をそのまま即時実行する手動テスト用機能（`POST /api/workflows/[id]/run`、`runWorkflowNow`）
+- [x] 案件・案件集計・活動履歴集計のワークフローパラメータに顧客ID（`customer_id`）を追加（担当者・活動履歴検索は既に対応済み）。`search_deals`はMCPツール本体にも`customer_id`フィルタを追加
+- [x] 保存ボタン押下時に一覧画面へ遷移せず、その場でトースト表示のみに変更（新規作成時はサーバー発行idを`currentId`として保持し、以降の保存は更新扱いにして重複作成を防止）
+- [x] セキュリティレビュー対応: `get_workflow`のidルックアップにオーナーチェック追加（IDOR修正）、ネストしたforeachの組み合わせ爆発を防ぐ`WORKFLOW_MAX_ACTIONS_PER_RUN`（1回の実行あたりアクション実行数の総量上限）、「今すぐ実行」とCron tickの同時実行を防ぐKVベースのベストエフォートロック、Slack送信時のmrkdwn特殊文字エスケープ（`@item`等のユーザー入力データ経由の偽装リンク埋め込み対策）
+- [ ] TODO: `/database/workflows/new`が`WorkflowDialog`化により現在どこからもリンクされていない死んだルートとして残っている。削除するか`[id]`ページと同様に`+page.server.ts`（`entityTypes`/`slackIntegrations`の取得）を追加するか対応する
 
 ### 資料生成
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）
