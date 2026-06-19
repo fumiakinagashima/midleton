@@ -147,7 +147,7 @@ midleton/
 - 詳細・作成の中身は `ApprovalDetail.svelte` / `ApprovalForm.svelte`（元のページ本体を抽出したコンポーネント）。`ApprovalDialog` が `mode: 'detail'|'create'` で出し分け、詳細は `GET /api/approvals/[id]` でクライアント取得。承認/否決/取り消しは `PATCH /api/approvals/[id]`、AIレビュー・添付・作成は従来のAPIをそのまま使用
 - 他のダイアログと同じく**左に AIアシスタント欄（`DialogChatSide`）を持つ2カラム構成**に統一（外枠・幅も `RecordDialog` と同じ）。詳細・登録ダイアログのUI/UXは統一が原則（個別に違うダイアログを使う場合のみ都度判断）
 - 承認操作後（`onChanged`）・作成後（`onCreated`）は一覧で `invalidateAll()`。承認ステップの操作可否は `accountId`（`locals.account.id`、`load` から prop で渡す）で判定
-- スタンドアロンの `/database/approvals/[id]`・`/new` ルートはディープリンク用に薄いラッパーとして残置（同じ `ApprovalDetail`/`ApprovalForm` を描画）。一覧の行アクションは「削除」のみ（詳細=行クリック、取り消し=詳細ダイアログ内）
+- 申請の詳細・新規作成は `ApprovalDialog` に一本化。スタンドアロンの `/database/approvals/[id]`・`/new` ルートはダイアログ化で実質未使用となったため削除済み（`ApprovalDetail`/`ApprovalForm` はダイアログからのみ利用）。`/api/approvals/[id]` API は存続（ダイアログが使用）。一覧の行アクションは「削除」のみ（詳細=行クリック、取り消し=詳細ダイアログ内）
 - チャットでも `list_approvals` テーブルの行クリックで同じ `ApprovalDialog`（詳細）を開く（`+page.svelte` の `panelApprovalId`、`accountId` は `page.data.account?.id`）。これにより `ApprovalDialog`/`Detail` はチャットと `/database` で共有される
 
 ## リマインダー配信

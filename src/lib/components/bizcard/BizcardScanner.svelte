@@ -10,7 +10,7 @@
 
 	let { onRegister }: Props = $props();
 
-	let state = $state<State>('idle');
+	let scanState = $state<State>('idle');
 	let errorMsg = $state('');
 	let results = $state<BizcardResult[]>([]);
 	let previewUrl = $state<string | null>(null);
@@ -27,7 +27,7 @@
 	];
 
 	async function upload(blob: Blob) {
-		state = 'loading';
+		scanState = 'loading';
 		results = [];
 		errorMsg = '';
 
@@ -42,15 +42,15 @@
 			clearTimeout(timer);
 			const data = await res.json() as { results?: BizcardResult[]; error?: string };
 			if (!res.ok || data.error) {
-				state = 'error';
+				scanState = 'error';
 				errorMsg = data.error ?? '抽出に失敗しました。';
 			} else {
 				results = data.results ?? [];
-				state = 'done';
+				scanState = 'done';
 			}
 		} catch (e) {
 			clearTimeout(timer);
-			state = 'error';
+			scanState = 'error';
 			errorMsg = e instanceof Error && e.name === 'AbortError'
 				? 'タイムアウトしました。画像を小さくして再試行してください。'
 				: 'ネットワークエラーが発生しました。';
@@ -58,7 +58,7 @@
 	}
 
 	function reset() {
-		state = 'idle';
+		scanState = 'idle';
 		results = [];
 		errorMsg = '';
 		if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
@@ -93,7 +93,7 @@
 			{#if previewUrl}
 				<div class="capture-overlay">
 					<img src={previewUrl} alt="名刺プレビュー" class="preview-img" />
-					{#if state === 'loading'}
+					{#if scanState === 'loading'}
 						<div class="overlay">
 							<div class="spinner"></div>
 							<p>AIが情報を読み取っています…</p>
@@ -105,7 +105,7 @@
 	</div>
 
 	<!-- Result cards -->
-	{#if state === 'done' && results.length > 0}
+	{#if scanState === 'done' && results.length > 0}
 		<div class="results-wrap">
 			<div class="result-header">
 				<span class="result-badge">{results.length}件 抽出完了</span>
@@ -151,7 +151,7 @@
 		</div>
 	{/if}
 
-	{#if state === 'error'}
+	{#if scanState === 'error'}
 		<div class="error-box">
 			<p>{errorMsg}</p>
 			<button onclick={reset}>閉じる</button>
