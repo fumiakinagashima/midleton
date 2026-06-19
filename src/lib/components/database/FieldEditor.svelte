@@ -216,8 +216,8 @@
 		transition: color 0.15s, background 0.15s;
 
 		&:hover {
-			color: var(--color-danger, #dc2626);
-			background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent);
+			color: var(--color-danger, var(--color-error));
+			background: color-mix(in srgb, var(--color-danger, var(--color-error)) 10%, transparent);
 		}
 	}
 

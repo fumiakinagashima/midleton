@@ -25,7 +25,7 @@
 		rejected: m.approval_status_rejected(), cancelled: m.approval_status_cancelled()
 	};
 	const STATUS_COLORS: Record<string, string> = {
-		pending: '#ca8a04', approved: '#16a34a', rejected: '#dc2626', cancelled: '#6b7280'
+		pending: 'var(--color-warning)', approved: 'var(--color-success)', rejected: 'var(--color-error)', cancelled: 'var(--color-neutral)'
 	};
 
 	function fmtDate(d: string | Date): string {
@@ -193,10 +193,10 @@
 		font-weight: 500;
 		white-space: nowrap;
 
-		&.status-pending { color: #ca8a04; border-color: #ca8a04; }
-		&.status-approved { color: #16a34a; border-color: #16a34a; }
-		&.status-rejected { color: #dc2626; border-color: #dc2626; }
-		&.status-cancelled { color: #6b7280; border-color: #6b7280; }
+		&.status-pending { color: var(--color-warning); border-color: var(--color-warning); }
+		&.status-approved { color: var(--color-success); border-color: var(--color-success); }
+		&.status-rejected { color: var(--color-error); border-color: var(--color-error); }
+		&.status-cancelled { color: var(--color-neutral); border-color: var(--color-neutral); }
 	}
 
 	.actions { text-align: right; white-space: nowrap; width: 1%; }
@@ -212,7 +212,7 @@
 	.action-del {
 		background: none;
 		border: none;
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 		font-size: 0.8125rem;
 		cursor: pointer;
 		padding: 0;

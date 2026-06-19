@@ -241,7 +241,7 @@
 
 	.builtin-req {
 		font-size: 0.75rem;
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 		padding: 1px 6px;
 		border: 1px solid currentColor;
 		border-radius: 4px;
@@ -270,10 +270,10 @@
 	input:disabled { opacity: 0.5; cursor: not-allowed; }
 
 	.error {
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 		font-size: 0.875rem;
 		padding: 10px 14px;
-		background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent);
+		background: color-mix(in srgb, var(--color-danger, var(--color-error)) 10%, transparent);
 		border-radius: 6px;
 	}
 
@@ -311,13 +311,13 @@
 	.btn-delete {
 		padding: 8px 16px;
 		background: none;
-		color: var(--color-danger, #dc2626);
-		border: 1px solid var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
+		border: 1px solid var(--color-danger, var(--color-error));
 		border-radius: 6px;
 		font-size: 0.875rem;
 		cursor: pointer;
 	}
 
-	.btn-delete:hover { background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent); }
+	.btn-delete:hover { background: color-mix(in srgb, var(--color-danger, var(--color-error)) 10%, transparent); }
 	.btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

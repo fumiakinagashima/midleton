@@ -47,8 +47,8 @@
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		animation: slideIn 0.2s ease;
 
-		&.toast-success { background: #16a34a; color: #fff; }
-		&.toast-error { background: #dc2626; color: #fff; }
+		&.toast-success { background: var(--color-success); color: #fff; }
+		&.toast-error { background: var(--color-error); color: #fff; }
 		&.toast-info {
 			background: var(--color-surface, #fff);
 			color: var(--color-text, #111);

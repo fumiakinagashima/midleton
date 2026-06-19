@@ -365,7 +365,7 @@
 		color: var(--color-text-muted);
 	}
 
-	.req { color: var(--color-danger, #dc2626); }
+	.req { color: var(--color-danger, var(--color-error)); }
 	.limit { font-weight: 400; opacity: 0.7; }
 
 	/* AI Review */
@@ -385,10 +385,10 @@
 	.ai-review-error {
 		margin: 0;
 		padding: 10px 14px;
-		background: color-mix(in srgb, #dc2626 10%, transparent);
-		border: 1px solid #dc2626;
+		background: color-mix(in srgb, var(--color-error) 10%, transparent);
+		border: 1px solid var(--color-error);
 		border-radius: 6px;
-		color: #dc2626;
+		color: var(--color-error);
 		font-size: 0.875rem;
 	}
 
@@ -457,7 +457,7 @@
 	}
 	.file-hidden { display: none; }
 
-	.file-error { font-size: 0.8125rem; color: var(--color-danger, #dc2626); margin: 0; }
+	.file-error { font-size: 0.8125rem; color: var(--color-danger, var(--color-error)); margin: 0; }
 
 	.file-list {
 		list-style: none;
@@ -488,7 +488,7 @@
 		font-size: 0.875rem;
 		flex-shrink: 0;
 	}
-	.file-remove:hover { color: var(--color-danger, #dc2626); }
+	.file-remove:hover { color: var(--color-danger, var(--color-error)); }
 
 	/* Route builder */
 	.route-list { display: flex; flex-direction: column; gap: 8px; }
@@ -583,16 +583,16 @@
 		font-size: 0.875rem;
 		flex-shrink: 0;
 	}
-	.btn-remove:hover { color: var(--color-danger, #dc2626); }
+	.btn-remove:hover { color: var(--color-danger, var(--color-error)); }
 
 	.hint { font-size: 0.8125rem; color: var(--color-text-muted); margin: 0; }
 
 	.error-msg {
 		padding: 10px 14px;
-		background: color-mix(in srgb, #dc2626 10%, transparent);
-		border: 1px solid #dc2626;
+		background: color-mix(in srgb, var(--color-error) 10%, transparent);
+		border: 1px solid var(--color-error);
 		border-radius: 6px;
-		color: #dc2626;
+		color: var(--color-error);
 		font-size: 0.875rem;
 	}
 

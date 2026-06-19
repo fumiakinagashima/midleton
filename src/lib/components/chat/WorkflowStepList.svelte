@@ -571,7 +571,7 @@
 		}
 
 		&.t-foreach {
-			border-left-color: #2563eb;
+			border-left-color: var(--color-info);
 		}
 
 		&.dragging {
@@ -785,8 +785,8 @@
 			border-color: #d57c30;
 		}
 		&.t-foreach {
-			background: #2563eb;
-			border-color: #2563eb;
+			background: var(--color-info);
+			border-color: var(--color-info);
 		}
 	}
 </style>

@@ -169,8 +169,8 @@
 		white-space: nowrap;
 
 		&.status-enabled {
-			color: #16a34a;
-			border-color: #16a34a;
+			color: var(--color-success);
+			border-color: var(--color-success);
 		}
 		&.status-disabled {
 			color: var(--color-text-muted);

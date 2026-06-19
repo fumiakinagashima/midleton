@@ -25,13 +25,13 @@
 		rejected: m.approval_status_rejected(), cancelled: m.approval_status_cancelled()
 	};
 	const STATUS_COLORS: Record<string, string> = {
-		pending: '#ca8a04', approved: '#16a34a', rejected: '#dc2626', cancelled: '#6b7280'
+		pending: 'var(--color-warning)', approved: 'var(--color-success)', rejected: 'var(--color-error)', cancelled: 'var(--color-neutral)'
 	};
 	const STEP_ICONS: Record<string, string> = {
 		pending: '○', approved: '✓', rejected: '✗'
 	};
 	const RISK_LABELS: Record<string, string> = { low: '低', medium: '中', high: '高' };
-	const RISK_COLORS: Record<string, string> = { low: '#16a34a', medium: '#ca8a04', high: '#dc2626' };
+	const RISK_COLORS: Record<string, string> = { low: 'var(--color-success)', medium: 'var(--color-warning)', high: 'var(--color-error)' };
 
 	let aiReview = $state<ApprovalReviewResult | null>(null);
 	let aiReviewLoading = $state(false);
@@ -289,13 +289,13 @@
 	.btn-danger-outline {
 		padding: 6px 12px;
 		background: none;
-		border: 1px solid var(--color-danger, #dc2626);
-		color: var(--color-danger, #dc2626);
+		border: 1px solid var(--color-danger, var(--color-error));
+		color: var(--color-danger, var(--color-error));
 		border-radius: 6px;
 		font-size: 0.875rem;
 		cursor: pointer;
 	}
-	.btn-danger-outline:hover { background: color-mix(in srgb, #dc2626 10%, transparent); }
+	.btn-danger-outline:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); }
 	.btn-danger-outline:disabled { opacity: 0.4; cursor: not-allowed; }
 
 	.summary-card {
@@ -317,10 +317,10 @@
 		font-weight: 600;
 		white-space: nowrap;
 
-		&.status-pending { color: #ca8a04; border-color: #ca8a04; }
-		&.status-approved { color: #16a34a; border-color: #16a34a; }
-		&.status-rejected { color: #dc2626; border-color: #dc2626; }
-		&.status-cancelled { color: #6b7280; border-color: #6b7280; }
+		&.status-pending { color: var(--color-warning); border-color: var(--color-warning); }
+		&.status-approved { color: var(--color-success); border-color: var(--color-success); }
+		&.status-rejected { color: var(--color-error); border-color: var(--color-error); }
+		&.status-cancelled { color: var(--color-neutral); border-color: var(--color-neutral); }
 	}
 	.meta-row { display: flex; flex-wrap: wrap; gap: 16px; }
 	.meta-item { display: flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--color-text-muted); }
@@ -354,10 +354,10 @@
 	.ai-review-error {
 		margin: 0;
 		padding: 10px 14px;
-		background: color-mix(in srgb, #dc2626 10%, transparent);
-		border: 1px solid #dc2626;
+		background: color-mix(in srgb, var(--color-error) 10%, transparent);
+		border: 1px solid var(--color-error);
 		border-radius: 6px;
-		color: #dc2626;
+		color: var(--color-error);
 		font-size: 0.875rem;
 	}
 
@@ -380,9 +380,9 @@
 		font-weight: 600;
 		white-space: nowrap;
 
-		&.risk-low { color: #16a34a; border-color: #16a34a; }
-		&.risk-medium { color: #ca8a04; border-color: #ca8a04; }
-		&.risk-high { color: #dc2626; border-color: #dc2626; }
+		&.risk-low { color: var(--color-success); border-color: var(--color-success); }
+		&.risk-medium { color: var(--color-warning); border-color: var(--color-warning); }
+		&.risk-high { color: var(--color-error); border-color: var(--color-error); }
 	}
 	.ai-review-summary { margin: 0; font-size: 0.9375rem; line-height: 1.7; }
 	.ai-review-group { display: flex; flex-direction: column; gap: 6px; }
@@ -393,8 +393,8 @@
 		margin: 0;
 	}
 	.ai-review-list { margin: 0; padding-left: 1.4em; font-size: 0.875rem; line-height: 1.7; display: flex; flex-direction: column; gap: 4px; }
-	.ai-review-concerns li::marker { color: #dc2626; }
-	.ai-review-checks li::marker { color: #ca8a04; }
+	.ai-review-concerns li::marker { color: var(--color-error); }
+	.ai-review-checks li::marker { color: var(--color-warning); }
 
 	.content-box {
 		padding: 14px 16px;
@@ -460,9 +460,9 @@
 		flex-shrink: 0;
 		margin-top: 2px;
 
-		&.step-icon-pending { color: #ca8a04; border-color: #ca8a04; }
-		&.step-icon-approved { color: #16a34a; border-color: #16a34a; }
-		&.step-icon-rejected { color: #dc2626; border-color: #dc2626; }
+		&.step-icon-pending { color: var(--color-warning); border-color: var(--color-warning); }
+		&.step-icon-approved { color: var(--color-success); border-color: var(--color-success); }
+		&.step-icon-rejected { color: var(--color-error); border-color: var(--color-error); }
 	}
 
 	.step-status {
@@ -470,10 +470,10 @@
 		font-weight: 600;
 		margin-left: auto;
 
-		&.step-status-pending { color: #ca8a04; }
-		&.step-status-approved { color: #16a34a; }
-		&.step-status-rejected { color: #dc2626; }
-		&.step-status-cancelled { color: #6b7280; }
+		&.step-status-pending { color: var(--color-warning); }
+		&.step-status-approved { color: var(--color-success); }
+		&.step-status-rejected { color: var(--color-error); }
+		&.step-status-cancelled { color: var(--color-neutral); }
 	}
 	.step-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 	.step-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -500,19 +500,19 @@
 	.action-btns { display: flex; gap: 8px; }
 	.btn-approve {
 		padding: 7px 18px;
-		background: #16a34a; color: #fff;
+		background: var(--color-success); color: #fff;
 		border: none; border-radius: 6px;
 		font-size: 0.875rem; cursor: pointer;
 	}
-	.btn-approve:hover { background: #15803d; }
+	.btn-approve:hover { background: var(--color-success-hover); }
 	.btn-approve:disabled { opacity: 0.4; cursor: not-allowed; }
 	.btn-reject {
 		padding: 7px 18px;
-		background: none; color: #dc2626;
-		border: 1px solid #dc2626; border-radius: 6px;
+		background: none; color: var(--color-error);
+		border: 1px solid var(--color-error); border-radius: 6px;
 		font-size: 0.875rem; cursor: pointer;
 	}
-	.btn-reject:hover { background: color-mix(in srgb, #dc2626 10%, transparent); }
+	.btn-reject:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); }
 	.btn-reject:disabled { opacity: 0.4; cursor: not-allowed; }
 
 	.empty-hint { color: var(--color-text-muted); font-size: 0.875rem; }

@@ -131,9 +131,9 @@
 		}
 
 		&.danger:hover {
-			border-color: #dc2626;
-			color: #dc2626;
-			background: color-mix(in srgb, #dc2626 6%, transparent);
+			border-color: var(--color-error);
+			color: var(--color-error);
+			background: color-mix(in srgb, var(--color-error) 6%, transparent);
 		}
 	}
 

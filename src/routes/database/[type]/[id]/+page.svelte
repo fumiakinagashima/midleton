@@ -16,7 +16,7 @@
 	let deleting = $state(false);
 
 	const HEALTH_LEVEL_LABELS: Record<string, string> = { good: '良好', warning: '注意', risk: '要注意' };
-	const HEALTH_LEVEL_COLORS: Record<string, string> = { good: '#16a34a', warning: '#ca8a04', risk: '#dc2626' };
+	const HEALTH_LEVEL_COLORS: Record<string, string> = { good: 'var(--color-success)', warning: 'var(--color-warning)', risk: 'var(--color-error)' };
 
 	let healthScore = $state<CustomerHealthScoreResult | null>(untrack(() => data.healthScore));
 	let healthScoreLoading = $state(false);
@@ -299,14 +299,14 @@
 	.btn-delete {
 		padding: 7px 14px;
 		background: none;
-		color: var(--color-danger, #dc2626);
-		border: 1px solid var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
+		border: 1px solid var(--color-danger, var(--color-error));
 		border-radius: 6px;
 		font-size: 0.875rem;
 		cursor: pointer;
 	}
 
-	.btn-delete:hover { background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent); }
+	.btn-delete:hover { background: color-mix(in srgb, var(--color-danger, var(--color-error)) 10%, transparent); }
 	.btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
 
 	.detail-card {
@@ -387,10 +387,10 @@
 	.ai-review-error {
 		margin: 0;
 		padding: 10px 14px;
-		background: color-mix(in srgb, #dc2626 10%, transparent);
-		border: 1px solid #dc2626;
+		background: color-mix(in srgb, var(--color-error) 10%, transparent);
+		border: 1px solid var(--color-error);
 		border-radius: 6px;
-		color: #dc2626;
+		color: var(--color-error);
 		font-size: 0.875rem;
 	}
 
@@ -433,10 +433,10 @@
 		white-space: nowrap;
 	}
 
-	.health-level-excellent { color: #16a34a; border-color: #16a34a; }
-	.health-level-good { color: #2563eb; border-color: #2563eb; }
+	.health-level-excellent { color: var(--color-success); border-color: var(--color-success); }
+	.health-level-good { color: var(--color-info); border-color: var(--color-info); }
 	.health-level-fair { color: #d97706; border-color: #d97706; }
-	.health-level-poor { color: #dc2626; border-color: #dc2626; }
+	.health-level-poor { color: var(--color-error); border-color: var(--color-error); }
 
 	.ai-review-summary { margin: 0; font-size: 0.9375rem; line-height: 1.7; }
 	.health-score-updated { margin: 0; font-size: 0.75rem; color: var(--color-text-muted); }
@@ -448,9 +448,9 @@
 		margin: 0;
 	}
 	.ai-review-list { margin: 0; padding-left: 1.4em; font-size: 0.875rem; line-height: 1.7; display: flex; flex-direction: column; gap: 4px; }
-	.ai-review-positives li::marker { color: #16a34a; }
-	.ai-review-concerns li::marker { color: #dc2626; }
-	.ai-review-attention li::marker { color: #ca8a04; }
+	.ai-review-positives li::marker { color: var(--color-success); }
+	.ai-review-concerns li::marker { color: var(--color-error); }
+	.ai-review-attention li::marker { color: var(--color-warning); }
 
 	.source-link {
 		margin-left: 8px;

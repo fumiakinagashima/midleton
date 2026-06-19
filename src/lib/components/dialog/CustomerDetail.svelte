@@ -338,9 +338,9 @@
 		}
 
 		&.danger:hover {
-			border-color: #dc2626;
-			color: #dc2626;
-			background: color-mix(in srgb, #dc2626 6%, transparent);
+			border-color: var(--color-error);
+			color: var(--color-error);
+			background: color-mix(in srgb, var(--color-error) 6%, transparent);
 		}
 	}
 
@@ -389,8 +389,8 @@
 		font-size: 0.75rem;
 		font-weight: 500;
 
-		&.status-active  { background: #dcfce7; color: #16a34a; }
-		&.status-inactive { background: #f3f4f6; color: #6b7280; }
+		&.status-active  { background: var(--color-success-bg); color: var(--color-success); }
+		&.status-inactive { background: var(--color-neutral-bg); color: var(--color-neutral); }
 	}
 
 	.deal-status {
@@ -402,9 +402,9 @@
 		font-weight: 500;
 		flex-shrink: 0;
 
-		&.status-open { background: #dbeafe; color: #2563eb; }
-		&.status-won  { background: #dcfce7; color: #16a34a; }
-		&.status-lost { background: #fee2e2; color: #dc2626; }
+		&.status-open { background: var(--color-info-bg); color: var(--color-info); }
+		&.status-won  { background: var(--color-success-bg); color: var(--color-success); }
+		&.status-lost { background: var(--color-error-bg); color: var(--color-error); }
 	}
 
 	.activity-type {
@@ -482,7 +482,7 @@
 	.health-error {
 		margin: 0;
 		font-size: 0.875rem;
-		color: #dc2626;
+		color: var(--color-error);
 	}
 
 	.health-head {
@@ -496,9 +496,9 @@
 		font-weight: 700;
 		line-height: 1;
 
-		&.health-good { color: #16a34a; }
-		&.health-warning { color: #ca8a04; }
-		&.health-risk { color: #dc2626; }
+		&.health-good { color: var(--color-success); }
+		&.health-warning { color: var(--color-warning); }
+		&.health-risk { color: var(--color-error); }
 	}
 
 	.health-level-badge {
@@ -510,9 +510,9 @@
 		font-size: 0.75rem;
 		font-weight: 600;
 
-		&.health-good { color: #16a34a; border-color: #16a34a; }
-		&.health-warning { color: #ca8a04; border-color: #ca8a04; }
-		&.health-risk { color: #dc2626; border-color: #dc2626; }
+		&.health-good { color: var(--color-success); border-color: var(--color-success); }
+		&.health-warning { color: var(--color-warning); border-color: var(--color-warning); }
+		&.health-risk { color: var(--color-error); border-color: var(--color-error); }
 	}
 
 	.health-date {
@@ -549,7 +549,7 @@
 		flex-direction: column;
 		gap: 2px;
 
-		&.good li::marker { color: #16a34a; }
-		&.risk li::marker { color: #dc2626; }
+		&.good li::marker { color: var(--color-success); }
+		&.risk li::marker { color: var(--color-error); }
 	}
 </style>

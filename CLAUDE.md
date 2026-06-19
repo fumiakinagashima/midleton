@@ -78,6 +78,7 @@ midleton/
 - CSS カスタムプロパティ（`--color-*` 等）でトークンを定義し、`data-theme` 属性で切り替える
 - ユーザー設定は `localStorage` に保存する
 - システムは `prefers-color-scheme` メディアクエリに追従する
+- **配色は `src/lib/styles/app.scss` に集約する**。テーマ依存トークン（`--color-background` / `--color-text` / `--color-primary` 等）に加え、ステータス・リスク・承認結果などで共通利用する**セマンティックカラー**（`--color-success`/`--color-success-bg`/`--color-success-hover`/`--color-warning`/`--color-error`/`--color-error-bg`/`--color-info`/`--color-info-bg`/`--color-neutral`/`--color-neutral-bg`、テーマ非依存の固定値）を定義済み。コンポーネント内で `#16a34a` のような hex を直書きせず、これらの変数を参照する（チャート色は `--chart-1`〜`--chart-6`）
 
 ## 非AIページの方針
 

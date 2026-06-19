@@ -339,10 +339,10 @@
 	.ai-review-error {
 		margin: 0;
 		padding: 10px 14px;
-		background: color-mix(in srgb, #dc2626 10%, transparent);
-		border: 1px solid #dc2626;
+		background: color-mix(in srgb, var(--color-error) 10%, transparent);
+		border: 1px solid var(--color-error);
 		border-radius: 6px;
-		color: #dc2626;
+		color: var(--color-error);
 		font-size: 0.875rem;
 	}
 
@@ -440,7 +440,7 @@
 	}
 
 	.run-log-error {
-		color: var(--color-danger, #dc2626);
+		color: var(--color-danger, var(--color-error));
 	}
 
 	.run-log-badge {
@@ -452,12 +452,12 @@
 		white-space: nowrap;
 
 		&.ok {
-			color: #16a34a;
-			border-color: #16a34a;
+			color: var(--color-success);
+			border-color: var(--color-success);
 		}
 		&.fail {
-			color: #dc2626;
-			border-color: #dc2626;
+			color: var(--color-error);
+			border-color: var(--color-error);
 		}
 	}
 </style>
