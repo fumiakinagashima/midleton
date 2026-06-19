@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Table from '$lib/components/chat/Table.svelte';
+	import WorkflowDialog from '$lib/components/chat/WorkflowDialog.svelte';
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
 	import Gantt from '$lib/components/chat/Gantt.svelte';
@@ -12,7 +13,7 @@
 	import FormDialog from '$lib/components/chat/FormDialog.svelte';
 	import CustomerDetail from '$lib/components/chat/CustomerDetail.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent } from '$lib/types/chat';
+	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick, untrack } from 'svelte';
@@ -87,6 +88,7 @@
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
 	let panelForm = $state<FormContent | null>(null);
+	let panelWorkflow = $state<WorkflowContent | null>(null);
 
 	let streamingText = $state('');
 	let streamingUIContents = $state<MessageContent[]>([]);
@@ -291,16 +293,19 @@
 
 	function finalizeStreamingMessage() {
 		let nextPanelForm: FormContent | null = null;
+		let nextPanelWorkflow: WorkflowContent | null = null;
 		const contents: MessageContent[] = [];
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
 		for (const c of streamingUIContents) {
 			if (c.type === 'form') {
 				nextPanelForm = c as FormContent;
+			} else if (c.type === 'workflow') {
+				nextPanelWorkflow = c as WorkflowContent;
 			} else {
 				contents.push(c);
 			}
 		}
-		if (contents.length === 0 && !nextPanelForm) contents.push({ type: 'text', text: m.chat_error() });
+		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow) contents.push({ type: 'text', text: m.chat_error() });
 		hidePreviousDealKanban(contents);
 		if (contents.length > 0) {
 			const message: Message = { id: crypto.randomUUID(), role: 'assistant', contents, createdAt: new Date() };
@@ -308,6 +313,7 @@
 			persistMessage(message);
 		}
 		if (nextPanelForm) panelForm = nextPanelForm;
+		if (nextPanelWorkflow) panelWorkflow = nextPanelWorkflow;
 		streamingText = '';
 		streamingUIContents = [];
 	}
@@ -721,6 +727,14 @@
 			form={panelForm}
 			onsubmit={handlePanelSubmit}
 			oncancel={handlePanelCancel}
+		/>
+	{/if}
+	{#if panelWorkflow}
+		<WorkflowDialog
+			workflow={panelWorkflow}
+			entityTypes={data.entityTypes}
+			slackIntegrations={data.slackIntegrations}
+			onclose={() => (panelWorkflow = null)}
 		/>
 	{/if}
 </div>

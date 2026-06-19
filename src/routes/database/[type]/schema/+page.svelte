@@ -64,7 +64,19 @@
 	async function handleDelete() {
 		if (!confirm(`テーブル「${info?.label}」とその全データを削除しますか？この操作は元に戻せません。`)) return;
 		deleting = true;
-		await fetch(`/api/database/tables/${type}`, { method: 'DELETE' });
+		const res = await fetch(`/api/database/tables/${type}`, { method: 'DELETE' });
+		if (res.status === 409) {
+			const body = (await res.json()) as { workflows: { id: string; name: string }[] };
+			const names = body.workflows.map((w) => w.name).join('、');
+			const proceed = confirm(
+				`このテーブルは以下のワークフローで使用されています: ${names}\n削除すると、これらのワークフローは実行時にエラーになります。本当に削除しますか？`
+			);
+			if (!proceed) {
+				deleting = false;
+				return;
+			}
+			await fetch(`/api/database/tables/${type}?force=1`, { method: 'DELETE' });
+		}
 		goto('/database');
 	}
 </script>

@@ -279,6 +279,24 @@ export const chatMessages = sqliteTable('chat_messages', {
 		.default(sql`(unixepoch())`)
 });
 
+export const workflows = sqliteTable('workflows', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	// WorkflowStep[] のJSON（src/lib/types/chat.ts）
+	steps: text('steps').notNull().default('[]'),
+	triggerHour: integer('trigger_hour').notNull(),
+	triggerMinute: integer('trigger_minute').notNull(),
+	enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
+	// null = 全アカウント共通（ログイン実装前の既存データ想定）
+	accountId: text('account_id'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
 export type Contact = typeof contacts.$inferSelect;
@@ -303,3 +321,16 @@ export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 export type Reminder = typeof reminders.$inferSelect;
 export type NewReminder = typeof reminders.$inferInsert;
+export const workflowRuns = sqliteTable('workflow_runs', {
+	id: text('id').primaryKey(),
+	workflowId: text('workflow_id').notNull(),
+	ok: integer('ok', { mode: 'boolean' }).notNull(),
+	error: text('error'),
+	startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
+	finishedAt: integer('finished_at', { mode: 'timestamp' }).notNull()
+});
+
+export type Workflow = typeof workflows.$inferSelect;
+export type NewWorkflow = typeof workflows.$inferInsert;
+export type WorkflowRun = typeof workflowRuns.$inferSelect;
+export type NewWorkflowRun = typeof workflowRuns.$inferInsert;

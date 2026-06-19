@@ -234,6 +234,37 @@ export async function listAllTables(db: Db): Promise<(TableInfo & { count: numbe
 	return [...coreTables, ...customTables];
 }
 
+export type EntityTypeForWorkflow = {
+	id: string;
+	label: string;
+	fields: { key: string; label: string }[];
+};
+
+/** テーブル名（entity_types.name）からid（entity_types.id）を取得する。カスタムテーブル削除前のワークフロー参照チェック等で使う。 */
+export async function getEntityTypeByName(db: Db, name: string): Promise<{ id: string } | null> {
+	const [et] = await db.select({ id: entityTypes.id }).from(entityTypes).where(eq(entityTypes.name, name));
+	return et ?? null;
+}
+
+/** ワークフローの「自作テーブル」対象選択用に、カスタムテーブル一覧をid付きで取得する。 */
+export async function listEntityTypesForWorkflow(db: Db): Promise<EntityTypeForWorkflow[]> {
+	const types = await db.select().from(entityTypes);
+	return Promise.all(
+		types.map(async (et) => {
+			const fields = await db
+				.select()
+				.from(entityFields)
+				.where(eq(entityFields.entityTypeId, et.id))
+				.orderBy(entityFields.sortOrder);
+			return {
+				id: et.id,
+				label: et.label,
+				fields: fields.map((f) => ({ key: f.key, label: f.label }))
+			};
+		})
+	);
+}
+
 export async function listRecords(db: Db, type: string, limit = 200): Promise<RecordRow[]> {
 	if (type === 'customers') {
 		return (await db.select().from(customers).orderBy(desc(customers.createdAt)).limit(limit))

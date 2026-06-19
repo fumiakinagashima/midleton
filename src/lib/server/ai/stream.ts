@@ -4,7 +4,7 @@ import { buildSystemPrompt } from './prompt';
 import { tools, dispatchTool } from '$lib/server/mcp';
 import { DEFAULT_AI_MODEL } from './settings';
 import type { Db } from '$lib/server/db';
-import type { MessageContent } from '$lib/types/chat';
+import type { MessageContent, WorkflowStep } from '$lib/types/chat';
 import type { ToolEnv } from '$lib/server/mcp';
 
 export type StreamEvent =
@@ -14,7 +14,7 @@ export type StreamEvent =
 	| { type: 'error'; message: string };
 
 // テキストストリームを処理し、<ui>ブロックをバッファリングしてdeltaとuiイベントに分離
-class TextStreamProcessor {
+export class TextStreamProcessor {
 	private buf = '';
 	private inUi = false;
 
@@ -61,11 +61,50 @@ class TextStreamProcessor {
 	}
 }
 
-function parseUITag(tag: string): MessageContent | null {
+// AIが steps の params/left/right に数値・真偽値をそのまま出力することがあるが、
+// 型上は常に文字列（WorkflowOperand）のため、後段の parseStepRef 等が壊れないよう文字列化する。
+function sanitizeWorkflowSteps(steps: unknown): WorkflowStep[] {
+	if (!Array.isArray(steps)) return steps as WorkflowStep[];
+	return steps.map((s) => {
+		if (!s || typeof s !== 'object') return s;
+		const step = s as Record<string, unknown>;
+		if (step.kind === 'action') {
+			const params = step.params;
+			if (params && typeof params === 'object') {
+				const fixed: Record<string, string> = {};
+				for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
+					fixed[k] = typeof v === 'string' ? v : String(v);
+				}
+				return { ...step, params: fixed };
+			}
+			return step;
+		}
+		if (step.kind === 'condition') {
+			return {
+				...step,
+				left: typeof step.left === 'string' ? step.left : String(step.left ?? ''),
+				right: typeof step.right === 'string' ? step.right : String(step.right ?? ''),
+				then: sanitizeWorkflowSteps(step.then)
+			};
+		}
+		if (step.kind === 'foreach') {
+			return {
+				...step,
+				source: typeof step.source === 'string' ? step.source : String(step.source ?? ''),
+				body: sanitizeWorkflowSteps(step.body)
+			};
+		}
+		return step;
+	});
+}
+
+export function parseUITag(tag: string): MessageContent | null {
 	const attrStr = /^<ui\s([^>]*)>/.exec(tag)?.[1] ?? '';
 	const body = tag.replace(/^<ui[^>]*>/, '').replace(/<\/ui>$/, '').trim();
 	const type = /type="([^"]+)"/.exec(attrStr)?.[1];
 	const title = /title="([^"]+)"/.exec(attrStr)?.[1];
+	const name = /name="([^"]+)"/.exec(attrStr)?.[1];
+	const id = /id="([^"]+)"/.exec(attrStr)?.[1];
 	const tool = /tool="([^"]+)"/.exec(attrStr)?.[1];
 	const submitLabel = /submitLabel="([^"]+)"/.exec(attrStr)?.[1];
 	const chartType = /chartType="([^"]+)"/.exec(attrStr)?.[1] as 'bar' | 'line' | 'pie' | undefined;
@@ -113,6 +152,16 @@ function parseUITag(tag: string): MessageContent | null {
 		} else if (type === 'customer_detail') {
 			const { customer, contacts, deals, activities } = JSON.parse(body);
 			return { type: 'customer_detail', customer, contacts, deals, activities };
+		} else if (type === 'workflow') {
+			const { triggerHour, triggerMinute, steps } = JSON.parse(body);
+			return {
+				type: 'workflow',
+				id,
+				name: name ?? '新規ワークフロー',
+				triggerHour,
+				triggerMinute,
+				steps: sanitizeWorkflowSteps(steps)
+			};
 		}
 	} catch {
 		// malformed JSON in UI tag

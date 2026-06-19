@@ -5,8 +5,10 @@ import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { env } from '$env/dynamic/private';
 import { createDb } from '$lib/server/db';
 import { dispatchTool, type ToolEnv } from '$lib/server/mcp';
-import type { StreamEvent } from '$lib/server/ai/stream';
+import { TextStreamProcessor, type StreamEvent } from '$lib/server/ai/stream';
+import { buildWorkflowChatSystemPrompt } from '$lib/server/ai/prompt';
 import { readonlyTools } from '$lib/server/ai/readonly-tools';
+import type { WorkflowStep } from '$lib/types/chat';
 
 function sse(event: StreamEvent): string {
 	return `data: ${JSON.stringify(event)}\n\n`;
@@ -17,8 +19,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 
 	const body = (await request.json()) as {
 		message: string;
-		formTitle: string;
-		formFields: { key: string; label: string }[];
+		current: { name: string; triggerHour: number; triggerMinute: number; steps: WorkflowStep[] };
 		history: { role: 'user' | 'assistant'; text: string }[];
 	};
 
@@ -27,7 +28,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 			async start(controller) {
 				const enqueue = (e: StreamEvent) => controller.enqueue(new TextEncoder().encode(sse(e)));
 				await new Promise((r) => setTimeout(r, 300));
-				for (const char of 'ご質問ありがとうございます。') {
+				for (const char of 'どのような自動化フローにしますか？') {
 					enqueue({ type: 'delta', text: char });
 					await new Promise((r) => setTimeout(r, 20));
 				}
@@ -54,16 +55,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 		accountName: locals.account?.name
 	};
 
-	const fieldList = body.formFields.map((f) => `- ${f.label}（${f.key}）`).join('\n');
-	const systemPrompt = `あなたは「${body.formTitle}」フォームへの入力をサポートするAIアシスタントです。
-ユーザーがフォームの各フィールドを正しく入力できるよう、具体的なアドバイスや情報を提供してください。
-
-フォームのフィールド一覧:
-${fieldList}
-
-利用可能なツール: 顧客・案件・活動・担当者などの情報を検索・取得できます。フォーム入力に必要な情報（既存の顧客名・担当者名・過去の活動内容など）をツールで調べることができます。
-制約: データの登録・更新・削除・メール送信はできません。情報の取得のみ行えます。
-回答は簡潔にしてください。`;
+	const systemPrompt = buildWorkflowChatSystemPrompt(body.current);
 
 	const messages: MessageParam[] = [
 		...body.history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.text })),
@@ -79,13 +71,13 @@ ${fieldList}
 				let currentMessages = messages;
 
 				for (let turn = 0; turn < 5; turn++) {
+					const processor = new TextStreamProcessor();
 					const toolBlocks: Array<{ id: string; name: string; inputJson: string }> = [];
 					let currentTool: { id: string; name: string; inputJson: string } | null = null;
-					let assistantText = '';
 
 					const claudeStream = anthropic.messages.stream({
 						model: 'claude-haiku-4-5-20251001',
-						max_tokens: 1024,
+						max_tokens: 2048,
 						system: systemPrompt,
 						tools: readonlyTools,
 						messages: currentMessages
@@ -98,8 +90,7 @@ ${fieldList}
 							}
 						} else if (event.type === 'content_block_delta') {
 							if (event.delta.type === 'text_delta') {
-								assistantText += event.delta.text;
-								enqueue({ type: 'delta', text: event.delta.text });
+								for (const e of processor.process(event.delta.text)) enqueue(e);
 							} else if (event.delta.type === 'input_json_delta' && currentTool) {
 								currentTool.inputJson += event.delta.partial_json;
 							}
@@ -108,11 +99,11 @@ ${fieldList}
 							currentTool = null;
 						}
 					}
+					for (const e of processor.flush()) enqueue(e);
 
 					const finalMsg = await claudeStream.finalMessage();
 					if (finalMsg.stop_reason !== 'tool_use') break;
 
-					// ツール呼び出しターン中のテキストはストリーム済みなのでそのまま継続
 					const toolResults = await Promise.all(
 						toolBlocks.map(async (b) => {
 							try {

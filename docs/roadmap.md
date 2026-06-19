@@ -422,12 +422,45 @@ v1リリース時点で未着手・保留となっている項目を集約する
 
 **Why:** ユーザーから、CRUD生成だけでは一般的なノーコードツールの体験に対して片手落ちという指摘。まずCRUD生成を作り、ワークフローは設計・実装をTODOとして残す（2026-06-12）。
 
-- [ ] 実行可能オペレーションの定義（メール送信・データ集計・データ更新・APIコール）
-- [ ] JSON スキーマによるバリデーション
-- [ ] ワークフロー定義の構造設計（トリガー種別・アクション種別・条件分岐）
-- [ ] AIによるワークフロー構成案の生成（チャットでの要求 → ノード構成案を提案 → 確認 → 保存）・ノード設定サポート
-- [ ] Cloudflare Queue への登録・実行
-- [ ] ワークフロー実行・管理用の非AI画面（`/database/workflows` 等）
+v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実装したが、汎用パラメータ・データフロー設計の難所に直面し設計をやり直した（`feature/workflow`ブランチを`main`から再作成、2026-06-17）。代わりにインデント付きステップリスト（トリガー→action/condition→…）+ ステップidによる結果参照（`@step:<id>`）方式を採用。
+
+- [x] ワークフロー定義の構造設計: `WorkflowActionStep` / `WorkflowConditionStep`（`then`はYesのみ、elseは別ステップとして定義）、トリガーは毎日の時・分のみ（`src/lib/types/chat.ts`）
+- [x] アクションツールのカタログ（`src/lib/workflow-tools.ts`）: v1は `send_email`（宛先は自動で自分）・`summarize_customers`（数値結果を条件で参照可能）の2種のみ
+- [x] バリデーション（`src/lib/workflow-validation.ts`）: 必須パラメータ・条件のスカラー型チェック・ステップ参照の可視性（`then`内で作られた結果はその外から参照不可）
+- [x] DB保存（`workflows`テーブル + マイグレーション`0022_workflows.sql`、`src/lib/server/db/workflow-service.ts`、MCP tools `save_workflow`/`list_workflows`、`/api/workflows`・`/api/workflows/[id]`）
+- [x] 実行エンジン（`src/lib/server/workflow/run.ts`の`processDueWorkflows`）: 毎分のCron Trigger（`worker.ts`の`scheduled`）でJST時刻が一致する有効なワークフローを実行。未定義の変数参照時は即中断
+- [x] ステップリスト編集UI（`src/lib/components/chat/Workflow.svelte` / `WorkflowStepList.svelte`、再帰的なインデント表示。キャンバス・ドラッグ&ドロップは廃止）
+- [x] ワークフロー管理用の非AI画面（`/database/workflows`・`/new`・`/[id]`、有効化トグル）+ サイドバーリンク
+- [x] AIによるワークフロー構成案の生成（チャット → `workflow`コンポーネントとしてステップ構成を提案、システムプロンプトに`@step:<id>`参照記法を案内）
+- [x] **foreach（配列型の変数のみに適用、無限ループ回避のためwhileは提供しない）**: listResult（`search_customers`に追加）を持つ先行アクションの一覧を`@step:<id>`でforeachのsourceに指定し、body内では`@item:<field>`で現在の項目を参照する（`WorkflowForeachStep`、ループ本体専用スコープ。条件のthenと同じ可視性ルールで外からは参照不可）。暴走防止のため1回の実行で先頭から最大50件まで（`WORKFLOW_FOREACH_MAX_ITEMS`）。`WorkflowStepList.svelte`に「+ 繰り返し」追加、`@item:`はパラメータ・条件のセレクトから選択可能
+- [x] AIレビュー機能: 編集中のワークフロー構成をAIがレビューし、未到達ステップ・条件の論理的な誤りなどを指摘する（`WORKFLOW_REVIEW_SYSTEM_PROMPT`/`buildWorkflowReviewPrompt`、`/api/workflows/review`、`WorkflowEditor.svelte`の「保存」横に配置。承認申請レビューと同じ「ボタン押下でAI分析」パターンを再利用）
+- [x] ワークフロー作成画面専用のAIアシスタント（チャット）: `/database/workflows/new`・`/[id]`の左側に専用チャットパネル（`WorkflowChatPanel.svelte`）を設置し、会話内容に応じて右側のエディタへ直接ステップ構成を反映する（`Workflow.svelte`に`setState`を追加、`/api/workflow-chat`は読み取り専用ツールのみ許可）。メインチャットの汎用アシスタント（会話履歴・他ドメインの指示が混在）とは別に、ワークフロー構築に特化した単機能の対話とすることで精度を優先した
+  - 副産物として、メインチャット側で`<ui type="workflow">`タグが`stream.ts`の`parseUITag`で未対応（他のタグ種別は実装済みだがworkflowのみ分岐が抜けていた）だったバグを発見・修正。チャットからのワークフロー提案機能はこれまで実質動作していなかった
+- [x] ワークフローダイアログ（`WorkflowDialog.svelte`）: チャット内インライン表示（履歴に残り続け、後から内容が変わってもUIが追従しないため保存時に先祖帰りする恐れがあった）をやめ、`FormDialog`と同じ「チャット＋編集を左右に並べたモーダル」に統一。`/database/workflows`の「+ 新規作成」もページ遷移からこのダイアログに変更（保存後は一覧にその場で反映）。メインチャットで「ワークフローを作りたい」等の曖昧な依頼を受けた場合は、質問せず空のワークフローを即座にこのダイアログで表示する
+- [x] `get_workflow` MCPツール（名前またはIDで既存ワークフローを取得。複数一致時は候補を提示）。`save_workflow`にもid引数を追加し、id指定時は新規作成ではなく更新するように修正（重複作成を防止）。メインチャットでの編集は上記ワークフローダイアログを再利用
+- [x] アクションツールカタログの拡充（`WorkflowParamField`に`select`/`number`型を追加し、`search_customers`（件数）・`summarize_deals`・`summarize_activities`を追加。enumパラメータはセレクト、数値パラメータは`run.ts`実行時に数値変換してから`dispatchTool`へ渡す）
+- [x] アクション選択を「カテゴリ→対象」の2段階に再編（`WORKFLOW_ACTION_CATEGORIES`、`WorkflowStepList.svelte`）。対象ごとにツールがフラットに増え続けるのを避ける狙い。カタログ本体（`WORKFLOW_ACTION_TOOLS`）は変更せず、その上に被せる表示用グルーピングなので保存データ（`step.tool`）への影響なし
+  - 通知: 通知センター（`send_notification`）/ メール（`send_email`）
+  - 検索・集計: 顧客 / 案件 / 活動履歴（`search_deals`・`search_activities`をカタログに追加し対称にした。`search_customers`と同様listResult付きでforeachのsourceにも使える）
+  - [x] 担当者を検索・集計の両カテゴリに追加（`get_contacts`、listResult付き）。専用の集計（グループ集計）ツールが無いため`search_customers`と同じ「一覧→件数」パターンを採用し、同じツールを両カテゴリの対象に並べた。`get_contacts`は2カテゴリから参照されるため、保存済みステップを再読込した際のカテゴリ表示は常に「検索」になる（配列の並び順で先に一致した方を採用するため。機能的な差はなく見た目のみの制約）
+  - [x] 自作テーブル: 「検索」カテゴリの対象に、顧客・案件・活動履歴と同じ並びで各カスタムテーブルが個別の選択肢として並ぶ（`includeEntityTargets`フラグ、`get_entities`固定。「自作テーブル」という1つの選択肢にまとめず、テーブルごとに対象を分けるUI）。テーブル一覧は画面アクセス時にサーバーサイドで取得する（`listEntityTypesForWorkflow`、`table-service.ts`）。対象選択時に`step.tool='get_entities'`と`step.params.entity_type_id`を直接設定し、`entity_type_id`はカタログのparamsには含めない（`send_email`の`to`注入と同じパターンで`run.ts`が直接付与する）
+    - 保存済みの対象テーブルが後から削除された場合、編集画面では「（削除されたテーブル）」等の表示は持たせず単純に未選択（「対象を選択」）の状態に戻る設計どおり実装。`validateWorkflow`に`entityTypes`を渡して存在チェックを追加し、未選択（実質削除済み）はエラーとして保存をブロックする（全呼び出し元 — `WorkflowEditor`/`WorkflowDialog`/`save_workflow`/`/api/workflows`系API — でentityTypesを渡すように統一）
+    - [x] foreachのsourceとしても利用可能（`get_entities`に`listResult`を追加。`extractList`が各レコードの`data`をトップレベルに展開するため、テーブルごとに異なるフィールドにも対応できる）。itemFieldsは選択中のentity_type_idから動的に解決する（`entityListItemFields`、`workflow-tools.ts`）。`collectListVisibility`/`validateWorkflow`/`WorkflowStepList.svelte`の3箇所で同じ解決ロジックを使用
+  - Slack（通知）は対象の選択肢が連携設定に依存し動的に組み立てる必要があるため、別途仕組みを用意してから追加するTODOとして保留
+- [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する
+- [x] アクション「通知センターに通知」（`send_notification` MCPツール、`communication.ts`）。宛先は自動でワークフロー登録者。cron実行時はセッションが無いため、`processDueWorkflows`で`workflow.accountId`をこの実行スコープの`env.accountId`として引き渡すように修正
+
+**v2完了（2026-06-18）、v3完了（2026-06-19）**。さらなる精度向上はmainマージ後のバージョンアップとして別途取り組む。
+- [x] **変数ヘルプ**: 各ステップ行に「ここで使える変数を見る」ボタン（`InfoCircle`、`WorkflowStepList.svelte`）を追加し、クリックでそのステップの位置から参照可能な先行ステップの結果・`@item:<foreachのid>:<field>`の一覧を、実際の`@step:<id>`/`@item:...`トークン付きで展開表示する
+- [x] **ネストしたforeach対応**: 内側のforeachに入ると外側の`@item`が見えなくなる問題を修正。`@item:<field>`（旧形式・最も内側のforeachを指す）に加えて`@item:<foreachのid>:<field>`形式を導入し、祖先のforeach全てをスタック（`ItemScope[]`/`ItemStack`）として保持するように変更（`workflow-tools.ts`の`parseItemRef`/`makeItemRef`、`workflow-validation.ts`、`run.ts`の`resolveOperand`、`WorkflowStepList.svelte`）。ネストしている場合、エディタのselect・変数ヘルプには外側・内側どちらの項目かをラベルで区別して両方表示する。AI向けの`ITEM_REF_SEMANTICS_NOTE`（`prompt.ts`）にもネスト時のスコープ規則を追記
+- [x] Slack（通知）の対象追加。「通知」カテゴリに`includeSlackTargets`フラグを追加し、自作テーブル（`includeEntityTargets`）と同じ「カテゴリに動的に対象を追加する」パターンを再利用。設定済みのSlack連携（`hooks.slack.com`のwebhook）が個別の対象選択肢として並ぶ（`listSlackIntegrationsForWorkflow`、webhook URLはクライアントに渡さずid/nameのみ返す）。対象選択時に`step.tool='send_slack_notification'`・`step.params.integration_id`を直接設定し、`validateWorkflow`で連携削除時の参照チェックも追加（`get_entities`と同様のパターン）。`send_slack_notification`はワークフロー専用ツールとしてMCPに追加し、AIチャットには公開しない（AIがSlackに送る場合は既存の`list_integrations`+`call_external_api`を使うため、別ツールを公開すると重複になる）
+- [x] カスタムテーブル削除時にワークフローでの参照有無をチェックし、使用中なら削除前に警告する。`findWorkflowsUsingEntityType`（`workflow-service.ts`、全ワークフローのステップを再帰的に走査）を追加し、`DELETE /api/database/tables/[name]`は使用中の場合409（使用ワークフロー一覧付き）を返す。`/database/[type]/schema`の削除ボタンは409時にワークフロー名を含む確認ダイアログを表示し、同意後`?force=1`で再送信して削除する
+- [x] `get_contacts`が検索・集計2カテゴリから参照されるため、保存済みステップ再読込時のカテゴリ表示が常に「検索」になる見た目の制約 → `WorkflowActionStep`に`category?: string`を追加し、対象選択時に選択中のカテゴリキーを保存。再読込時は`step.category`を優先し、未設定（旧データ・AI生成）の場合のみtoolからの逆引きにフォールバックする
+- [x] 「今すぐ実行」ボタン（`/database/workflows/[id]`、AIレビューの左）。トリガー時刻・有効化フラグを無視し、DBに保存済みの内容をそのまま即時実行する手動テスト用機能（`POST /api/workflows/[id]/run`、`runWorkflowNow`）
+- [x] 案件・案件集計・活動履歴集計のワークフローパラメータに顧客ID（`customer_id`）を追加（担当者・活動履歴検索は既に対応済み）。`search_deals`はMCPツール本体にも`customer_id`フィルタを追加
+- [x] 保存ボタン押下時に一覧画面へ遷移せず、その場でトースト表示のみに変更（新規作成時はサーバー発行idを`currentId`として保持し、以降の保存は更新扱いにして重複作成を防止）
+- [x] セキュリティレビュー対応: `get_workflow`のidルックアップにオーナーチェック追加（IDOR修正）、ネストしたforeachの組み合わせ爆発を防ぐ`WORKFLOW_MAX_ACTIONS_PER_RUN`（1回の実行あたりアクション実行数の総量上限）、「今すぐ実行」とCron tickの同時実行を防ぐKVベースのベストエフォートロック、Slack送信時のmrkdwn特殊文字エスケープ（`@item`等のユーザー入力データ経由の偽装リンク埋め込み対策）
+- [ ] TODO: `/database/workflows/new`が`WorkflowDialog`化により現在どこからもリンクされていない死んだルートとして残っている。削除するか`[id]`ページと同様に`+page.server.ts`（`entityTypes`/`slackIntegrations`の取得）を追加するか対応する
 
 ### 資料生成
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）

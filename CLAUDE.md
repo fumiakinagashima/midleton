@@ -169,6 +169,10 @@ midleton/
 - MCP ツールが Cloudflare の環境変数・シークレット（`platform.env`）を必要とする場合は、`dispatchTool` の任意引数 `env` 経由で渡す（例: `send_email`）。
 - AIへのシステムプロンプトは `src/lib/server/ai/` で一元管理する。
 - テキスト入力で Enter キー押下時に送信・確定などのアクションを行う場合、日本語入力の変換確定Enterで誤発火しないよう `keydown` ハンドラで `event.isComposing` が `true` の場合は処理しない（チャット入力欄の `handleKey`、サイドバー履歴のリネーム入力 `handleRenameKeydown` を参照）。
+- **日時はJSTで扱う（UTCズレに注意）**: Cloudflare Workers の実行環境は常にUTCで、`new Date(value)` にタイムゾーン情報のない文字列を渡すと意図せずズレる。頻発するミスなので必ず確認する
+  - `<input type="datetime-local">` の値（"YYYY-MM-DDTHH:mm"）は `new Date(value)` で**サーバーのローカルタイムゾーン（UTC）**として解釈されJSTから9時間ズレる。`src/lib/datetime.ts` の `parseJstDatetime`（明示的に `+09:00` を付与）を使う
+  - `<input type="date">` の値（"YYYY-MM-DD"、日付のみ）は `new Date(value)` で**UTC深夜**と解釈される（ISO 8601の仕様）。JSTの当日0:00として使うつもりなら `T00:00:00+09:00` を、当日の終わりまで含めるなら `T23:59:59+09:00` を明示的に付与してから `new Date()` に渡す（例: `src/lib/server/workflow/run.ts` の `date` 型パラメータ解決処理）
+  - 表示用のフォーマット・JST時刻同士の比較には `src/lib/datetime.ts` の `formatJstDateTime` / `toJstDatetimeLocal` / `getJstHourMinute` を使う
 
 ## ロードマップ
 
