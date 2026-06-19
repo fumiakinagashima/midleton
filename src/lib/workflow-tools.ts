@@ -58,6 +58,12 @@ export const WORKFLOW_ACTION_TOOLS: WorkflowActionToolDef[] = [
 		note: '通知先は自動でワークフローの登録者になる'
 	},
 	{
+		value: 'send_slack_notification',
+		label: 'Slackに通知',
+		params: [{ key: 'body', label: '本文', type: 'textarea', required: true }],
+		note: '宛先は「対象」で選択したSlack連携固定（integration_idは対象選択で直接設定されるため、AIがparamsで指定することはできない）'
+	},
+	{
 		value: 'summarize_customers',
 		label: '顧客数を集計',
 		params: [],
@@ -271,6 +277,8 @@ export type WorkflowActionCategory = {
 	targets: WorkflowActionCategoryTarget[];
 	/** trueの場合、各カスタムテーブル（entity_type）が顧客・案件などと同じ並びで対象の選択肢に追加される（get_entities固定） */
 	includeEntityTargets?: boolean;
+	/** trueの場合、設定済みのSlack連携（Incoming Webhook）が個別の対象選択肢として追加される（send_slack_notification固定） */
+	includeSlackTargets?: boolean;
 };
 
 /**
@@ -285,7 +293,8 @@ export const WORKFLOW_ACTION_CATEGORIES: WorkflowActionCategory[] = [
 		targets: [
 			{ value: 'notification', label: '通知センター', tool: 'send_notification' },
 			{ value: 'email', label: 'メール', tool: 'send_email' }
-		]
+		],
+		includeSlackTargets: true
 	},
 	{
 		key: 'search',
@@ -312,6 +321,7 @@ export const WORKFLOW_ACTION_CATEGORIES: WorkflowActionCategory[] = [
 
 export function findWorkflowActionCategory(tool: string): WorkflowActionCategory | undefined {
 	if (tool === 'get_entities') return WORKFLOW_ACTION_CATEGORIES.find((c) => c.includeEntityTargets);
+	if (tool === 'send_slack_notification') return WORKFLOW_ACTION_CATEGORIES.find((c) => c.includeSlackTargets);
 	return WORKFLOW_ACTION_CATEGORIES.find((c) => c.targets.some((t) => t.tool === tool));
 }
 

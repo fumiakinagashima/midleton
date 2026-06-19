@@ -14,6 +14,7 @@
 	} from '$lib/workflow-tools';
 	import type { VisibleStep, VisibleListStep } from '$lib/workflow-validation';
 	import type { EntityTypeForWorkflow } from '$lib/server/db/table-service';
+	import type { SlackIntegrationOption } from '$lib/server/slack';
 	import GripVertical from '$lib/components/icon/GripVertical.svelte';
 	import InfoCircle from '$lib/components/icon/InfoCircle.svelte';
 	import WorkflowStepList from './WorkflowStepList.svelte';
@@ -29,9 +30,19 @@
 		editable: boolean;
 		depth: number;
 		entityTypes?: EntityTypeForWorkflow[];
+		slackIntegrations?: SlackIntegrationOption[];
 	};
 
-	let { steps, visibleBefore, listVisibleBefore, itemScopes, editable, depth, entityTypes = [] }: Props = $props();
+	let {
+		steps,
+		visibleBefore,
+		listVisibleBefore,
+		itemScopes,
+		editable,
+		depth,
+		entityTypes = [],
+		slackIntegrations = []
+	}: Props = $props();
 
 	function makeId(): string {
 		return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -150,16 +161,26 @@
 		return pendingCategory[step.id] ?? '';
 	}
 
-	/** カテゴリの対象一覧。includeEntityTargetsの場合、各カスタムテーブルを顧客・案件等と同じ並びに追加する。 */
-	function effectiveTargets(category: { targets: { value: string; label: string; tool: string }[]; includeEntityTargets?: boolean }) {
+	/** カテゴリの対象一覧。includeEntityTargets/includeSlackTargetsの場合、テーブル・Slack連携を顧客・案件等と同じ並びに追加する。 */
+	function effectiveTargets(category: {
+		targets: { value: string; label: string; tool: string }[];
+		includeEntityTargets?: boolean;
+		includeSlackTargets?: boolean;
+	}) {
 		const base = category.targets.map((t) => ({ value: t.tool, label: t.label }));
-		if (!category.includeEntityTargets) return base;
-		return [...base, ...entityTypes.map((et) => ({ value: `entity:${et.id}`, label: et.label }))];
+		const entityTargets = category.includeEntityTargets
+			? entityTypes.map((et) => ({ value: `entity:${et.id}`, label: et.label }))
+			: [];
+		const slackTargets = category.includeSlackTargets
+			? slackIntegrations.map((s) => ({ value: `slack:${s.id}`, label: s.name }))
+			: [];
+		return [...base, ...entityTargets, ...slackTargets];
 	}
 
-	/** 対象selectの現在値。get_entitiesの場合はparams.entity_type_idから`entity:<id>`形式に変換する。 */
+	/** 対象selectの現在値。get_entities/send_slack_notificationの場合はparamsから`entity:<id>`/`slack:<id>`形式に変換する。 */
 	function currentTargetValue(step: { tool: string; params?: Record<string, string> }): string {
 		if (step.tool === 'get_entities') return `entity:${step.params?.entity_type_id ?? ''}`;
+		if (step.tool === 'send_slack_notification') return `slack:${step.params?.integration_id ?? ''}`;
 		return step.tool;
 	}
 
@@ -171,6 +192,9 @@
 		if (value.startsWith('entity:')) {
 			step.tool = 'get_entities';
 			step.params = { entity_type_id: value.slice('entity:'.length) };
+		} else if (value.startsWith('slack:')) {
+			step.tool = 'send_slack_notification';
+			step.params = { integration_id: value.slice('slack:'.length) };
 		} else {
 			step.tool = value;
 			step.params = {};
@@ -485,6 +509,7 @@
 						{itemScopes}
 						{editable}
 						{entityTypes}
+						{slackIntegrations}
 						depth={depth + 1}
 					/>
 				</div>
@@ -501,6 +526,7 @@
 							: itemScopes}
 						{editable}
 						{entityTypes}
+						{slackIntegrations}
 						depth={depth + 1}
 					/>
 				</div>

@@ -51,6 +51,7 @@ export type ToolName =
 	| 'list_reminders'
 	| 'send_email'
 	| 'send_notification'
+	| 'send_slack_notification'
 	| 'create_reminder'
 	| 'create_reminders_bulk'
 	| 'list_entity_types'
@@ -130,6 +131,7 @@ export async function dispatchTool(
 		case 'list_reminders':                 return communication.handleListReminders(db, input, env);
 		case 'send_email':                     return communication.handleSendEmail(db, input, env);
 		case 'send_notification':              return communication.handleSendNotification(db, input, env);
+		case 'send_slack_notification':        return communication.handleSendSlackNotification(db, input, env);
 		case 'create_reminder':                return communication.handleCreateReminder(db, input, env);
 		case 'create_reminders_bulk':          return communication.handleCreateRemindersBulk(db, input, env);
 		case 'list_entity_types':              return entities.handleListEntityTypes(db);

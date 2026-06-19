@@ -5,6 +5,7 @@ import { sendEmail, getEmailSetup } from '../email';
 import { recordActivity } from '../db/table-service';
 import { createReminder, listReminders, resolveChannelLabels, deleteSentReminders } from '../db/reminder-service';
 import { deleteReadNotifications, createNotification } from '../db/notification-service';
+import { getSlackIntegration, sendSlackMessage } from '../slack';
 import { parseJstDatetime } from '$lib/datetime';
 import type { ToolEnv } from './shared';
 
@@ -182,6 +183,20 @@ export async function handleSendNotification(db: Db, input: unknown, env?: ToolE
 		accountId: env.accountId
 	});
 	return { id: notification.id, title: notification.title };
+}
+
+const sendSlackNotificationSchema = z.object({
+	integration_id: z.string().min(1),
+	body: z.string().min(1)
+});
+
+/** ワークフロー専用（AIチャットには公開しない）。AIがSlackに送る場合はlist_integrations + call_external_apiを使う。 */
+export async function handleSendSlackNotification(db: Db, input: unknown, _env?: ToolEnv) {
+	const data = sendSlackNotificationSchema.parse(input);
+	const integration = await getSlackIntegration(db, data.integration_id);
+	if (!integration) throw new Error(`Slack連携が見つかりません（id: ${data.integration_id}）`);
+	await sendSlackMessage(integration, data.body);
+	return { integrationName: integration.name };
 }
 
 const createReminderSchema = z.object({

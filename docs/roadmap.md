@@ -443,13 +443,12 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する
 - [x] アクション「通知センターに通知」（`send_notification` MCPツール、`communication.ts`）。宛先は自動でワークフロー登録者。cron実行時はセッションが無いため、`processDueWorkflows`で`workflow.accountId`をこの実行スコープの`env.accountId`として引き渡すように修正
 
-**v2完了（2026-06-18）**。v3は「より精度の高い操作」と「ヘルプ周りの強化」をテーマに進める方針。v3 TODO:
+**v2完了（2026-06-18）、v3完了（2026-06-19）**。さらなる精度向上はmainマージ後のバージョンアップとして別途取り組む。
 - [x] **変数ヘルプ**: 各ステップ行に「ここで使える変数を見る」ボタン（`InfoCircle`、`WorkflowStepList.svelte`）を追加し、クリックでそのステップの位置から参照可能な先行ステップの結果・`@item:<foreachのid>:<field>`の一覧を、実際の`@step:<id>`/`@item:...`トークン付きで展開表示する
 - [x] **ネストしたforeach対応**: 内側のforeachに入ると外側の`@item`が見えなくなる問題を修正。`@item:<field>`（旧形式・最も内側のforeachを指す）に加えて`@item:<foreachのid>:<field>`形式を導入し、祖先のforeach全てをスタック（`ItemScope[]`/`ItemStack`）として保持するように変更（`workflow-tools.ts`の`parseItemRef`/`makeItemRef`、`workflow-validation.ts`、`run.ts`の`resolveOperand`、`WorkflowStepList.svelte`）。ネストしている場合、エディタのselect・変数ヘルプには外側・内側どちらの項目かをラベルで区別して両方表示する。AI向けの`ITEM_REF_SEMANTICS_NOTE`（`prompt.ts`）にもネスト時のスコープ規則を追記
-- [ ] Slack（通知）の対象追加。連携設定（webhook）から動的に選択肢を組み立てる仕組みが必要
+- [x] Slack（通知）の対象追加。「通知」カテゴリに`includeSlackTargets`フラグを追加し、自作テーブル（`includeEntityTargets`）と同じ「カテゴリに動的に対象を追加する」パターンを再利用。設定済みのSlack連携（`hooks.slack.com`のwebhook）が個別の対象選択肢として並ぶ（`listSlackIntegrationsForWorkflow`、webhook URLはクライアントに渡さずid/nameのみ返す）。対象選択時に`step.tool='send_slack_notification'`・`step.params.integration_id`を直接設定し、`validateWorkflow`で連携削除時の参照チェックも追加（`get_entities`と同様のパターン）。`send_slack_notification`はワークフロー専用ツールとしてMCPに追加し、AIチャットには公開しない（AIがSlackに送る場合は既存の`list_integrations`+`call_external_api`を使うため、別ツールを公開すると重複になる）
 - [x] カスタムテーブル削除時にワークフローでの参照有無をチェックし、使用中なら削除前に警告する。`findWorkflowsUsingEntityType`（`workflow-service.ts`、全ワークフローのステップを再帰的に走査）を追加し、`DELETE /api/database/tables/[name]`は使用中の場合409（使用ワークフロー一覧付き）を返す。`/database/[type]/schema`の削除ボタンは409時にワークフロー名を含む確認ダイアログを表示し、同意後`?force=1`で再送信して削除する
 - [x] `get_contacts`が検索・集計2カテゴリから参照されるため、保存済みステップ再読込時のカテゴリ表示が常に「検索」になる見た目の制約 → `WorkflowActionStep`に`category?: string`を追加し、対象選択時に選択中のカテゴリキーを保存。再読込時は`step.category`を優先し、未設定（旧データ・AI生成）の場合のみtoolからの逆引きにフォールバックする
-- [ ] より精度の高い操作（ユーザーの今後の指示で具体化）
 
 ### 資料生成
 - [ ] 提案資料の作成（アプリ情報等を使ったWord/Excel/PowerPoint資料を生成するMCPツール追加）

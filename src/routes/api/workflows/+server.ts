@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { createWorkflow } from '$lib/server/db/workflow-service';
 import { listEntityTypesForWorkflow } from '$lib/server/db/table-service';
+import { listSlackIntegrationsForWorkflow } from '$lib/server/slack';
 import { validateWorkflow } from '$lib/workflow-validation';
 import type { WorkflowStep } from '$lib/types/chat';
 
@@ -22,8 +23,11 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 		const triggerMinute = body.triggerMinute ?? 0;
 		const steps = body.steps ?? [];
 
-		const entityTypes = await listEntityTypesForWorkflow(db);
-		const validation = validateWorkflow(triggerHour, triggerMinute, steps, entityTypes);
+		const [entityTypes, slackIntegrations] = await Promise.all([
+			listEntityTypesForWorkflow(db),
+			listSlackIntegrationsForWorkflow(db)
+		]);
+		const validation = validateWorkflow(triggerHour, triggerMinute, steps, entityTypes, slackIntegrations);
 		if (!validation.ok) {
 			return json({ error: validation.errors.join(' / ') }, { status: 422 });
 		}
