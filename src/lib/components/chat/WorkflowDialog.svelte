@@ -7,15 +7,17 @@
 	import type { WorkflowContent } from '$lib/types/chat';
 	import type { WorkflowRow } from '$lib/server/db/workflow-service';
 	import type { EntityTypeForWorkflow } from '$lib/server/db/table-service';
+	import type { SlackIntegrationOption } from '$lib/server/slack';
 
 	type Props = {
 		workflow: WorkflowContent;
 		onclose: () => void;
 		onsaved?: (row: WorkflowRow) => void;
 		entityTypes?: EntityTypeForWorkflow[];
+		slackIntegrations?: SlackIntegrationOption[];
 	};
 
-	let { workflow, onclose, onsaved, entityTypes = [] }: Props = $props();
+	let { workflow, onclose, onsaved, entityTypes = [], slackIntegrations = [] }: Props = $props();
 
 	type WorkflowInstance = { getState: () => WorkflowState; setState: (def: WorkflowState) => void };
 	let wfRef = $state<WorkflowInstance | null>(null);
@@ -29,7 +31,7 @@
 			toast.error('ワークフロー名を入力してください');
 			return;
 		}
-		const validation = validateWorkflow(state.triggerHour, state.triggerMinute, state.steps, entityTypes);
+		const validation = validateWorkflow(state.triggerHour, state.triggerMinute, state.steps, entityTypes, slackIntegrations);
 		if (!validation.ok) {
 			for (const msg of validation.errors) toast.error(msg);
 			return;
@@ -98,6 +100,7 @@
 				steps={workflow.steps}
 				editable={true}
 				{entityTypes}
+				{slackIntegrations}
 			/>
 		</div>
 	</div>

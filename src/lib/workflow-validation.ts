@@ -8,6 +8,7 @@ import {
 } from './workflow-tools';
 
 type EntityTypeForValidation = { id: string; fields?: WorkflowListResultField[] };
+type SlackIntegrationForValidation = { id: string };
 
 export type ValidationResult = { ok: true } | { ok: false; errors: string[] };
 
@@ -131,10 +132,12 @@ export function validateWorkflow(
 	triggerHour: number,
 	triggerMinute: number,
 	steps: WorkflowStep[],
-	entityTypes: EntityTypeForValidation[] = []
+	entityTypes: EntityTypeForValidation[] = [],
+	slackIntegrations: SlackIntegrationForValidation[] = []
 ): ValidationResult {
 	const errors: string[] = [];
 	const entityTypeIds = new Set(entityTypes.map((e) => e.id));
+	const slackIntegrationIds = new Set(slackIntegrations.map((s) => s.id));
 
 	if (!Number.isInteger(triggerHour) || triggerHour < 0 || triggerHour > 23) {
 		errors.push('トリガーの時刻（時）が不正です');
@@ -161,6 +164,12 @@ export function validateWorkflow(
 				const entityTypeId = step.params?.entity_type_id;
 				if (!entityTypeId || !entityTypeIds.has(entityTypeId)) {
 					errors.push(`「${step.label}」の対象テーブルが見つかりません（削除された可能性があります）`);
+				}
+			}
+			if (tool.value === 'send_slack_notification') {
+				const integrationId = step.params?.integration_id;
+				if (!integrationId || !slackIntegrationIds.has(integrationId)) {
+					errors.push(`「${step.label}」のSlack連携先が見つかりません（削除された可能性があります）`);
 				}
 			}
 			for (const field of tool.params) {

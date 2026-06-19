@@ -16,4 +16,5 @@
 	initialEnabled={data.workflow.enabled}
 	runs={data.runs}
 	entityTypes={data.entityTypes}
+	slackIntegrations={data.slackIntegrations}
 />

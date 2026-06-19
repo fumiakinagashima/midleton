@@ -17,6 +17,13 @@ export async function getSlackIntegration(db: Db, id: string): Promise<SlackInte
 	return rows.find((r) => r.id === id) ?? null;
 }
 
+export type SlackIntegrationOption = { id: string; name: string };
+
+/** ワークフローの「Slack」対象選択用に、webhook URL（baseUrl）を含まない一覧を取得する。 */
+export async function listSlackIntegrationsForWorkflow(db: Db): Promise<SlackIntegrationOption[]> {
+	return (await listSlackIntegrations(db)).map((s) => ({ id: s.id, name: s.name }));
+}
+
 export async function sendSlackMessage(integration: SlackIntegration, text: string): Promise<void> {
 	const res = await fetch(integration.baseUrl, {
 		method: 'POST',

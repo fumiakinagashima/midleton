@@ -88,6 +88,7 @@
 		<WorkflowDialog
 			workflow={blankWorkflow}
 			entityTypes={data.entityTypes}
+			slackIntegrations={data.slackIntegrations}
 			onclose={() => (showNewDialog = false)}
 			onsaved={(row) => {
 				rows = [row, ...rows];

@@ -101,6 +101,11 @@ async function runAction(
 		const entityTypeId = step.params?.entity_type_id;
 		if (!entityTypeId) throw new WorkflowAbortError(`「${step.label}」の対象テーブルが選択されていません`);
 		input = { ...resolvedParams, entity_type_id: entityTypeId };
+	} else if (step.tool === 'send_slack_notification') {
+		// integration_id はカタログのparamsに含めず、エディタの「対象」選択で直接 step.params に設定される
+		const integrationId = step.params?.integration_id;
+		if (!integrationId) throw new WorkflowAbortError(`「${step.label}」のSlack連携先が選択されていません`);
+		input = { ...resolvedParams, integration_id: integrationId };
 	}
 
 	const raw = await dispatchTool(db, step.tool as ToolName, input, env);
