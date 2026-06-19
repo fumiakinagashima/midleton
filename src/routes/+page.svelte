@@ -88,6 +88,9 @@
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let enterToSend = $state(ls('enterToSend', 'true') !== 'false');
 	let hasStarted = $state(untrack(() => !!data.seedNotification || (!!data.seedChat && data.seedChat.messages.length > 0)));
+	// 未開始（空のチャット）の入力欄はCSSで中央配置するため初回からそのまま表示（フェードなし）。
+	// 既存チャットを開いた場合（seeded）だけ、JSが下部に配置するまで一瞬隠す。
+	let inputReady = $state(untrack(() => !hasStarted));
 	let currentChatId: string | null = untrack(() => data.seedChat?.id ?? null);
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
@@ -224,19 +227,25 @@
 
 	// Input position management
 	function repositionInput(animate: boolean) {
-		if (!chatEl || !inputWrapEl) return;
+		if (!inputWrapEl) return;
+		if (!hasStarted) {
+			// 未開始時はCSS（top:50% + translateY(-50%)）で中央寄せ。インラインを消してCSSに委ねる。
+			inputWrapEl.style.transition = '';
+			inputWrapEl.style.top = '';
+			inputWrapEl.style.bottom = '';
+			inputWrapEl.style.transform = '';
+			return;
+		}
+		if (!chatEl) return;
 		const containerH = chatEl.offsetHeight;
 		const inputH = inputWrapEl.offsetHeight;
+		// 中央→下部のスライドは top と transform を同時にアニメーションさせて滑らかにする
 		inputWrapEl.style.transition = animate
-			? 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease'
-			: 'top 0s, opacity 0.3s ease';
-		if (!hasStarted) {
-			inputWrapEl.style.top = `${(containerH - inputH) / 2}px`;
-		} else {
-			inputWrapEl.style.top = `${containerH - inputH - 24}px`;
-		}
-		// show after first positioning to prevent top-0 flash on mount
-		inputWrapEl.style.opacity = '1';
+			? 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+			: 'none';
+		inputWrapEl.style.transform = 'translateX(-50%)';
+		inputWrapEl.style.bottom = 'auto';
+		inputWrapEl.style.top = `${containerH - inputH - 24}px`;
 	}
 
 	let isFirstEffect = true;
@@ -244,7 +253,10 @@
 		void hasStarted;
 		const animate = !isFirstEffect;
 		isFirstEffect = false;
-		requestAnimationFrame(() => repositionInput(animate));
+		requestAnimationFrame(() => {
+			repositionInput(animate);
+			inputReady = true;
+		});
 	});
 
 	$effect(() => {
@@ -756,7 +768,7 @@
 	</div>
 
 	<!-- Floating input card -->
-	<div class="input-wrap" bind:this={inputWrapEl}>
+	<div class="input-wrap" bind:this={inputWrapEl} style:opacity={inputReady ? 1 : 0}>
 		<div class="input-card">
 			<textarea
 				bind:this={textareaEl}
@@ -1116,11 +1128,13 @@
 	.input-wrap {
 		position: absolute;
 		left: 50%;
-		transform: translateX(-50%);
+		/* 未開始時の初期配置はCSSで中央寄せ（JS不要・SSR時点で正位置）。
+		   開始後はJS(repositionInput)が top(px)/translateX(-50%) を設定して下部へスライドする。 */
+		top: 50%;
+		transform: translate(-50%, -50%);
 		width: min(720px, calc(100% - 48px));
 		z-index: 10;
 		pointer-events: none; /* pass scroll events through to messages behind it */
-		opacity: 0; /* hidden until JS positions it; set to 1 in repositionInput */
 	}
 
 	.input-card {
