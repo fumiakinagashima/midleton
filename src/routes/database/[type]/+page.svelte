@@ -1,13 +1,36 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { RecordRow } from '$lib/server/db/table-service';
+	import RecordDialog from '$lib/components/chat/RecordDialog.svelte';
+	import { type CoreType } from '$lib/components/database/field-adapter';
 
 	let { data }: { data: PageData } = $props();
 
 	const type = $derived($page.params.type);
 	const info = $derived(data.info);
+
+	const CORE_TYPES = ['customers', 'contacts', 'deals', 'activities'];
+	const isCoreType = $derived(!!type && CORE_TYPES.includes(type));
+
+	// コアテーブルはダイアログで詳細/編集/登録。カスタムテーブルは従来どおりフルページ遷移。
+	let dialog = $state<{ recordId: string | null; view: 'detail' | 'form' } | null>(null);
+
+	function openDetail(id: string) {
+		dialog = { recordId: id, view: 'detail' };
+	}
+	function openCreate() {
+		dialog = { recordId: null, view: 'form' };
+	}
+	function openEdit(id: string) {
+		dialog = { recordId: id, view: 'form' };
+	}
+	async function refreshAfterDialog() {
+		dialog = null;
+		await invalidateAll();
+	}
 
 	let rows = $state<RecordRow[]>(untrack(() => data.rows));
 	$effect(() => {
@@ -33,11 +56,6 @@
 		return String(val);
 	}
 
-	async function deleteRow(id: string) {
-		if (!confirm('このレコードを削除しますか？')) return;
-		await fetch(`/api/database/${type}/records/${id}`, { method: 'DELETE' });
-		rows = rows.filter(r => r.id !== id);
-	}
 </script>
 
 <div class="page">
@@ -52,14 +70,22 @@
 				<a href="/database/{type}/gantt" class="btn-schema">ガントチャート</a>
 			{/if}
 			<a href="/database/{type}/schema" class="btn-schema">スキーマ編集</a>
-			<a href="/database/{type}/new" class="btn-primary">+ 新規作成</a>
+			{#if isCoreType}
+				<button class="btn-primary" onclick={openCreate}>+ 新規作成</button>
+			{:else}
+				<a href="/database/{type}/new" class="btn-primary">+ 新規作成</a>
+			{/if}
 		</div>
 	</header>
 
 	{#if rows.length === 0}
 		<div class="empty">
 			<p>レコードがありません。</p>
-			<a href="/database/{type}/new" class="btn-primary">最初のレコードを作成</a>
+			{#if isCoreType}
+				<button class="btn-primary" onclick={openCreate}>最初のレコードを作成</button>
+			{:else}
+				<a href="/database/{type}/new" class="btn-primary">最初のレコードを作成</a>
+			{/if}
 		</div>
 	{:else}
 		<div class="table-wrap">
@@ -74,14 +100,19 @@
 				</thead>
 				<tbody>
 					{#each rows as row}
-						<tr onclick={() => location.href = `/database/${type}/${row.id}`} class="clickable-row">
+						<tr
+							onclick={() => isCoreType ? openDetail(String(row.id)) : (location.href = `/database/${type}/${row.id}`)}
+							class="clickable-row"
+						>
 							{#each listCols as col}
 								<td>{displayValue(row, col.key)}</td>
 							{/each}
 							<td class="actions" onclick={(e) => e.stopPropagation()}>
-								<a href="/database/{type}/{row.id}" class="action-link">詳細</a>
-								<a href="/database/{type}/{row.id}/edit" class="action-link">編集</a>
-								<button class="action-del" onclick={() => deleteRow(String(row.id))}>削除</button>
+								{#if isCoreType}
+									<button class="action-link" onclick={() => openEdit(String(row.id))}>編集</button>
+								{:else}
+									<a href="/database/{type}/{row.id}/edit" class="action-link">編集</a>
+								{/if}
 							</td>
 						</tr>
 					{/each}
@@ -90,6 +121,17 @@
 		</div>
 	{/if}
 </div>
+
+{#if dialog && isCoreType}
+	<RecordDialog
+		type={type as CoreType}
+		recordId={dialog.recordId}
+		initialView={dialog.view}
+		onclose={() => (dialog = null)}
+		onSaved={refreshAfterDialog}
+		onDeleted={refreshAfterDialog}
+	/>
+{/if}
 
 <style lang="scss">
 	.page {
@@ -199,20 +241,14 @@
 		text-decoration: none;
 		font-size: 0.8125rem;
 		margin-right: 10px;
+		background: none;
+		border: none;
+		padding: 0;
+		font-family: inherit;
+		cursor: pointer;
 	}
 
 	.action-link:hover { text-decoration: underline; }
-
-	.action-del {
-		background: none;
-		border: none;
-		color: var(--color-danger, #dc2626);
-		font-size: 0.8125rem;
-		cursor: pointer;
-		padding: 0;
-	}
-
-	.action-del:hover { text-decoration: underline; }
 
 	.empty {
 		display: flex;

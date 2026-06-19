@@ -114,14 +114,22 @@ midleton/
 
 メインチャット（`/`）は「直前の1往復のみ表示＋過去はドロワー」構成。`+page.svelte` で `messages` をユーザー発言起点のターンに `$derived` でグルーピングし、最新ターンのみをメイン表示、それ以前は `TurnHistoryDrawer.svelte`（右ドロワー）に簡易ログ（テキストのみはコピー可、UIを含むものは `[○○を表示]` 表記）として表示する。**右ドロワーは会話履歴の閲覧専用**（詳細・編集系のUIはここには出さない）。
 
-顧客一覧（`TableContent.entity === 'customer'` を付与したテーブル）の行クリックは、クイックアクションと同じ思想でAIを呼ばず直接 `GET /api/customers/[id]/detail` を叩き、**中央ダイアログ `CustomerDialog.svelte`** を開く。顧客登録などの `FormDialog.svelte` と同じ中央モーダル＋左AIチャット欄の見た目に揃えてある。
+## レコード詳細・編集・登録の統一ダイアログ（RecordDialog）
 
-- `entity: 'customer'` は `quick-actions/registry.ts` の `get_customers` ハンドラで付与済み。AIが自分でテーブルを生成する場合はシステムプロンプト（`prompt.ts`）の指示に従うかどうかに依存するため必須ではない（フォロー有無は将来のプロンプト調整課題）
-- ダイアログの外枠（オーバーレイ・中央配置・ヘッダー・左AIチャット欄）は `FormDialog.svelte` と `CustomerDialog.svelte` で共通。左のAIチャット相談欄は `DialogChatSide.svelte`（`/api/form-chat` を叩くSSEチャット）に抽出して両者で再利用する
-- `CustomerDialog.svelte` は内部に `{kind:'detail'} | {kind:'form', form}` のビュースタックを持ち、ブレッドクラム（戻る矢印）で `CustomerDetail.svelte`（既存コンポーネントをそのまま再利用）と編集/新規登録フォーム（`Form.svelte`）を往復する。フォーム送信は既存の `POST /api/chat`（`tool`+`data`、AIを呼ばずdispatchToolを直接実行）を使い、成功後に詳細を再取得してビューを戻す
-- 顧客の削除は既存の汎用 `DELETE /api/database/customers/records/[id]` を再利用（新規エンドポイントは作らない）
-- AIが返す `customer_detail` UIタイプも、`form`/`workflow` と同様に `finalizeStreamingMessage` でインラインcontentsから抜き出し、自動的に同じ `CustomerDialog` を開く（インライン表示は廃止）
-- 現状は顧客一覧のみの試作。他エンティティ（担当者・案件・活動履歴等）の一覧へ同パターンを展開する場合は `TableContent.entity` の取り得る値を拡張し、対応する `/api/<entity>/[id]/detail` と専用ダイアログコンポーネントを追加する
+コア4エンティティ（顧客・担当者・案件・活動）の**詳細・編集・登録は、チャット・クイックアクション・`/database` 一覧のどこから開いても共通の中央ダイアログ `RecordDialog.svelte` で行う**。顧客登録などのツールフォーム用 `FormDialog.svelte` と同じ中央モーダル＋左AIチャット欄の見た目に揃えてある。
+
+- **書き込み = REST**（`/api/database/[type]/records` POST／`[id]` PATCH・DELETE、camelCase、`table-service`）。**フィールド定義 = `getTableInfo`**（`GET /api/database/[type]/info` で取得、コアテーブルのユーザー追加カスタムカラムも含む）。チャットのツール経路（`/api/chat`＋snake_case）ではなくREST一本に正準化している（案件作成時の自動活動記録・status変更時の `closedAt` 更新は `table-service` 側で再現済み）
+- フォーム部品は `chat/Form.svelte` に一本化（`FieldDef`→`FormField` 変換は `src/lib/components/database/field-adapter.ts`、フォーム選択肢は `formOptions ?? options`）。`database/RecordForm.svelte` はスタンドアロンの `[type]/[id]/edit`・`/new` ページにのみ残存（将来 `Form` へ寄せて廃止予定）
+- ダイアログ外枠・左AIチャット相談欄（`DialogChatSide.svelte`、`/api/form-chat` のSSE）は `FormDialog` と `RecordDialog` で共通
+- `RecordDialog` は `{kind:'detail'} | {kind:'form', type, mode, recordId?, prefill?}` のビュースタックを持ち、ブレッドクラム（戻る矢印）で詳細⇄フォームを往復。詳細は **顧客のみリッチ**（`CustomerDetail.svelte`＝関連の担当者・案件・活動履歴、`/api/customers/[id]/detail`）、他3種は汎用フィールド羅列（`RecordDetail.svelte`、recordSelectはクライアントでラベル解決）。詳細上に重ねたフォーム送信後は詳細へpop＆再取得、単独フォーム（一覧からの新規/編集）送信後は `onSaved`→呼び出し側で `invalidateAll()`／パネルを閉じる
+- 入口: ①`/database/[type]` 一覧（コアのみ。行クリック/新規作成/詳細/編集をダイアログ化、カスタムテーブルは従来どおりフルページ遷移）②チャットの顧客行クリック（`TableContent.entity === 'customer'`）・AIの `customer_detail`（`finalizeStreamingMessage` で抽出）③AI/クイックアクションが返すコアCRUDフォーム（`create|update_{customer,contact,deal,activity}`）。③は `+page.svelte` の `coreToolToPanel` でツール→`{type, recordId?, prefill}` に変換（snake→camel別名マップ。update_*はDB値を再取得しAIプリフィルは無視）。`create_reminder`/`send_email`/`create_customer_with_contact` はテーブルCRUDでないため従来どおり `FormDialog`
+- 既知の積み残し: 顧客の health-score/handover はスタンドアロン詳細ページ（`/database/customers/[id]`）に残置（ダイアログ未移植）。カスタム(entity)テーブルのダイアログ化は次フェーズ
+
+## チャットのターン単位UI
+
+メインチャット（`/`）は「直前の1往復のみ表示＋過去はドロワー」構成。`+page.svelte` で `messages` をユーザー発言起点のターンに `$derived` でグルーピングし、最新ターンのみをメイン表示、それ以前は `TurnHistoryDrawer.svelte`（右ドロワー）に簡易ログ（テキストのみはコピー可、UIを含むものは `[○○を表示]` 表記）として表示する。**右ドロワーは会話履歴の閲覧専用**（詳細・編集系のUIはここには出さない）。
+
+- `entity: 'customer'` は `quick-actions/registry.ts` の `get_customers` ハンドラで付与済み。AIが自分でテーブルを生成する場合はシステムプロンプト（`prompt.ts`）の指示依存（必須ではない）
 
 ## リマインダー配信
 

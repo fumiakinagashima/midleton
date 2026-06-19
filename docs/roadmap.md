@@ -392,6 +392,13 @@ v1リリース時点で未着手・保留となっている項目を集約する
   - 過去の会話履歴は `TurnHistoryDrawer.svelte`（右ドロワー）に表示する。**右ドロワーは会話履歴閲覧専用**。生成UIを含むターンは詳細を再現せず「[○○を表示]」程度の簡易ログのみ残す。テキストのみのターンはコピー機能付き
   - AIが返す `customer_detail` UIも、form/workflowと同様に自動でこの中央ダイアログを開く方式に統合し、インライン表示は廃止した
   - 顧客一覧のみの試作のため、他エンティティ（担当者・案件・活動履歴等の一覧）への展開は未着手
+- [x] **詳細・編集・登録UIのダイアログ統一（コア4エンティティ、2026-06-19実装）**
+  チャット・クイックアクション・`/database` の全入口で、コア4エンティティ（顧客・担当者・案件・活動）の詳細/編集/登録を共通の中央ダイアログに統一した。`CustomerDialog` を汎用 `RecordDialog.svelte` に一般化して置換。
+  - **正準化**: 書き込み=REST（`/api/database/[type]/records` POST/PATCH/DELETE、camelCase）、フィールド定義=`getTableInfo`（`GET /api/database/[type]/info`、カスタムカラム対応）、フォーム部品=`chat/Form.svelte`（`field-adapter.ts` で `FieldDef`→`FormField` 変換）。案件の status 変更時 `closedAt` 更新を REST `updateRecord` にも追加しツール経路と挙動を揃えた
+  - 詳細は顧客のみリッチ（`CustomerDetail` + 関連 + AIチャット欄）、他3種は汎用 `RecordDetail.svelte`（recordSelectはクライアントでラベル解決）
+  - `/database/[type]` 一覧はコアのみダイアログ化（行クリック/新規作成/詳細/編集）。カスタム(entity)テーブルは従来どおりフルページ遷移（次フェーズでダイアログ化）
+  - チャット/クイックアクションのコアCRUDフォーム（`create|update_*`）は `coreToolToPanel` で `RecordDialog` にルーティング（snake→camel別名マップ）。`create_reminder`/`send_email`/`create_customer_with_contact` は従来どおり `FormDialog`
+  - 積み残し: スタンドアロン `[type]/[id]`・`/edit`・`/new` ルート（ディープリンク用）は残置で `RecordForm` のまま（将来 `Form` へ寄せて廃止）。顧客 health-score/handover はスタンドアロン詳細ページに残置。カスタムテーブルのダイアログ化
 - [ ] サジェストプロンプトチップ（初期画面・入力欄）
 - [ ] `Timeline` コンポーネント（活動履歴の時系列ビジュアル）— 要検討
 - [ ] `Stats` / `Scorecard` コンポーネント（KPI 数値表示）— KPI 設定の設計が先

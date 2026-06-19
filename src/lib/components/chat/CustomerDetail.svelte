@@ -1,19 +1,18 @@
 <script lang="ts">
 	import type {
-		CustomerDetailContent,
 		CustomerDetailCustomer,
 		CustomerDetailContact,
 		CustomerDetailDeal,
-		CustomerDetailActivity,
-		FormContent
+		CustomerDetailActivity
 	} from '$lib/types/chat';
+	import type { RecordFormSpec } from '$lib/components/database/field-adapter';
 
 	type Props = {
 		customer: CustomerDetailCustomer;
 		contacts: CustomerDetailContact[];
 		deals: CustomerDetailDeal[];
 		activities: CustomerDetailActivity[];
-		onOpenForm: (form: FormContent) => void;
+		onOpenForm: (spec: RecordFormSpec) => void;
 		onDelete?: () => void;
 	};
 
@@ -50,38 +49,20 @@
 		return `¥${amount.toLocaleString()}`;
 	}
 
-	function pf(key: string, value: string | null | undefined) {
-		return { key, label: '', type: 'hidden' as const, value: value ?? '' };
-	}
-
 	function openEditCustomer() {
-		onOpenForm({
-			type: 'form',
-			tool: 'update_customer',
-			fields: [
-				pf('id', customer.id),
-				pf('name', customer.name),
-				pf('email', customer.email),
-				pf('phone', customer.phone),
-				pf('postal_code', customer.postal_code),
-				pf('address', customer.address),
-				pf('website', customer.website),
-				pf('status', customer.status),
-				pf('notes', customer.notes)
-			]
-		});
+		onOpenForm({ type: 'customers', recordId: customer.id });
 	}
 
 	function openNewContact() {
-		onOpenForm({ type: 'form', tool: 'create_contact', fields: [pf('customer_id', customer.id)] });
+		onOpenForm({ type: 'contacts', prefill: { customerId: customer.id } });
 	}
 
 	function openNewDeal() {
-		onOpenForm({ type: 'form', tool: 'create_deal', fields: [pf('customer_id', customer.id)] });
+		onOpenForm({ type: 'deals', prefill: { customerId: customer.id } });
 	}
 
 	function openNewActivity() {
-		onOpenForm({ type: 'form', tool: 'create_activity', fields: [pf('customer_id', customer.id)] });
+		onOpenForm({ type: 'activities', prefill: { customerId: customer.id } });
 	}
 </script>
 

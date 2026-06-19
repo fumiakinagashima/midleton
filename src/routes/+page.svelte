@@ -11,7 +11,8 @@
 	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
 	import Reply from '$lib/components/chat/Reply.svelte';
 	import FormDialog from '$lib/components/chat/FormDialog.svelte';
-	import CustomerDialog from '$lib/components/chat/CustomerDialog.svelte';
+	import RecordDialog from '$lib/components/chat/RecordDialog.svelte';
+	import { type CoreType } from '$lib/components/database/field-adapter';
 	import TurnHistoryDrawer from '$lib/components/chat/TurnHistoryDrawer.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
 	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
@@ -91,8 +92,37 @@
 	let quickActionMenuOpen = $state(false);
 	let panelForm = $state<FormContent | null>(null);
 	let panelWorkflow = $state<WorkflowContent | null>(null);
-	let panelCustomerId = $state<string | null>(null);
+	let panelRecord = $state<{ type: CoreType; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null>(null);
 	let historyDrawerOpen = $state(false);
+
+	// コアエンティティのCRUDツールフォームは FormDialog ではなく RecordDialog（REST + getTableInfo）で開く
+	const CORE_TOOL_TYPE: Record<string, CoreType> = {
+		create_customer: 'customers', update_customer: 'customers',
+		create_contact: 'contacts', update_contact: 'contacts',
+		create_deal: 'deals', update_deal: 'deals',
+		create_activity: 'activities', update_activity: 'activities'
+	};
+	const SNAKE_TO_CAMEL: Record<string, string> = {
+		customer_id: 'customerId', postal_code: 'postalCode', name_kana: 'nameKana',
+		planned_start: 'plannedStart', planned_end: 'plannedEnd'
+	};
+
+	// コアCRUDフォームを RecordDialog のパネル指定に変換。対象外（リマインダー等）は null。
+	function coreToolToPanel(form: FormContent): typeof panelRecord {
+		const type = CORE_TOOL_TYPE[form.tool];
+		if (!type) return null;
+		if (form.tool.startsWith('update_')) {
+			const recordId = form.fields.find((f) => f.key === 'id')?.value ?? null;
+			if (!recordId) return null; // id 不明なら FormDialog にフォールバック
+			return { type, recordId: String(recordId), view: 'form' };
+		}
+		const prefill: Record<string, string> = {};
+		for (const f of form.fields) {
+			if (f.key === 'id') continue;
+			if (f.value != null && f.value !== '') prefill[SNAKE_TO_CAMEL[f.key] ?? f.key] = String(f.value);
+		}
+		return { type, recordId: null, view: 'form', prefill };
+	}
 
 	// メッセージを「ユーザー発言1件＋それに続くAI応答群」のターン単位にまとめる。
 	// 直前のターンのみをメイン画面に表示し、それ以前は履歴ドロワーに回す。
@@ -323,21 +353,23 @@
 	function finalizeStreamingMessage() {
 		let nextPanelForm: FormContent | null = null;
 		let nextPanelWorkflow: WorkflowContent | null = null;
-		let nextPanelCustomerId: string | null = null;
+		let nextPanelRecord: typeof panelRecord = null;
 		const contents: MessageContent[] = [];
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
 		for (const c of streamingUIContents) {
 			if (c.type === 'form') {
-				nextPanelForm = c as FormContent;
+				const asRecord = coreToolToPanel(c as FormContent);
+				if (asRecord) nextPanelRecord = asRecord;
+				else nextPanelForm = c as FormContent;
 			} else if (c.type === 'workflow') {
 				nextPanelWorkflow = c as WorkflowContent;
 			} else if (c.type === 'customer_detail') {
-				nextPanelCustomerId = (c as CustomerDetailContent).customer.id;
+				nextPanelRecord = { type: 'customers', recordId: (c as CustomerDetailContent).customer.id, view: 'detail' };
 			} else {
 				contents.push(c);
 			}
 		}
-		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow && !nextPanelCustomerId) {
+		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow && !nextPanelRecord) {
 			contents.push({ type: 'text', text: m.chat_error() });
 		}
 		hidePreviousDealKanban(contents);
@@ -348,7 +380,7 @@
 		}
 		if (nextPanelForm) panelForm = nextPanelForm;
 		if (nextPanelWorkflow) panelWorkflow = nextPanelWorkflow;
-		if (nextPanelCustomerId) panelCustomerId = nextPanelCustomerId;
+		if (nextPanelRecord) panelRecord = nextPanelRecord;
 		streamingText = '';
 		streamingUIContents = [];
 	}
@@ -587,7 +619,7 @@
 				body: JSON.stringify({ id: action.id })
 			});
 			const result = (await res.json()) as { contents: MessageContent[] };
-			const nextPanelForm = result.contents.find((c) => c.type === 'form') as FormContent | undefined;
+			const formContent = result.contents.find((c) => c.type === 'form') as FormContent | undefined;
 			const otherContents = result.contents.filter((c) => c.type !== 'form');
 			if (otherContents.length > 0) {
 				hidePreviousDealKanban(otherContents);
@@ -595,7 +627,11 @@
 				messages = [...messages, message];
 				persistMessage(message);
 			}
-			if (nextPanelForm) panelForm = nextPanelForm;
+			if (formContent) {
+				const asRecord = coreToolToPanel(formContent);
+				if (asRecord) panelRecord = asRecord;
+				else panelForm = formContent;
+			}
 		} catch {
 			const message: Message = {
 				id: crypto.randomUUID(),
@@ -653,7 +689,7 @@
 									<Table
 										columns={content.columns}
 										rows={content.rows}
-										onRowClick={content.entity === 'customer' ? (row) => (panelCustomerId = String(row.id)) : undefined}
+										onRowClick={content.entity === 'customer' ? (row) => (panelRecord = { type: 'customers', recordId: String(row.id), view: 'detail' }) : undefined}
 									/>
 								{:else if content.type === 'actions'}
 									<ActionSelector
@@ -788,12 +824,16 @@
 			onclose={() => (panelWorkflow = null)}
 		/>
 	{/if}
-	{#if panelCustomerId}
-		<CustomerDialog
-			customerId={panelCustomerId}
-			onclose={() => (panelCustomerId = null)}
+	{#if panelRecord}
+		<RecordDialog
+			type={panelRecord.type}
+			recordId={panelRecord.recordId}
+			initialView={panelRecord.view}
+			prefill={panelRecord.prefill}
+			onclose={() => (panelRecord = null)}
+			onSaved={() => (panelRecord = null)}
 			onDeleted={(id) => {
-				panelCustomerId = null;
+				panelRecord = null;
 				removeCustomerRow(id);
 			}}
 		/>
