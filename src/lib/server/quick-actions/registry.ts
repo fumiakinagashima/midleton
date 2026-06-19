@@ -61,7 +61,7 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 			return [
 				{
 					type: 'table',
-					entity: 'customer',
+					entity: 'customers',
 					columns: [
 						{ key: 'name', label: '会社名' },
 						{ key: 'email', label: 'メール' },
@@ -83,6 +83,7 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 			return [
 				{
 					type: 'table',
+					entity: 'deals',
 					columns: [
 						{ key: 'title', label: '案件名' },
 						{ key: 'customerName', label: '顧客' },
@@ -131,6 +132,7 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 			return [
 				{
 					type: 'table',
+					entity: 'contacts',
 					columns: [
 						{ key: 'name', label: '氏名' },
 						{ key: 'role', label: '役職' },
@@ -152,6 +154,7 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 			return [
 				{
 					type: 'table',
+					entity: 'approvals',
 					columns: [
 						{ key: 'title', label: 'タイトル' },
 						{ key: 'submittedBy', label: '申請者' },

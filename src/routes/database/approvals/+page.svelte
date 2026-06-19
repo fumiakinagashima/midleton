@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
+	import ApprovalDialog from '$lib/components/dialog/ApprovalDialog.svelte';
 	import type { ApprovalListRow } from '$lib/server/db/approval-service';
 	import type { PageData } from './$types';
 	import * as m from '$lib/paraglide/messages.js';
@@ -10,6 +12,13 @@
 	$effect(() => {
 		rows = data.rows;
 	});
+
+	// 詳細・新規申請をダイアログで開く
+	let dialog = $state<{ mode: 'detail' | 'create'; id?: string } | null>(null);
+
+	async function afterChange() {
+		await invalidateAll();
+	}
 
 	const STATUS_LABELS: Record<string, string> = {
 		pending: m.approval_status_pending(), approved: m.approval_status_approved(),
@@ -43,13 +52,13 @@
 			<span class="sep">/</span>
 			<span>申請管理</span>
 		</div>
-		<a href="/database/approvals/new" class="btn-primary">+ 新規申請</a>
+		<button class="btn-primary" onclick={() => (dialog = { mode: 'create' })}>+ 新規申請</button>
 	</header>
 
 	{#if rows.length === 0}
 		<div class="empty">
 			<p>申請がありません。</p>
-			<a href="/database/approvals/new" class="btn-primary">最初の申請を作成</a>
+			<button class="btn-primary" onclick={() => (dialog = { mode: 'create' })}>最初の申請を作成</button>
 		</div>
 	{:else}
 		<div class="table-wrap">
@@ -66,7 +75,7 @@
 				</thead>
 				<tbody>
 					{#each rows as row}
-						<tr onclick={() => location.href = `/database/approvals/${row.id}`} class="clickable-row">
+						<tr onclick={() => (dialog = { mode: 'detail', id: row.id })} class="clickable-row">
 							<td class="title-cell">{row.title}</td>
 							<td>
 								<span class="status-badge status-{row.status}">
@@ -77,7 +86,6 @@
 							<td>{row.submittedBy}</td>
 							<td>{fmtDate(row.createdAt)}</td>
 							<td class="actions" onclick={(e) => e.stopPropagation()}>
-								<a href="/database/approvals/{row.id}" class="action-link">詳細</a>
 								<button class="action-del" onclick={() => deleteRow(row.id)}>削除</button>
 							</td>
 						</tr>
@@ -87,6 +95,18 @@
 		</div>
 	{/if}
 </div>
+
+{#if dialog}
+	<ApprovalDialog
+		mode={dialog.mode}
+		id={dialog.id}
+		accountOptions={data.accountOptions}
+		accountId={data.accountId}
+		onclose={() => (dialog = null)}
+		onChanged={afterChange}
+		onCreated={() => { dialog = null; afterChange(); }}
+	/>
+{/if}
 
 <style lang="scss">
 	.page {

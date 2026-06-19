@@ -24,6 +24,8 @@
 		runs?: WorkflowRunRow[];
 		entityTypes?: EntityTypeForWorkflow[];
 		slackIntegrations?: SlackIntegrationOption[];
+		// ダイアログ内で使う場合に指定。指定時は「一覧に戻る」リンクを出さない（ダイアログのヘッダーで閉じる）
+		inDialog?: boolean;
 	};
 
 	let {
@@ -35,7 +37,8 @@
 		initialEnabled = false,
 		runs = [],
 		entityTypes = [],
-		slackIntegrations = []
+		slackIntegrations = [],
+		inDialog = false
 	}: Props = $props();
 
 	// 保存後も画面遷移しないため、新規作成時に発行されたidを保持して以降の保存をPATCH（更新）に切り替える
@@ -155,7 +158,9 @@
 
 <div class="editor-wrap">
 	<div class="editor-row1">
-		<a href="/database/workflows" class="btn-back">← 一覧に戻る</a>
+		{#if !inDialog}
+			<a href="/database/workflows" class="btn-back">← 一覧に戻る</a>
+		{/if}
 		<Toggle bind:checked={enabled} label="有効化（毎日指定時刻に実行）" />
 		<div class="editor-row1-actions">
 			{#if currentId}

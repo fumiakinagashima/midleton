@@ -437,6 +437,7 @@
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
+		font-size: 0.87rem;
 	}
 
 	.notification-badge {

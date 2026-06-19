@@ -398,7 +398,13 @@ v1リリース時点で未着手・保留となっている項目を集約する
   - 詳細は顧客のみリッチ（`CustomerDetail` + 関連 + AIチャット欄）、他3種は汎用 `RecordDetail.svelte`（recordSelectはクライアントでラベル解決）
   - `/database/[type]` 一覧はコアのみダイアログ化（行クリック/新規作成/詳細/編集）。カスタム(entity)テーブルは従来どおりフルページ遷移（次フェーズでダイアログ化）
   - チャット/クイックアクションのコアCRUDフォーム（`create|update_*`）は `coreToolToPanel` で `RecordDialog` にルーティング（snake→camel別名マップ）。`create_reminder`/`send_email`/`create_customer_with_contact` は従来どおり `FormDialog`
-  - 積み残し: スタンドアロン `[type]/[id]`・`/edit`・`/new` ルート（ディープリンク用）は残置で `RecordForm` のまま（将来 `Form` へ寄せて廃止）。顧客 health-score/handover はスタンドアロン詳細ページに残置。カスタムテーブルのダイアログ化
+  - 積み残し: スタンドアロン `[type]/[id]`・`/edit`・`/new` ルート（ディープリンク用）は残置で `RecordForm` のまま（将来 `Form` へ寄せて廃止）。顧客 health-score/handover はスタンドアロン詳細ページに残置
+- [x] **ダイアログ統一の全テーブル展開＋ワークフロー編集ダイアログ化（2026-06-19実装）**
+  上記ダイアログ統一を全テーブル・全入口へ拡張した。
+  - **カスタムテーブルもダイアログ化**: `RecordDialog.type` を文字列化し、`/database/[type]` 一覧は全テーブル（コア＋カスタム）で詳細/編集/登録をダイアログで開く（`getTableInfo` + REST が entity テーブルも扱うため汎用詳細・フォームがそのまま動作）。一覧の行アクションは「編集」のみ（詳細=行クリック、削除=ダイアログ内）に整理
+  - **チャットで全テーブル同一動作**: `TableContent.entity` をテーブル種別文字列に一般化（`customers`/`contacts`/`deals`/`activities`/カスタム名）。`get_customers`/`get_contacts`/`search_deals` の record 系クイックアクションに付与、システムプロンプトも更新。行クリックで `RecordDialog` を開く（`removeRecordRow` で削除時の行除去も汎用化）
+  - **ワークフロー編集のダイアログ化**: `WorkflowEditor` をラップした `WorkflowEditorDialog.svelte` を新設し、`/database/workflows` の新規作成・編集とチャットの `workflow` UI が同じダイアログを開く。有効化トグル・今すぐ実行・AIレビュー・実行ログを維持（実行ログは新 `GET /api/workflows/[id]/runs` でクライアント取得）。機能の少ない旧 `chat/WorkflowDialog.svelte` は廃止
+  - **申請管理のダイアログ化**: `/database/approvals` の詳細・新規申請を `ApprovalDialog.svelte`（中身は抽出した `ApprovalDetail.svelte`/`ApprovalForm.svelte`）で開く。承認/否決/取り消し・AIレビュー・添付は従来API。スタンドアロン `[id]`・`/new` ルートは薄いラッパーとして残置（同コンポーネントを描画）
 - [ ] サジェストプロンプトチップ（初期画面・入力欄）
 - [ ] `Timeline` コンポーネント（活動履歴の時系列ビジュアル）— 要検討
 - [ ] `Stats` / `Scorecard` コンポーネント（KPI 数値表示）— KPI 設定の設計が先

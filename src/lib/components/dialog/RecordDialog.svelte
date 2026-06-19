@@ -1,12 +1,12 @@
 <script lang="ts">
-	import Form from './Form.svelte';
+	import Form from '$lib/components/chat/Form.svelte';
 	import CustomerDetail from './CustomerDetail.svelte';
 	import RecordDetail from './RecordDetail.svelte';
 	import DialogChatSide from './DialogChatSide.svelte';
 	import X from '$lib/components/icon/X.svelte';
 	import ChevronLeft from '$lib/components/icon/ChevronLeft.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { fieldDefsToFormFields, type CoreType, type RecordFormSpec } from '$lib/components/database/field-adapter';
+	import { fieldDefsToFormFields, type RecordFormSpec } from './field-adapter';
 	import type { FieldDef } from '$lib/server/db/table-service';
 	import type { FormField } from '$lib/types/chat';
 	import type {
@@ -17,7 +17,8 @@
 	} from '$lib/types/chat';
 
 	type Props = {
-		type: CoreType;
+		// テーブル種別。コア4種に限らずカスタム(entity)テーブル名も受け付ける
+		type: string;
 		recordId?: string | null;
 		initialView?: 'detail' | 'form';
 		prefill?: Record<string, string>;
@@ -30,7 +31,7 @@
 
 	type View =
 		| { kind: 'detail' }
-		| { kind: 'form'; type: CoreType; mode: 'create' | 'edit'; recordId?: string; prefill?: Record<string, string> };
+		| { kind: 'form'; type: string; mode: 'create' | 'edit'; recordId?: string; prefill?: Record<string, string> };
 
 	let viewStack = $state<View[]>([]);
 	let currentView = $derived(viewStack[viewStack.length - 1] ?? { kind: 'detail' });
@@ -46,6 +47,8 @@
 	let genericFields = $state<FieldDef[]>([]);
 	let genericRecord = $state<Record<string, unknown> | null>(null);
 	let detailLoading = $state(true);
+	// テーブル表示名（カスタムテーブルは info から解決）
+	let tableLabel = $state('');
 
 	// フォーム state
 	let formFields = $state<FormField[]>([]);
@@ -54,10 +57,13 @@
 	let formRef = $state<HTMLFormElement | null>(null);
 	let formKey = $state(0);
 
-	// テーブル表示名キャッシュ（info から取得）
-	const tableLabels: Record<string, string> = {
+	// コアテーブル表示名（カスタムは info.label で解決）
+	const CORE_LABELS: Record<string, string> = {
 		customers: '顧客', contacts: '担当者', deals: '案件', activities: '活動履歴'
 	};
+	function labelFor(t: string): string {
+		return CORE_LABELS[t] ?? ((t === type ? tableLabel : '') || t);
+	}
 
 	async function loadDetail() {
 		detailLoading = true;
@@ -73,8 +79,9 @@
 					fetch(`/api/database/${type}/records/${recordId}`)
 				]);
 				if (infoRes.ok && recRes.ok) {
-					const { info } = (await infoRes.json()) as { info: { fields: FieldDef[] } };
+					const { info } = (await infoRes.json()) as { info: { label: string; fields: FieldDef[] } };
 					genericFields = info.fields;
+					tableLabel = info.label;
 					genericRecord = (await recRes.json()) as Record<string, unknown>;
 				}
 			}
@@ -110,14 +117,14 @@
 				const infoRes = await fetch(`/api/database/${view.type}/info`);
 				const { info } = infoRes.ok
 					? ((await infoRes.json()) as { info: { label: string; fields: FieldDef[] } })
-					: { info: { label: tableLabels[view.type], fields: [] as FieldDef[] } };
+					: { info: { label: labelFor(view.type), fields: [] as FieldDef[] } };
 				let values: Record<string, unknown> = view.prefill ?? {};
 				if (view.mode === 'edit' && view.recordId) {
 					const recRes = await fetch(`/api/database/${view.type}/records/${view.recordId}`);
 					if (recRes.ok) values = (await recRes.json()) as Record<string, unknown>;
 				}
 				if (cancelled) return;
-				formLabel = info.label ?? tableLabels[view.type];
+				formLabel = info.label ?? labelFor(view.type);
 				formFields = fieldDefsToFormFields(info.fields, values);
 				formKey += 1;
 			} finally {
@@ -168,7 +175,7 @@
 		}
 	}
 
-	async function handleDelete(targetType: CoreType, targetId: string) {
+	async function handleDelete(targetType: string, targetId: string) {
 		if (!confirm('このレコードを削除しますか？')) return;
 		try {
 			const res = await fetch(`/api/database/${targetType}/records/${targetId}`, { method: 'DELETE' });
@@ -184,12 +191,12 @@
 
 	const dialogTitle = $derived.by(() => {
 		if (currentView.kind === 'form') {
-			const label = currentView.type === type ? formLabel || tableLabels[currentView.type] : tableLabels[currentView.type];
+			const label = currentView.type === type ? formLabel || labelFor(currentView.type) : labelFor(currentView.type);
 			return currentView.mode === 'edit' ? `${label}を編集` : `${label}を登録`;
 		}
 		if (type === 'customers') return customerDetail?.customer.name ?? '顧客詳細';
 		const r = genericRecord;
-		return (r?.name as string) ?? (r?.title as string) ?? `${tableLabels[type]}詳細`;
+		return (r?.name as string) ?? (r?.title as string) ?? `${labelFor(type)}詳細`;
 	});
 
 	const chatContextFields = $derived(
@@ -247,6 +254,7 @@
 				{#key formKey}
 					<Form
 						fields={formFields}
+						fullWidth
 						onsubmit={(data) => submitForm(currentView as Extract<View, { kind: 'form' }>, data)}
 						oncancel={viewStack.length > 1 ? goBack : onclose}
 					/>

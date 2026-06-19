@@ -6,7 +6,7 @@ export type CoreType = 'customers' | 'contacts' | 'deals' | 'activities';
 
 /** 詳細から編集/新規フォームを開く際の指定。snake_case の FormContent ではなく camelCase の prefill を使う */
 export type RecordFormSpec = {
-	type: CoreType;
+	type: string;
 	recordId?: string;
 	prefill?: Record<string, string>;
 };

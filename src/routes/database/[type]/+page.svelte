@@ -4,18 +4,14 @@
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { RecordRow } from '$lib/server/db/table-service';
-	import RecordDialog from '$lib/components/chat/RecordDialog.svelte';
-	import { type CoreType } from '$lib/components/database/field-adapter';
+	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	const type = $derived($page.params.type);
 	const info = $derived(data.info);
 
-	const CORE_TYPES = ['customers', 'contacts', 'deals', 'activities'];
-	const isCoreType = $derived(!!type && CORE_TYPES.includes(type));
-
-	// コアテーブルはダイアログで詳細/編集/登録。カスタムテーブルは従来どおりフルページ遷移。
+	// 全テーブル（コア＋カスタム）の詳細/編集/登録をダイアログで開く
 	let dialog = $state<{ recordId: string | null; view: 'detail' | 'form' } | null>(null);
 
 	function openDetail(id: string) {
@@ -70,22 +66,14 @@
 				<a href="/database/{type}/gantt" class="btn-schema">ガントチャート</a>
 			{/if}
 			<a href="/database/{type}/schema" class="btn-schema">スキーマ編集</a>
-			{#if isCoreType}
-				<button class="btn-primary" onclick={openCreate}>+ 新規作成</button>
-			{:else}
-				<a href="/database/{type}/new" class="btn-primary">+ 新規作成</a>
-			{/if}
+			<button class="btn-primary" onclick={openCreate}>+ 新規作成</button>
 		</div>
 	</header>
 
 	{#if rows.length === 0}
 		<div class="empty">
 			<p>レコードがありません。</p>
-			{#if isCoreType}
-				<button class="btn-primary" onclick={openCreate}>最初のレコードを作成</button>
-			{:else}
-				<a href="/database/{type}/new" class="btn-primary">最初のレコードを作成</a>
-			{/if}
+			<button class="btn-primary" onclick={openCreate}>最初のレコードを作成</button>
 		</div>
 	{:else}
 		<div class="table-wrap">
@@ -100,19 +88,12 @@
 				</thead>
 				<tbody>
 					{#each rows as row}
-						<tr
-							onclick={() => isCoreType ? openDetail(String(row.id)) : (location.href = `/database/${type}/${row.id}`)}
-							class="clickable-row"
-						>
+						<tr onclick={() => openDetail(String(row.id))} class="clickable-row">
 							{#each listCols as col}
 								<td>{displayValue(row, col.key)}</td>
 							{/each}
 							<td class="actions" onclick={(e) => e.stopPropagation()}>
-								{#if isCoreType}
-									<button class="action-link" onclick={() => openEdit(String(row.id))}>編集</button>
-								{:else}
-									<a href="/database/{type}/{row.id}/edit" class="action-link">編集</a>
-								{/if}
+								<button class="action-link" onclick={() => openEdit(String(row.id))}>編集</button>
 							</td>
 						</tr>
 					{/each}
@@ -122,9 +103,9 @@
 	{/if}
 </div>
 
-{#if dialog && isCoreType}
+{#if dialog && type}
 	<RecordDialog
-		type={type as CoreType}
+		{type}
 		recordId={dialog.recordId}
 		initialView={dialog.view}
 		onclose={() => (dialog = null)}

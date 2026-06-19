@@ -39,7 +39,8 @@ midleton/
 │   │   │   ├── ui/       # アプリUIコンポーネント（デザインシステム: Textbox, Select, Table, DataGrid, BarChart, LineChart 等）
 │   │   │   │               BarChart / LineChart は単一・複数系列（grouped / stacked）に対応
 │   │   │   ├── chat/     # AIがノーコードとして返すコンポーネント（Form, Table, ActionSelector, Values, Gantt, Chart, Kanban, Link, Bizcard）
-│   │   │   ├── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor）
+│   │   │   ├── dialog/   # 詳細・編集・登録の中央ダイアログ群（チャットと/databaseで共有: RecordDialog, RecordDetail, CustomerDetail, FormDialog, DialogChatSide, ApprovalDialog/Detail/Form, WorkflowEditorDialog, field-adapter）
+│   │   │   ├── database/ # データ管理専用コンポーネント（RecordForm, FieldEditor, WorkflowEditor 等）
 │   │   │   ├── icon/     # SVGアイコンコンポーネント（Plus, X, ChevronDown, Bell, Settings 等）
 │   │   │   └── bizcard/  # 名刺スキャン専用コンポーネント（BizcardScanner, CameraScanner）
 │   │   ├── quick-actions/ # クイックアクションのカタログ定義（クライアント・サーバー共有、catalog.ts）
@@ -110,26 +111,43 @@ midleton/
 - 例外として、顧客登録（`create_customer`）・名刺読取（`scan_bizcard`）・リマインダー設定（`create_reminder`）は登録系だが追加済み。`create_customer`/`scan_bizcard` は `dispatchTool` を呼ばず、`registry.ts` の静的ハンドラ（`StaticQuickActionHandler`）として `form` / `bizcard` の `MessageContent` を直接返す。`create_reminder` はDB参照結果（設定済み連携など）に応じてフォーム内容を動的に組み立てる必要があるため、`DynamicQuickActionHandler`（`build(db, env?)`）として実装する（実際のツール呼び出しはユーザーがフォーム送信した時点で発生）
 - Slack連携の検出: `integrations` テーブルの `base_url` に `hooks.slack.com` を含むレコードを Slack Incoming Webhook 連携として扱う（`src/lib/server/slack/index.ts`）。通知先選択肢のラベルにはその連携の `name`、値には `slack:<integration_id>` を使う
 
-## チャットのターン単位UI・行アクションダイアログ
-
-メインチャット（`/`）は「直前の1往復のみ表示＋過去はドロワー」構成。`+page.svelte` で `messages` をユーザー発言起点のターンに `$derived` でグルーピングし、最新ターンのみをメイン表示、それ以前は `TurnHistoryDrawer.svelte`（右ドロワー）に簡易ログ（テキストのみはコピー可、UIを含むものは `[○○を表示]` 表記）として表示する。**右ドロワーは会話履歴の閲覧専用**（詳細・編集系のUIはここには出さない）。
-
 ## レコード詳細・編集・登録の統一ダイアログ（RecordDialog）
 
-コア4エンティティ（顧客・担当者・案件・活動）の**詳細・編集・登録は、チャット・クイックアクション・`/database` 一覧のどこから開いても共通の中央ダイアログ `RecordDialog.svelte` で行う**。顧客登録などのツールフォーム用 `FormDialog.svelte` と同じ中央モーダル＋左AIチャット欄の見た目に揃えてある。
+全テーブル（コア4エンティティ＝顧客・担当者・案件・活動＋ユーザー定義のカスタムテーブル）の**詳細・編集・登録は、チャット・クイックアクション・`/database` 一覧のどこから開いても共通の中央ダイアログ `RecordDialog.svelte` で行う**。顧客登録などのツールフォーム用 `FormDialog.svelte` と同じ中央モーダル＋左AIチャット欄の見た目に揃えてある。`RecordDialog` の `type` はテーブル種別の文字列（`customers`/`contacts`/`deals`/`activities` またはカスタムテーブル名）。
 
-- **書き込み = REST**（`/api/database/[type]/records` POST／`[id]` PATCH・DELETE、camelCase、`table-service`）。**フィールド定義 = `getTableInfo`**（`GET /api/database/[type]/info` で取得、コアテーブルのユーザー追加カスタムカラムも含む）。チャットのツール経路（`/api/chat`＋snake_case）ではなくREST一本に正準化している（案件作成時の自動活動記録・status変更時の `closedAt` 更新は `table-service` 側で再現済み）
-- フォーム部品は `chat/Form.svelte` に一本化（`FieldDef`→`FormField` 変換は `src/lib/components/database/field-adapter.ts`、フォーム選択肢は `formOptions ?? options`）。`database/RecordForm.svelte` はスタンドアロンの `[type]/[id]/edit`・`/new` ページにのみ残存（将来 `Form` へ寄せて廃止予定）
+ダイアログ関連コンポーネント（チャット側と `/database` 側で共有するもの）は **`src/lib/components/dialog/`** に集約する（`RecordDialog`/`RecordDetail`/`CustomerDetail`/`FormDialog`/`DialogChatSide`/`ApprovalDialog`/`ApprovalDetail`/`ApprovalForm`/`WorkflowEditorDialog`/`field-adapter.ts`）。ダイアログ内のフォーム・詳細の右側コンテンツは横幅 max-width で絞らず 100% にする（`Form.svelte` は `fullWidth` prop でmax-widthを外す）。
+
+- **書き込み = REST**（`/api/database/[type]/records` POST／`[id]` PATCH・DELETE、camelCase、`table-service`）。**フィールド定義 = `getTableInfo`**（`GET /api/database/[type]/info` で取得、コアのカスタムカラム・カスタムテーブル両対応）。チャットのツール経路（`/api/chat`＋snake_case）ではなくREST一本に正準化（案件作成時の自動活動記録・status変更時の `closedAt` 更新は `table-service` 側で再現済み）
+- フォーム部品は `chat/Form.svelte` に一本化（`FieldDef`→`FormField` 変換は `dialog/field-adapter.ts`、フォーム選択肢は `formOptions ?? options`）。`database/RecordForm.svelte` はスタンドアロンの `[type]/[id]/edit`・`/new` ページにのみ残存（将来 `Form` へ寄せて廃止予定）
+- 顧客詳細（`CustomerDetail.svelte`）の末尾に **AIヘルススコア** セクションを表示する。`get_customer_detail` が返すキャッシュ済みスコア（`customer.healthScore*`）があれば初期表示し、「AIで評価」ボタンで `POST /api/customers/[id]/health-score` を叩いて再算出する（スタンドアロンの `/database/customers/[id]` ページと同じエンドポイント）
 - ダイアログ外枠・左AIチャット相談欄（`DialogChatSide.svelte`、`/api/form-chat` のSSE）は `FormDialog` と `RecordDialog` で共通
-- `RecordDialog` は `{kind:'detail'} | {kind:'form', type, mode, recordId?, prefill?}` のビュースタックを持ち、ブレッドクラム（戻る矢印）で詳細⇄フォームを往復。詳細は **顧客のみリッチ**（`CustomerDetail.svelte`＝関連の担当者・案件・活動履歴、`/api/customers/[id]/detail`）、他3種は汎用フィールド羅列（`RecordDetail.svelte`、recordSelectはクライアントでラベル解決）。詳細上に重ねたフォーム送信後は詳細へpop＆再取得、単独フォーム（一覧からの新規/編集）送信後は `onSaved`→呼び出し側で `invalidateAll()`／パネルを閉じる
-- 入口: ①`/database/[type]` 一覧（コアのみ。行クリック/新規作成/詳細/編集をダイアログ化、カスタムテーブルは従来どおりフルページ遷移）②チャットの顧客行クリック（`TableContent.entity === 'customer'`）・AIの `customer_detail`（`finalizeStreamingMessage` で抽出）③AI/クイックアクションが返すコアCRUDフォーム（`create|update_{customer,contact,deal,activity}`）。③は `+page.svelte` の `coreToolToPanel` でツール→`{type, recordId?, prefill}` に変換（snake→camel別名マップ。update_*はDB値を再取得しAIプリフィルは無視）。`create_reminder`/`send_email`/`create_customer_with_contact` はテーブルCRUDでないため従来どおり `FormDialog`
-- 既知の積み残し: 顧客の health-score/handover はスタンドアロン詳細ページ（`/database/customers/[id]`）に残置（ダイアログ未移植）。カスタム(entity)テーブルのダイアログ化は次フェーズ
+- `RecordDialog` は `{kind:'detail'} | {kind:'form', type, mode, recordId?, prefill?}` のビュースタックを持ち、ブレッドクラム（戻る矢印）で詳細⇄フォームを往復。詳細は **顧客のみリッチ**（`CustomerDetail.svelte`＝関連の担当者・案件・活動履歴、`/api/customers/[id]/detail`）、他は汎用フィールド羅列（`RecordDetail.svelte`、recordSelectはクライアントでラベル解決）。詳細上に重ねたフォーム送信後は詳細へpop＆再取得、単独フォーム（一覧からの新規/編集）送信後は `onSaved`→呼び出し側で `invalidateAll()`／ダイアログを閉じる
+- 入口: ①`/database/[type]` 一覧（**全テーブル**。行クリック→詳細、新規作成、行内「編集」をダイアログ化。一覧の行アクションは「編集」のみ＝詳細は行クリック、削除はダイアログ内）②チャットの行クリック（`TableContent.entity` にテーブル種別が入った一覧テーブル）・AIの `customer_detail`（`finalizeStreamingMessage` で抽出）③AI/クイックアクションが返すコアCRUDフォーム（`create|update_{customer,contact,deal,activity}`）。③は `+page.svelte` の `coreToolToPanel` でツール→`{type, recordId?, prefill}` に変換（snake→camel別名マップ。update_*はDB値を再取得しAIプリフィルは無視）。`create_reminder`/`send_email`/`create_customer_with_contact` はテーブルCRUDでないため従来どおり `FormDialog`
+- 既知の積み残し: 顧客の health-score/handover はスタンドアロン詳細ページ（`/database/customers/[id]`）に残置（ダイアログ未移植）。スタンドアロンの `[type]/[id]`・`/edit`・`/new` ルートはディープリンク用に残置（`RecordForm` のまま）
 
-## チャットのターン単位UI
+## チャットのターン単位UI・テーブル行クリック
 
 メインチャット（`/`）は「直前の1往復のみ表示＋過去はドロワー」構成。`+page.svelte` で `messages` をユーザー発言起点のターンに `$derived` でグルーピングし、最新ターンのみをメイン表示、それ以前は `TurnHistoryDrawer.svelte`（右ドロワー）に簡易ログ（テキストのみはコピー可、UIを含むものは `[○○を表示]` 表記）として表示する。**右ドロワーは会話履歴の閲覧専用**（詳細・編集系のUIはここには出さない）。
 
-- `entity: 'customer'` は `quick-actions/registry.ts` の `get_customers` ハンドラで付与済み。AIが自分でテーブルを生成する場合はシステムプロンプト（`prompt.ts`）の指示依存（必須ではない）
+- `TableContent.entity`（テーブル種別文字列）が設定された一覧テーブルは、行クリックでダイアログを開く（`rows` に `id` が必要）。クイックアクションは `quick-actions/registry.ts` の record系ハンドラ（`get_customers`→`customers`、`get_contacts`→`contacts`、`search_deals`→`deals`、`list_approvals`→`approvals`）で付与済み。`entity === 'approvals'` は `ApprovalDialog`（詳細）を、それ以外は `RecordDialog` を開く（`+page.svelte` の `onRowClick` で分岐）。集計・サマリー・カスタムテーブル一覧（`list_entity_types`）など「レコードでないテーブル」には付けない。AI生成テーブルはシステムプロンプト（`prompt.ts`）の指示依存
+
+## ワークフロー編集ダイアログ
+
+ワークフローの作成・編集は中央ダイアログ `WorkflowEditorDialog.svelte`（`WorkflowEditor.svelte` をダイアログ外枠でラップ）で行う。`/database/workflows` 一覧の「新規作成」「編集」、およびチャットでAIが返す `workflow` UI（`+page.svelte` の `panelWorkflow`）が同じダイアログを開く。
+
+- `WorkflowEditor` は左AIアシスタント（`WorkflowChatPanel`）＋右ステップエディタ（`Workflow.svelte`）＋有効化トグル・今すぐ実行・AIレビュー・実行ログを持つ。`inDialog` prop 指定時は「一覧に戻る」リンクを隠す（ダイアログのヘッダーで閉じる）
+- 実行ログはダイアログ表示時に `GET /api/workflows/[id]/runs` でクライアント取得。保存は `WorkflowEditor` 内の `POST/PATCH /api/workflows` ＋ `invalidateAll()`（一覧は `data.rows` を `$effect` で同期）
+- 旧 `chat/WorkflowDialog.svelte` は廃止（機能の少ない重複だったため `WorkflowEditorDialog` に統合）
+
+## 申請管理ダイアログ
+
+申請（承認）の詳細・新規作成も中央ダイアログ `ApprovalDialog.svelte` で行う。`/database/approvals` 一覧の行クリック→詳細、「新規申請」→作成フォームを開く。
+
+- 詳細・作成の中身は `ApprovalDetail.svelte` / `ApprovalForm.svelte`（元のページ本体を抽出したコンポーネント）。`ApprovalDialog` が `mode: 'detail'|'create'` で出し分け、詳細は `GET /api/approvals/[id]` でクライアント取得。承認/否決/取り消しは `PATCH /api/approvals/[id]`、AIレビュー・添付・作成は従来のAPIをそのまま使用
+- 他のダイアログと同じく**左に AIアシスタント欄（`DialogChatSide`）を持つ2カラム構成**に統一（外枠・幅も `RecordDialog` と同じ）。詳細・登録ダイアログのUI/UXは統一が原則（個別に違うダイアログを使う場合のみ都度判断）
+- 承認操作後（`onChanged`）・作成後（`onCreated`）は一覧で `invalidateAll()`。承認ステップの操作可否は `accountId`（`locals.account.id`、`load` から prop で渡す）で判定
+- スタンドアロンの `/database/approvals/[id]`・`/new` ルートはディープリンク用に薄いラッパーとして残置（同じ `ApprovalDetail`/`ApprovalForm` を描画）。一覧の行アクションは「削除」のみ（詳細=行クリック、取り消し=詳細ダイアログ内）
+- チャットでも `list_approvals` テーブルの行クリックで同じ `ApprovalDialog`（詳細）を開く（`+page.svelte` の `panelApprovalId`、`accountId` は `page.data.account?.id`）。これにより `ApprovalDialog`/`Detail` はチャットと `/database` で共有される
 
 ## リマインダー配信
 

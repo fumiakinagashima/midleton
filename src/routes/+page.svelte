@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Table from '$lib/components/chat/Table.svelte';
-	import WorkflowDialog from '$lib/components/chat/WorkflowDialog.svelte';
+	import WorkflowEditorDialog from '$lib/components/dialog/WorkflowEditorDialog.svelte';
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
 	import Gantt from '$lib/components/chat/Gantt.svelte';
@@ -10,9 +10,10 @@
 	import Bizcard from '$lib/components/chat/Bizcard.svelte';
 	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
 	import Reply from '$lib/components/chat/Reply.svelte';
-	import FormDialog from '$lib/components/chat/FormDialog.svelte';
-	import RecordDialog from '$lib/components/chat/RecordDialog.svelte';
-	import { type CoreType } from '$lib/components/database/field-adapter';
+	import FormDialog from '$lib/components/dialog/FormDialog.svelte';
+	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
+	import ApprovalDialog from '$lib/components/dialog/ApprovalDialog.svelte';
+	import { type CoreType } from '$lib/components/dialog/field-adapter';
 	import TurnHistoryDrawer from '$lib/components/chat/TurnHistoryDrawer.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
 	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
@@ -92,7 +93,8 @@
 	let quickActionMenuOpen = $state(false);
 	let panelForm = $state<FormContent | null>(null);
 	let panelWorkflow = $state<WorkflowContent | null>(null);
-	let panelRecord = $state<{ type: CoreType; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null>(null);
+	let panelRecord = $state<{ type: string; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null>(null);
+	let panelApprovalId = $state<string | null>(null);
 	let historyDrawerOpen = $state(false);
 
 	// コアエンティティのCRUDツールフォームは FormDialog ではなく RecordDialog（REST + getTableInfo）で開く
@@ -434,13 +436,14 @@
 		}
 	}
 
-	function removeCustomerRow(customerId: string) {
+	// 削除されたレコードを、同じテーブル種別の一覧テーブルから取り除く
+	function removeRecordRow(entity: string, recordId: string) {
 		for (const msg of messages) {
 			let changed = false;
 			for (const content of msg.contents) {
-				if (content.type === 'table' && content.entity === 'customer') {
+				if (content.type === 'table' && content.entity === entity) {
 					const before = content.rows.length;
-					content.rows = content.rows.filter((r) => String(r.id) !== customerId);
+					content.rows = content.rows.filter((r) => String(r.id) !== recordId);
 					if (content.rows.length !== before) changed = true;
 				}
 			}
@@ -689,7 +692,10 @@
 									<Table
 										columns={content.columns}
 										rows={content.rows}
-										onRowClick={content.entity === 'customer' ? (row) => (panelRecord = { type: 'customers', recordId: String(row.id), view: 'detail' }) : undefined}
+										onRowClick={content.entity ? (row) => {
+										if (content.entity === 'approvals') panelApprovalId = String(row.id);
+										else panelRecord = { type: content.entity!, recordId: String(row.id), view: 'detail' };
+									} : undefined}
 									/>
 								{:else if content.type === 'actions'}
 									<ActionSelector
@@ -817,8 +823,12 @@
 		/>
 	{/if}
 	{#if panelWorkflow}
-		<WorkflowDialog
-			workflow={panelWorkflow}
+		<WorkflowEditorDialog
+			id={panelWorkflow.id}
+			initialName={panelWorkflow.name}
+			initialTriggerHour={panelWorkflow.triggerHour}
+			initialTriggerMinute={panelWorkflow.triggerMinute}
+			initialSteps={panelWorkflow.steps}
 			entityTypes={data.entityTypes}
 			slackIntegrations={data.slackIntegrations}
 			onclose={() => (panelWorkflow = null)}
@@ -833,9 +843,18 @@
 			onclose={() => (panelRecord = null)}
 			onSaved={() => (panelRecord = null)}
 			onDeleted={(id) => {
+				const entity = panelRecord?.type;
 				panelRecord = null;
-				removeCustomerRow(id);
+				if (entity) removeRecordRow(entity, id);
 			}}
+		/>
+	{/if}
+	{#if panelApprovalId}
+		<ApprovalDialog
+			mode="detail"
+			id={panelApprovalId}
+			accountId={page.data.account?.id}
+			onclose={() => (panelApprovalId = null)}
 		/>
 	{/if}
 	<TurnHistoryDrawer turns={pastTurns} open={historyDrawerOpen} onclose={() => (historyDrawerOpen = false)} />

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Form from './Form.svelte';
+	import Form from '$lib/components/chat/Form.svelte';
 	import DialogChatSide from './DialogChatSide.svelte';
 	import X from '$lib/components/icon/X.svelte';
 	import type { FormContent, FormField } from '$lib/types/chat';
@@ -85,6 +85,7 @@
 					<Form
 						{fields}
 						hideActions
+						fullWidth
 						bind:formRef
 						onsubmit={(data) => onsubmit(form.tool, data)}
 					/>

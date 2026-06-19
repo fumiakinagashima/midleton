@@ -110,9 +110,9 @@ export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステム�
 
 **テーブルのcolumnsには必ず日本語のlabelを指定すること。"name"/"status"/"email" などの英語フィールドキーをそのままlabelに使わない。**
 
-**顧客一覧（get_customers / search_customers の結果など、rowsの各要素が顧客IDを持つ）を表示する場合は、"entity":"customer" をJSONに含めること。** これにより行クリックで詳細パネルを開けるようになる:
+**レコードの一覧（顧客・担当者・案件・活動履歴やカスタムテーブルの各レコードを行として表示する場合）は、"entity" にそのテーブル種別を指定すること。** 値は "customers"（顧客）/ "contacts"（担当者）/ "deals"（案件）/ "activities"（活動履歴）、またはカスタムテーブルの識別名。rows の各要素には必ず id を含める。これにより行クリックで詳細・編集ダイアログを開けるようになる（集計・サマリーなどレコードでないテーブルには付けない）:
 <ui type="table">
-{"entity":"customer","columns":[{"key":"name","label":"会社名"},{"key":"email","label":"メール"},{"key":"status","label":"ステータス"}],"rows":[...取得したデータ...]}
+{"entity":"customers","columns":[{"key":"name","label":"会社名"},{"key":"email","label":"メール"},{"key":"status","label":"ステータス"}],"rows":[...取得したデータ（各行にidを含む）...]}
 </ui>
 
 アクション選択の指定例（ユーザーに次の操作を選んでもらう場合）:

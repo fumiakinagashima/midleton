@@ -12,9 +12,11 @@
 		oncancel?: () => void;
 		hideActions?: boolean;
 		formRef?: HTMLFormElement | null;
+		// ダイアログ内など、横幅いっぱいに広げたい場合に true（max-width を外す）
+		fullWidth?: boolean;
 	};
 
-	let { title, fields, submitLabel, onsubmit, oncancel, hideActions = false, formRef = $bindable(null) }: Props = $props();
+	let { title, fields, submitLabel, onsubmit, oncancel, hideActions = false, formRef = $bindable(null), fullWidth = false }: Props = $props();
 
 	let values = $state<Record<string, string>>(
 		untrack(() => Object.fromEntries(fields.map((f) => [f.key, f.value ?? ''])))
@@ -97,7 +99,7 @@
 	}
 </script>
 
-<form class="form" onsubmit={handleSubmit} bind:this={formRef}>
+<form class="form" class:full-width={fullWidth} onsubmit={handleSubmit} bind:this={formRef}>
 	{#if title}
 		<p class="form-title">{title}</p>
 	{/if}
@@ -195,6 +197,8 @@
 		border-radius: 8px;
 		width: 100%;
 		max-width: 620px;
+
+		&.full-width { max-width: none; }
 	}
 
 	.form-title {
