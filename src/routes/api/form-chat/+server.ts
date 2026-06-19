@@ -20,6 +20,14 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 		formTitle: string;
 		formFields: { key: string; label: string }[];
 		history: { role: 'user' | 'assistant'; text: string }[];
+		// ダイアログに表示中のレコード（詳細表示時）。指示語「この顧客」等の解決に使う
+		recordContext?: {
+			type: string;
+			typeLabel: string;
+			id: string;
+			label: string;
+			data?: Record<string, unknown>;
+		} | null;
 	};
 
 	if (mockMode) {
@@ -54,16 +62,45 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 		accountName: locals.account?.name
 	};
 
-	const fieldList = body.formFields.map((f) => `- ${f.label}（${f.key}）`).join('\n');
-	const systemPrompt = `あなたは「${body.formTitle}」フォームへの入力をサポートするAIアシスタントです。
-ユーザーがフォームの各フィールドを正しく入力できるよう、具体的なアドバイスや情報を提供してください。
+	const sections: string[] = [
+		'あなたは画面に開いているダイアログの内容についてユーザーをサポートするAIアシスタントです。'
+	];
 
+	const rc = body.recordContext;
+	if (rc) {
+		const dataLines = rc.data
+			? Object.entries(rc.data)
+					.filter(([, v]) => v != null && v !== '')
+					.map(([k, v]) => `  - ${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+					.join('\n')
+			: '';
+		sections.push(
+			`現在ダイアログに表示中のレコード:
+- 種別: ${rc.typeLabel}（${rc.type}）
+- ID: ${rc.id}
+- 名称: ${rc.label}${dataLines ? `\n- 表示中の内容:\n${dataLines}` : ''}
+
+ユーザーが「この顧客」「この案件」「これ」などと指示語で言及した場合は、上記の表示中レコードを指します（どのレコードか聞き返す必要はありません）。
+関連する案件・活動・担当者などの一覧や集計が必要な場合は、上記のIDを使ってツールで取得・集計してください（例: この顧客に紐づく案件の合計金額は summarize_deals または search_deals の customer_id にこのIDを指定して求める）。`
+		);
+	}
+
+	if (body.formFields.length > 0) {
+		const fieldList = body.formFields.map((f) => `- ${f.label}（${f.key}）`).join('\n');
+		sections.push(
+			`このダイアログは「${body.formTitle}」フォームです。ユーザーが各フィールドを正しく入力できるよう、具体的なアドバイスや情報を提供してください。
 フォームのフィールド一覧:
-${fieldList}
+${fieldList}`
+		);
+	}
 
-利用可能なツール: 顧客・案件・活動・担当者などの情報を検索・取得できます。フォーム入力に必要な情報（既存の顧客名・担当者名・過去の活動内容など）をツールで調べることができます。
+	sections.push(
+		`利用可能なツール: 顧客・案件・活動・担当者などの情報を検索・取得・集計できます。
 制約: データの登録・更新・削除・メール送信はできません。情報の取得のみ行えます。
-回答は簡潔にしてください。`;
+金額・日付・ステータスなどは日本語で分かりやすく示し、回答は簡潔にしてください。`
+	);
+
+	const systemPrompt = sections.join('\n\n');
 
 	const messages: MessageParam[] = [
 		...body.history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.text })),

@@ -44,6 +44,29 @@
 				]
 			: []
 	);
+
+	const APPROVAL_STATUS_LABELS: Record<string, string> = {
+		pending: '審査中',
+		approved: '承認',
+		rejected: '否決',
+		cancelled: '取り消し'
+	};
+
+	// 詳細表示中の申請を AI アシスタントに渡し、「この申請」等の指示語を解決できるようにする
+	const chatRecordContext = $derived.by(() => {
+		if (mode !== 'detail' || !row) return null;
+		return {
+			type: 'approvals',
+			typeLabel: '申請',
+			id: row.id,
+			label: row.title,
+			data: {
+				申請者: row.submittedBy,
+				ステータス: APPROVAL_STATUS_LABELS[row.status] ?? row.status,
+				内容: row.content
+			} as Record<string, unknown>
+		};
+	});
 </script>
 
 <div class="overlay" role="presentation"></div>
@@ -55,7 +78,7 @@
 		</button>
 	</div>
 	<div class="dialog-body">
-		<DialogChatSide contextTitle={title} contextFields={chatContextFields} />
+		<DialogChatSide contextTitle={title} contextFields={chatContextFields} recordContext={chatRecordContext} />
 
 		<div class="content-side">
 			{#if mode === 'create'}
