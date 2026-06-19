@@ -159,6 +159,9 @@ export async function handleGetWorkflow(db: Db, input: unknown, env?: ToolEnv) {
 	if (id) {
 		const row = await getWorkflow(db, id);
 		if (!row) throw new Error(`ワークフローが見つかりません（id: ${id}）`);
+		if (row.accountId && row.accountId !== env?.accountId) {
+			throw new Error(`ワークフローが見つかりません（id: ${id}）`);
+		}
 		return toGetWorkflowResult(row);
 	}
 
