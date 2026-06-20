@@ -93,7 +93,7 @@
 
 	.chart-wrap {
 		flex: 1;
-		overflow: hidden;
+		padding: 4px 0 4px 24px;
 		display: flex;
 		flex-direction: column;
 	}
