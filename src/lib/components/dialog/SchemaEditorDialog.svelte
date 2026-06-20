@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FieldEditor from '$lib/components/database/FieldEditor.svelte';
+	import DialogChatSide from './DialogChatSide.svelte';
 	import X from '$lib/components/icon/X.svelte';
 	import type { EditableField, FieldDef, TableInfo } from '$lib/server/db/table-service';
 
@@ -79,6 +80,16 @@
 	const namePattern = /^[a-z][a-z0-9_-]*$/;
 	const nameValid = $derived(mode !== 'create' || namePattern.test(name));
 	const builtinFields = $derived(info?.fields.filter((f) => !f.isCustom) ?? []);
+	const dialogTitle = $derived(
+		mode === 'create'
+			? '新規テーブル作成'
+			: info?.isCore
+				? `${info?.label}：カスタムフィールド`
+				: `スキーマ編集：${info?.label ?? type}`
+	);
+	const chatContextFields = $derived(
+		(info?.isCore ? customFields : fields).map((f) => ({ key: f.key, label: f.label }))
+	);
 
 	const FIELD_TYPE_LABELS: Record<string, string> = {
 		text: 'テキスト',
@@ -172,25 +183,20 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="overlay" onclick={onclose} role="presentation"></div>
+<div class="overlay" role="presentation"></div>
 
 <div class="dialog" role="dialog" aria-modal="true">
 	<div class="dialog-header">
-		<span class="dialog-title">
-			{#if mode === 'create'}
-				新規テーブル作成
-			{:else if info?.isCore}
-				{info?.label}：カスタムフィールド
-			{:else}
-				スキーマ編集：{info?.label ?? type}
-			{/if}
-		</span>
+		<span class="dialog-title">{dialogTitle}</span>
 		<button class="close-btn" onclick={onclose} aria-label="閉じる">
 			<X size={16} />
 		</button>
 	</div>
 
 	<div class="dialog-body">
+		<DialogChatSide contextTitle={dialogTitle} contextFields={chatContextFields} />
+
+		<div class="form-side">
 		{#if loading}
 			<div class="loading">読み込み中...</div>
 		{:else if mode === 'create'}
@@ -259,6 +265,7 @@
 		{#if error}
 			<p class="error">{error}</p>
 		{/if}
+		</div><!-- /form-side -->
 	</div>
 
 	<div class="dialog-footer">
@@ -294,31 +301,22 @@
 		animation: fade-in 0.2s ease;
 	}
 
-	@keyframes fade-in {
-		from { opacity: 0; }
-		to { opacity: 1; }
-	}
-
 	.dialog {
 		position: fixed;
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
 		z-index: 201;
-		width: min(720px, 95vw);
-		max-height: 90vh;
-		display: flex;
-		flex-direction: column;
+		width: min(900px, 95vw);
+		height: min(680px, 90vh);
 		background: var(--color-background);
 		border: 1px solid var(--color-border);
-		border-radius: 12px;
-		box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
-		animation: slide-in 0.2s ease;
-	}
-
-	@keyframes slide-in {
-		from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)); }
-		to { opacity: 1; transform: translate(-50%, -50%); }
+		border-radius: 16px;
+		box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		animation: dialog-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	.dialog-header {
@@ -333,27 +331,40 @@
 	.dialog-title {
 		font-size: 0.9375rem;
 		font-weight: 600;
+		color: var(--color-text);
 	}
 
 	.close-btn {
-		width: 28px;
-		height: 28px;
-		border-radius: 6px;
-		border: none;
-		background: none;
-		color: var(--color-text-muted);
-		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		&:hover { background: var(--color-surface); color: var(--color-text); }
+		width: 28px;
+		height: 28px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--color-text-muted);
+		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
+		&:hover {
+			background: color-mix(in srgb, var(--color-text) 8%, transparent);
+			color: var(--color-text);
+		}
 	}
 
 	.dialog-body {
 		flex: 1;
 		min-height: 0;
+		display: flex;
+		overflow: hidden;
+	}
+
+	.form-side {
+		flex: 1;
+		min-width: 0;
 		overflow-y: auto;
 		padding: 24px;
+		border-left: 1px solid var(--color-border);
 		display: flex;
 		flex-direction: column;
 		gap: 28px;
@@ -363,7 +374,7 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 14px 20px;
+		padding: 12px 20px;
 		border-top: 1px solid var(--color-border);
 		flex-shrink: 0;
 	}
@@ -373,8 +384,18 @@
 	.loading {
 		color: var(--color-text-muted);
 		font-size: 0.9375rem;
-		padding: 24px 0;
+		padding: 48px 0;
 		text-align: center;
+	}
+
+	@keyframes fade-in {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+
+	@keyframes dialog-in {
+		from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); }
+		to { opacity: 1; transform: translate(-50%, -50%); }
 	}
 
 	/* Form sections */
@@ -483,24 +504,27 @@
 	/* Footer buttons */
 	.btn-cancel {
 		padding: 7px 18px;
-		background: none;
 		border: 1px solid var(--color-border);
-		border-radius: 6px;
-		font-size: 0.9375rem;
-		color: var(--color-text);
+		border-radius: 8px;
+		background: transparent;
+		color: var(--color-text-muted);
+		font-size: 0.875rem;
 		cursor: pointer;
-		&:hover { border-color: var(--color-text-muted); }
+		transition: border-color 0.15s, color 0.15s;
+		&:hover { border-color: var(--color-text); color: var(--color-text); }
 	}
 
 	.btn-submit {
-		padding: 7px 22px;
+		padding: 7px 20px;
+		border: none;
+		border-radius: 8px;
 		background: var(--color-primary);
 		color: #fff;
-		border: none;
-		border-radius: 6px;
-		font-size: 0.9375rem;
+		font-size: 0.875rem;
 		cursor: pointer;
-		&:not(:disabled):hover { opacity: 0.88; }
+		transition: opacity 0.15s;
+		&:hover { opacity: 0.88; }
+		&:active { opacity: 0.75; }
 		&:disabled { opacity: 0.5; cursor: not-allowed; }
 	}
 
@@ -509,9 +533,10 @@
 		background: none;
 		color: var(--color-error);
 		border: 1px solid var(--color-error);
-		border-radius: 6px;
+		border-radius: 8px;
 		font-size: 0.875rem;
 		cursor: pointer;
+		transition: background 0.15s;
 		&:hover { background: var(--color-error-bg); }
 		&:disabled { opacity: 0.5; cursor: not-allowed; }
 	}
