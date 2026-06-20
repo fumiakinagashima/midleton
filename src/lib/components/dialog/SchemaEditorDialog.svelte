@@ -1,7 +1,6 @@
 <script lang="ts">
 	import FieldEditor from '$lib/components/database/FieldEditor.svelte';
-	import DialogChatSide from './DialogChatSide.svelte';
-	import X from '$lib/components/icon/X.svelte';
+	import DialogShell from './DialogShell.svelte';
 	import type { EditableField, FieldDef, TableInfo } from '$lib/server/db/table-service';
 
 	type Props = {
@@ -175,100 +174,83 @@
 		}
 		onSaved();
 	}
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onclose();
-	}
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-<div class="overlay" role="presentation"></div>
-
-<div class="dialog" role="dialog" aria-modal="true">
-	<div class="dialog-header">
-		<span class="dialog-title">{dialogTitle}</span>
-		<button class="close-btn" onclick={onclose} aria-label="閉じる">
-			<X size={16} />
-		</button>
-	</div>
-
-	<div class="dialog-body">
-		<DialogChatSide contextTitle={dialogTitle} contextFields={chatContextFields} />
-
-		<div class="form-side">
-		{#if loading}
-			<div class="loading">読み込み中...</div>
-		{:else if mode === 'create'}
-			<div class="form-section">
-				<h3 class="section-title">テーブル情報</h3>
-				<div class="field">
-					<label for="tbl-name">
-						テーブル名<span class="hint">（英小文字・数字・_・- のみ）</span>
-					</label>
-					<input
-						id="tbl-name"
-						type="text"
-						placeholder="例: products, project_tasks"
-						bind:value={name}
-						class:invalid={name && !nameValid}
-					/>
-					{#if name && !nameValid}
-						<p class="field-error">英小文字で始まり、英小文字・数字・_・- のみ使用できます</p>
-					{/if}
+<DialogShell title={dialogTitle} {onclose} contextFields={chatContextFields}>
+	{#snippet children()}
+		<div class="content">
+			{#if loading}
+				<div class="loading">読み込み中...</div>
+			{:else if mode === 'create'}
+				<div class="form-section">
+					<h3 class="section-title">テーブル情報</h3>
+					<div class="field">
+						<label for="tbl-name">
+							テーブル名<span class="hint">（英小文字・数字・_・- のみ）</span>
+						</label>
+						<input
+							id="tbl-name"
+							type="text"
+							placeholder="例: products, project_tasks"
+							bind:value={name}
+							class:invalid={name && !nameValid}
+						/>
+						{#if name && !nameValid}
+							<p class="field-error">英小文字で始まり、英小文字・数字・_・- のみ使用できます</p>
+						{/if}
+					</div>
+					<div class="field">
+						<label for="tbl-label">表示名</label>
+						<input id="tbl-label" type="text" placeholder="例: 商品管理" bind:value={label} />
+					</div>
 				</div>
-				<div class="field">
-					<label for="tbl-label">表示名</label>
-					<input id="tbl-label" type="text" placeholder="例: 商品管理" bind:value={label} />
+				<div class="form-section">
+					<h3 class="section-title">フィールド定義</h3>
+					<FieldEditor bind:fields {availableTables} />
 				</div>
-			</div>
-			<div class="form-section">
-				<h3 class="section-title">フィールド定義</h3>
-				<FieldEditor bind:fields {availableTables} />
-			</div>
-		{:else if info?.isCore}
-			<div class="form-section">
-				<h3 class="section-title">組み込みフィールド（変更不可）</h3>
-				<div class="builtin-list">
-					{#each builtinFields as field}
-						<div class="builtin-row">
-							<span class="builtin-key">{field.key}</span>
-							<span class="builtin-label">{field.label}</span>
-							<span class="builtin-type">{FIELD_TYPE_LABELS[field.type] ?? field.type}</span>
-							{#if field.required}<span class="builtin-req">必須</span>{/if}
-						</div>
-					{/each}
+			{:else if info?.isCore}
+				<div class="form-section">
+					<h3 class="section-title">組み込みフィールド（変更不可）</h3>
+					<div class="builtin-list">
+						{#each builtinFields as field}
+							<div class="builtin-row">
+								<span class="builtin-key">{field.key}</span>
+								<span class="builtin-label">{field.label}</span>
+								<span class="builtin-type">{FIELD_TYPE_LABELS[field.type] ?? field.type}</span>
+								{#if field.required}<span class="builtin-req">必須</span>{/if}
+							</div>
+						{/each}
+					</div>
 				</div>
-			</div>
-			<div class="form-section">
-				<h3 class="section-title">カスタムフィールド</h3>
-				<FieldEditor bind:fields={customFields} {availableTables} />
-			</div>
-		{:else if info}
-			<div class="form-section">
-				<h3 class="section-title">テーブル情報</h3>
-				<div class="field">
-					<label for="edit-name">テーブル名（変更不可）</label>
-					<input id="edit-name" type="text" value={type} disabled />
+				<div class="form-section">
+					<h3 class="section-title">カスタムフィールド</h3>
+					<FieldEditor bind:fields={customFields} {availableTables} />
 				</div>
-				<div class="field">
-					<label for="edit-label">表示名</label>
-					<input id="edit-label" type="text" bind:value={label} />
+			{:else if info}
+				<div class="form-section">
+					<h3 class="section-title">テーブル情報</h3>
+					<div class="field">
+						<label for="edit-name">テーブル名（変更不可）</label>
+						<input id="edit-name" type="text" value={type} disabled />
+					</div>
+					<div class="field">
+						<label for="edit-label">表示名</label>
+						<input id="edit-label" type="text" bind:value={label} />
+					</div>
 				</div>
-			</div>
-			<div class="form-section">
-				<h3 class="section-title">フィールド定義</h3>
-				<FieldEditor bind:fields {availableTables} />
-			</div>
-		{/if}
+				<div class="form-section">
+					<h3 class="section-title">フィールド定義</h3>
+					<FieldEditor bind:fields {availableTables} />
+				</div>
+			{/if}
 
-		{#if error}
-			<p class="error">{error}</p>
-		{/if}
-		</div><!-- /form-side -->
-	</div>
+			{#if error}
+				<p class="error">{error}</p>
+			{/if}
+		</div>
+	{/snippet}
 
-	<div class="dialog-footer">
+	{#snippet footer()}
 		{#if mode === 'edit' && info && !info.isCore}
 			<button class="btn-delete" onclick={handleDelete} disabled={deleting}>
 				{deleting ? '削除中...' : 'テーブルを削除'}
@@ -289,97 +271,15 @@
 				{/if}
 			</button>
 		{/if}
-	</div>
-</div>
+	{/snippet}
+</DialogShell>
 
 <style lang="scss">
-	.overlay {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.45);
-		z-index: 200;
-		animation: fade-in 0.2s ease;
-	}
-
-	.dialog {
-		position: fixed;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		z-index: 201;
-		width: min(900px, 95vw);
-		height: min(680px, 90vh);
-		background: var(--color-background);
-		border: 1px solid var(--color-border);
-		border-radius: 16px;
-		box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-		animation: dialog-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	.dialog-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 16px 20px;
-		border-bottom: 1px solid var(--color-border);
-		flex-shrink: 0;
-	}
-
-	.dialog-title {
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.close-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border: none;
-		border-radius: 6px;
-		background: transparent;
-		color: var(--color-text-muted);
-		cursor: pointer;
-		transition: background 0.15s, color 0.15s;
-		&:hover {
-			background: color-mix(in srgb, var(--color-text) 8%, transparent);
-			color: var(--color-text);
-		}
-	}
-
-	.dialog-body {
-		flex: 1;
-		min-height: 0;
-		display: flex;
-		overflow: hidden;
-	}
-
-	.form-side {
-		flex: 1;
-		min-width: 0;
-		overflow-y: auto;
-		padding: 24px;
-		border-left: 1px solid var(--color-border);
+	.content {
 		display: flex;
 		flex-direction: column;
 		gap: 28px;
 	}
-
-	.dialog-footer {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 12px 20px;
-		border-top: 1px solid var(--color-border);
-		flex-shrink: 0;
-	}
-
-	.spacer { flex: 1; }
 
 	.loading {
 		color: var(--color-text-muted);
@@ -388,17 +288,6 @@
 		text-align: center;
 	}
 
-	@keyframes fade-in {
-		from { opacity: 0; }
-		to { opacity: 1; }
-	}
-
-	@keyframes dialog-in {
-		from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); }
-		to { opacity: 1; transform: translate(-50%, -50%); }
-	}
-
-	/* Form sections */
 	.form-section {
 		display: flex;
 		flex-direction: column;
@@ -452,7 +341,6 @@
 		margin: 0;
 	}
 
-	/* Builtin fields */
 	.builtin-list {
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
@@ -501,7 +389,8 @@
 		border-radius: 6px;
 	}
 
-	/* Footer buttons */
+	.spacer { flex: 1; }
+
 	.btn-cancel {
 		padding: 7px 18px;
 		border: 1px solid var(--color-border);
