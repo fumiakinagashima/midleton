@@ -1,16 +1,26 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
+	import { invalidateAll, goto } from '$app/navigation';
 	import type { PageData } from './$types';
 	import Building from '$lib/components/icon/Building.svelte';
 	import User from '$lib/components/icon/User.svelte';
 	import Briefcase from '$lib/components/icon/Briefcase.svelte';
 	import Clipboard from '$lib/components/icon/Clipboard.svelte';
 	import Table from '$lib/components/icon/Table.svelte';
+	import SchemaEditorDialog from '$lib/components/dialog/SchemaEditorDialog.svelte';
 
 	let { data }: { data: PageData } = $props();
 	const tables = $derived(data.tables);
 
 	const ICON_MAP: Record<string, Component> = { building: Building, user: User, briefcase: Briefcase, clipboard: Clipboard, table: Table };
+
+	let newTableDialogOpen = $state(false);
+
+	async function handleNewTableSaved(newType?: string) {
+		newTableDialogOpen = false;
+		await invalidateAll();
+		if (newType) goto(`/database/${newType}`);
+	}
 </script>
 
 <div class="page">
@@ -35,12 +45,12 @@
 	<section>
 		<div class="section-header">
 			<h2 class="section-title">カスタムテーブル</h2>
-			<a href="/database/new-table" class="btn-new">+ 新規テーブル作成</a>
+			<button class="btn-new" onclick={() => (newTableDialogOpen = true)}>+ 新規テーブル作成</button>
 		</div>
 		{#if tables.filter(t => !t.isCore).length === 0}
 			<div class="empty-custom">
 				<p>カスタムテーブルはまだありません。</p>
-				<a href="/database/new-table" class="btn-new">最初のテーブルを作成</a>
+				<button class="btn-new" onclick={() => (newTableDialogOpen = true)}>最初のテーブルを作成</button>
 			</div>
 		{:else}
 			<div class="grid">
@@ -56,6 +66,14 @@
 		{/if}
 	</section>
 </div>
+
+{#if newTableDialogOpen}
+	<SchemaEditorDialog
+		mode="create"
+		onclose={() => (newTableDialogOpen = false)}
+		onSaved={handleNewTableSaved}
+	/>
+{/if}
 
 <style lang="scss">
 	.page {

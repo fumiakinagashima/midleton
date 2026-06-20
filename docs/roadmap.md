@@ -371,21 +371,41 @@
     - [x] チャット履歴のサーバー永続化（フェーズ6 ⑥で実装）後も、通知センターは「再訪時のエントリポイント」として併用する
 
 
-## v3：UI拡張・AIアシスタント強化（mainマージ後の継続開発）
+## v3（2026-06-20〜）
 
-`feature/chat-turn-ui`（フェーズ6②〜）のmainマージ後に着手した継続開発。UIの作り込みとダイアログAIアシスタントの実用性向上が中心。
+1機能1ブランチで順番に実装する。
 
-### 整理・クリーンアップ（2026-06-19）
-- [x] 死にルートの削除: `WorkflowEditorDialog`化で参照されなくなった `/database/workflows/new`、`ApprovalDialog`化で実質未使用だった `/database/approvals/new`・`/[id]` を削除（全ページルートの流入リンクを確認し、意図的なディープリンクラッパー以外の死にルートが他に無いことも確認済み）
-- [x] 名刺取り込みは「カメラ撮影のみ」に整理（画像ファイル取り込みは製品から完全撤去済み。ROADMAP記述もカメラ前提に更新）
+### 1. スキーマ編集のダイアログ化（`feature/v3-schema-dialog`）
+- [x] テーブル作成・フィールド編集を中央ダイアログ（`SchemaEditorDialog`）に統一。現在フルページ遷移になっている `/database/[type]/schema` をダイアログ化し、一覧ページを離れずにスキーマ編集できるようにする
+- [x] コアテーブル（customers/contacts/deals/activities）もカスタムカラムの追加・編集・削除をダイアログで行えるようにする
+- [x] カスタムテーブルの新規作成（テーブル名・フィールド定義）もダイアログで完結させる
 
-### UI
-- [x] メインチャットのコンテンツ表示幅を100%化（`.messages-inner` の max-width 撤廃）。入力欄（`.input-wrap`）は独立配置のためサイズ据え置き
-- [x] `Timeline` コンポーネント（活動履歴の時系列ビジュアル）。新しい順の縦型タイムラインで、種別（メモ/電話/メール/面談/案件登録）を `--chart-*` で色分け。`<ui type="timeline">`（filter: customerId / type）でAIが返す。データは `/api/database/activities|customers/records` から自動取得（Ganttと同方式）
+### 2. データ管理一覧の検索・ソート（`feature/v3-list-search`）
+- [ ] `/database/[type]` 一覧上部に検索バーを追加（クライアント側。表示中の列の表示値への部分一致）
+- [ ] 列ヘッダクリックでソート（number型は数値比較、他は `localeCompare('ja')`）
+- [ ] 検索クリア・ヒット件数表示。`Search`/`X` アイコン
 
-### AI・チャット
-- [x] AI絞り込み一覧の行クリックで詳細ダイアログが確実に開くよう修正。AIが `<ui type="table">` に `entity` を付け忘れても、`streamChat` がそのリクエストで使われたレコード一覧系ツール（`RECORD_LIST_TOOL_ENTITY`）が1種類だけの場合に限り `entity` を補完する（`rows[0]` に id があるときのみ。複数種別混在時は誤割り当て防止のため補完しない）
-- [x] ダイアログ左のAIアシスタント（`DialogChatSide` + `/api/form-chat`）が表示中レコードを認識。`recordContext`（type/typeLabel/id/label/data）をシステムプロンプトに埋め込み、「この顧客の案件の合計金額は？」のように指示語で質問できる。AIは読み取り専用ツール（`summarize_deals`/`search_deals` の `customer_id` 等）にそのIDを渡して集計する。`RecordDialog`（詳細）・`ApprovalDialog`（申請詳細）が渡し、フォーム表示時は従来どおり入力支援
+### 3. ワークフローのパラメーター表示修正（`feature/v3-workflow-params`）
+- [ ] 選択中のツール・前段ステップの結果に応じて入力欄・選択肢を動的に切り替える（現状は静的なパラメーター一覧表示）
+
+### 4. 資料生成の素材渡し方式への転換（`feature/v3-doc-handoff`）
+- [ ] Office系ファイルの直接生成をやめ、**整形済みデータファイル（CSV/Markdown）＋仕上げ用プロンプト**を生成してユーザーが外部のAIツール（Copilot / Canvas / ChatGPT等）で完成させる方式へ変更
+- [ ] `build_handoff_data` MCPツール: DBからデータ取得→CSV/Markdown生成→R2保存→DLリンク
+- [ ] チャットに `<ui type="doc_handoff">` コンポーネント（コピー用プロンプト＋データDLリンク）を表示
+- [ ] 旧・直接生成ツール（Word/PowerPoint/Excel）はコードを残しつつAIに非公開化
+
+### 5. メインチャットの用途定義と表示の整理（`feature/v3-chat-ux`）
+- [ ] チャットの役割を「SELECTのみ（読み取り＋動線ボタン）」に明確化。登録・編集・削除は固定ダイアログ経由に限定
+- [ ] 書き込み系ツール（`create_*`/`update_*`/`delete_*`）をストリーミングAIのツール一覧から除外
+- [ ] AIが返す `<ui type="form">` は動線ボタンとして表示（自動でダイアログを開かず、ユーザーが押して開ける）
+- [ ] チャットのターン単位UI再設計: 「直前の1往復のみをメイン表示 + 過去はドロワー」構成
+- [ ] コア4エンティティの詳細/編集/登録を共通の中央ダイアログ（`RecordDialog`）に統一
+
+### 6. メモ・議事録からの連続登録（`feature/v3-note-to-records`）
+- [ ] 商談メモ等を貼ると、AIが内容を要約し登録対象ごとに `<ui type="form">` 動線ボタンを並べる（prefill値入り）
+- [ ] カスタムテーブルは `entity="<name>"` 属性で指定
+- [ ] 新規顧客を先に登録→担当者・案件を各ダイアログで登録するフロー
+- [ ] 書き込みはすべてユーザーがダイアログで送信した時点で確定（AIが直接書き込まない）
 
 
 ## v2 TODO
