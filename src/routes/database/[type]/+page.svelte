@@ -7,6 +7,10 @@
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
 	import SchemaEditorDialog from '$lib/components/dialog/SchemaEditorDialog.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import SearchIcon from '$lib/components/icon/Search.svelte';
+	import XIcon from '$lib/components/icon/X.svelte';
+	import ArrowUpIcon from '$lib/components/icon/ArrowUp.svelte';
+	import ArrowDownIcon from '$lib/components/icon/ArrowDown.svelte';
 	import { LIST_PAGE_SIZE } from '$lib/constants';
 
 	let { data }: { data: PageData } = $props();
@@ -37,20 +41,14 @@
 	$effect(() => {
 		rows = data.rows;
 	});
-	// テーブル切り替え時はページを先頭へ
+	// テーブル切り替え時はページ・検索・ソートをリセット
 	$effect(() => {
 		void type;
 		pageNum = 1;
+		searchQuery = '';
+		sortKey = null;
+		sortDir = 'asc';
 	});
-	const totalPages = $derived(Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE)));
-	$effect(() => {
-		if (pageNum > totalPages) pageNum = totalPages;
-	});
-	const pagedRows = $derived(
-		rows.length > LIST_PAGE_SIZE
-			? rows.slice((pageNum - 1) * LIST_PAGE_SIZE, pageNum * LIST_PAGE_SIZE)
-			: rows
-	);
 
 	const listCols = $derived(info?.fields.filter(f => f.listable) ?? []);
 	const refLabels = $derived(data.refLabels);
@@ -71,6 +69,66 @@
 		return String(val);
 	}
 
+	// --- 検索 ---
+	let searchQuery = $state('');
+
+	const filteredRows = $derived.by(() => {
+		const q = searchQuery.trim().toLowerCase();
+		if (!q) return rows;
+		return rows.filter(row =>
+			listCols.some(col => displayValue(row, col.key).toLowerCase().includes(q))
+		);
+	});
+
+	// --- ソート ---
+	let sortKey = $state<string | null>(null);
+	let sortDir = $state<'asc' | 'desc'>('asc');
+
+	function toggleSort(key: string) {
+		if (sortKey === key) {
+			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			sortKey = key;
+			sortDir = 'asc';
+		}
+		pageNum = 1;
+	}
+
+	const sortedRows = $derived.by(() => {
+		if (!sortKey) return filteredRows;
+		const key = sortKey;
+		const field = info?.fields.find(f => f.key === key);
+		const isNumber = field?.type === 'number';
+		const dir = sortDir === 'asc' ? 1 : -1;
+		return [...filteredRows].sort((a, b) => {
+			const av = a[key];
+			const bv = b[key];
+			if (av == null && bv == null) return 0;
+			if (av == null) return dir;
+			if (bv == null) return -dir;
+			if (isNumber) return (Number(av) - Number(bv)) * dir;
+			return String(av).localeCompare(String(bv), 'ja') * dir;
+		});
+	});
+
+	// 検索/ソートが変わったらページ先頭へ
+	$effect(() => {
+		void searchQuery;
+		void sortKey;
+		void sortDir;
+		pageNum = 1;
+	});
+
+	const totalPages = $derived(Math.max(1, Math.ceil(sortedRows.length / LIST_PAGE_SIZE)));
+	$effect(() => {
+		if (pageNum > totalPages) pageNum = totalPages;
+	});
+	const pagedRows = $derived(
+		sortedRows.length > LIST_PAGE_SIZE
+			? sortedRows.slice((pageNum - 1) * LIST_PAGE_SIZE, pageNum * LIST_PAGE_SIZE)
+			: sortedRows
+	);
+
 </script>
 
 <div class="page">
@@ -89,10 +147,34 @@
 		</div>
 	</header>
 
+	<div class="search-bar">
+		<div class="search-input-wrap">
+			<SearchIcon size={15} class="search-icon" />
+			<input
+				type="text"
+				class="search-input"
+				placeholder="検索..."
+				bind:value={searchQuery}
+			/>
+			{#if searchQuery}
+				<button class="search-clear" onclick={() => (searchQuery = '')} aria-label="検索をクリア">
+					<XIcon size={14} />
+				</button>
+			{/if}
+		</div>
+		{#if searchQuery}
+			<span class="hit-count">{sortedRows.length}件ヒット</span>
+		{/if}
+	</div>
+
 	{#if rows.length === 0}
 		<div class="empty">
 			<p>レコードがありません。</p>
 			<button class="btn-primary" onclick={openCreate}>最初のレコードを作成</button>
+		</div>
+	{:else if sortedRows.length === 0}
+		<div class="empty">
+			<p>「{searchQuery}」に一致するレコードがありません。</p>
 		</div>
 	{:else}
 		<div class="table-wrap">
@@ -100,7 +182,20 @@
 				<thead>
 					<tr>
 						{#each listCols as col}
-							<th>{col.label}</th>
+							<th>
+								<button class="sort-btn" onclick={() => toggleSort(col.key)}>
+									{col.label}
+									{#if sortKey === col.key}
+										{#if sortDir === 'asc'}
+											<ArrowUpIcon size={12} class="sort-icon active" />
+										{:else}
+											<ArrowDownIcon size={12} class="sort-icon active" />
+										{/if}
+									{:else}
+										<ArrowUpIcon size={12} class="sort-icon inactive" />
+									{/if}
+								</button>
+							</th>
 						{/each}
 						<th></th>
 					</tr>
@@ -120,7 +215,13 @@
 			</table>
 		</div>
 		<div class="list-footer">
-			<span class="count">{rows.length}件</span>
+			<span class="count">
+				{#if searchQuery}
+					{sortedRows.length} / {rows.length}件
+				{:else}
+					{rows.length}件
+				{/if}
+			</span>
 			{#if totalPages > 1}
 				<Pagination bind:page={pageNum} {totalPages} />
 			{/if}
@@ -206,6 +307,66 @@
 		white-space: nowrap;
 	}
 
+	.search-bar {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.search-input-wrap {
+		position: relative;
+		display: flex;
+		align-items: center;
+		width: 280px;
+
+		:global(.search-icon) {
+			position: absolute;
+			left: 10px;
+			color: var(--color-text-muted);
+			pointer-events: none;
+		}
+	}
+
+	.search-input {
+		width: 100%;
+		padding: 7px 32px 7px 32px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		font-size: 0.875rem;
+		background: var(--color-background);
+		color: var(--color-text);
+		outline: none;
+
+		&:focus {
+			border-color: var(--color-primary);
+		}
+
+		&::placeholder {
+			color: var(--color-text-muted);
+		}
+	}
+
+	.search-clear {
+		position: absolute;
+		right: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: none;
+		border: none;
+		padding: 2px;
+		cursor: pointer;
+		color: var(--color-text-muted);
+		border-radius: 3px;
+
+		&:hover { color: var(--color-text); }
+	}
+
+	.hit-count {
+		font-size: 0.8125rem;
+		color: var(--color-text-muted);
+	}
+
 	.table-wrap {
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
@@ -235,13 +396,50 @@
 	thead { background: var(--color-surface); }
 
 	th {
-		padding: 9px 14px;
+		padding: 0;
 		text-align: left;
+		border-bottom: 1px solid var(--color-border);
+		white-space: nowrap;
+
+		&:last-child { width: 1%; }
+	}
+
+	.sort-btn {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 9px 14px;
+		width: 100%;
+		background: none;
+		border: none;
 		font-size: 0.8125rem;
 		font-weight: 600;
 		color: var(--color-text-muted);
-		border-bottom: 1px solid var(--color-border);
+		cursor: pointer;
+		text-align: left;
 		white-space: nowrap;
+
+		&:hover {
+			color: var(--color-text);
+		}
+
+		:global(.sort-icon) {
+			flex-shrink: 0;
+			transition: opacity 0.1s;
+
+			&.inactive {
+				opacity: 0;
+			}
+		}
+
+		&:hover :global(.sort-icon.inactive) {
+			opacity: 0.4;
+		}
+
+		:global(.sort-icon.active) {
+			color: var(--color-primary);
+			opacity: 1;
+		}
 	}
 
 	td {
