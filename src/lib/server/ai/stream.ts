@@ -140,6 +140,8 @@ export function parseUITag(tag: string): MessageContent | null {
 	const description = /description="([^"]+)"/.exec(attrStr)?.[1];
 	const newTab = /newTab="([^"]+)"/.exec(attrStr)?.[1] === 'true';
 	const jobId = /jobId="([^"]+)"/.exec(attrStr)?.[1];
+	const downloadUrl = /downloadUrl="([^"]+)"/.exec(attrStr)?.[1];
+	const filename = /filename="([^"]+)"/.exec(attrStr)?.[1];
 
 	try {
 		if (type === 'form' && tool) {
@@ -176,6 +178,8 @@ export function parseUITag(tag: string): MessageContent | null {
 			return { type: 'bizcard', title };
 		} else if (type === 'document_job' && jobId && label) {
 			return { type: 'document_job', jobId, label };
+		} else if (type === 'doc_handoff' && downloadUrl && filename && label) {
+			return { type: 'doc_handoff', label, downloadUrl, filename, prompt: body };
 		} else if (type === 'reply') {
 			return { type: 'reply', title, fields: JSON.parse(body), submitLabel };
 		} else if (type === 'customer_detail') {

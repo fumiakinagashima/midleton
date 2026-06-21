@@ -10,6 +10,7 @@
 	import Link from '$lib/components/chat/Link.svelte';
 	import Bizcard from '$lib/components/chat/Bizcard.svelte';
 	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
+	import DocHandoff from '$lib/components/chat/DocHandoff.svelte';
 	import Reply from '$lib/components/chat/Reply.svelte';
 	import FormDialog from '$lib/components/dialog/FormDialog.svelte';
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
@@ -17,7 +18,7 @@
 	import { type CoreType } from '$lib/components/dialog/field-adapter';
 	import TurnHistoryDrawer from '$lib/components/chat/TurnHistoryDrawer.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, TimelineContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
+	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, TimelineContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, DocHandoffContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick, untrack } from 'svelte';
@@ -717,7 +718,7 @@
 										onselect={handleActionSelect}
 									/>
 								{:else}
-									{@const extra = content as ValuesContent | GanttContent | TimelineContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | ReplyContent}
+									{@const extra = content as ValuesContent | GanttContent | TimelineContent | ChartContent | KanbanContent | LinkContent | BizcardContent | DocumentJobContent | DocHandoffContent | ReplyContent}
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
@@ -743,6 +744,8 @@
 										{/if}
 									{:else if extra.type === 'document_job'}
 										<DocumentJob jobId={extra.jobId} label={extra.label} onResolved={(result) => resolveDocumentJob(msg, extra.jobId, result)} />
+									{:else if extra.type === 'doc_handoff'}
+										<DocHandoff label={extra.label} downloadUrl={extra.downloadUrl} filename={extra.filename} prompt={extra.prompt} />
 									{:else if extra.type === 'reply'}
 										{#if !extra.completed}
 											<Reply

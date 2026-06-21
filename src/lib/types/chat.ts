@@ -147,6 +147,14 @@ export type DocumentJobContent = {
 	label: string;
 };
 
+export type DocHandoffContent = {
+	type: 'doc_handoff';
+	label: string;
+	downloadUrl: string;
+	filename: string;
+	prompt: string;
+};
+
 export type ReplyOption = {
 	value: string;
 	label: string;
@@ -289,6 +297,7 @@ export type MessageContent =
 	| LinkContent
 	| BizcardContent
 	| DocumentJobContent
+	| DocHandoffContent
 	| ReplyContent
 	| CustomerDetailContent
 	| WorkflowContent;
