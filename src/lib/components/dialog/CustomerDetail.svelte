@@ -217,7 +217,7 @@
 				{#each activities as a}
 					<li class="item-row">
 						<span class="activity-type">{ACTIVITY_TYPE_LABELS[a.type] ?? a.type}</span>
-						<span class="item-meta">{fmtDate(a.createdAt)}</span>
+						<span class="item-meta">{fmtDate(a.activityDate ?? a.createdAt)}</span>
 						<span class="activity-content">{a.content}</span>
 					</li>
 				{/each}

@@ -1,5 +1,6 @@
 import type { FieldDef } from '$lib/server/db/table-service';
 import type { FormField } from '$lib/types/chat';
+import { toJstDatetimeLocal } from '$lib/datetime';
 
 /** RecordDialog が扱うコアエンティティ種別 */
 export type CoreType = 'customers' | 'contacts' | 'deals' | 'activities';
@@ -37,7 +38,15 @@ export function fieldDefsToFormFields(
 ): FormField[] {
 	return fields.map((f) => {
 		const raw = values[f.key];
-		const value = raw == null ? '' : String(raw);
+		let value = '';
+		if (raw != null && raw !== '') {
+			if (f.type === 'datetime-local' && typeof raw === 'number') {
+				// unix timestamp → JST datetime-local 文字列に変換
+				value = toJstDatetimeLocal(new Date(raw * 1000));
+			} else {
+				value = String(raw);
+			}
+		}
 		return fieldDefToFormField(f, value);
 	});
 }
