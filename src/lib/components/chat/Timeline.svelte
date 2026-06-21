@@ -18,6 +18,7 @@
 		type: string;
 		content: string;
 		createdAt: number | null;
+		activityDate: number | null;
 	};
 
 	const TYPE_LABELS: Record<string, string> = {
@@ -32,6 +33,10 @@
 	let customerMap = $state<Record<string, string>>({});
 	let loading = $state(true);
 
+	function displayTs(a: Activity): number {
+		return a.activityDate ?? a.createdAt ?? 0;
+	}
+
 	const displayActivities = $derived(
 		activities
 			.filter((a) => {
@@ -39,7 +44,7 @@
 				if (filter?.type && filter.type.length > 0 && !filter.type.includes(a.type)) return false;
 				return true;
 			})
-			.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+			.sort((a, b) => displayTs(b) - displayTs(a))
 	);
 
 	function fmtDate(ts: number | null): string {
@@ -63,7 +68,8 @@
 				customerId: String(r.customerId ?? ''),
 				type: String(r.type ?? 'note'),
 				content: String(r.content ?? ''),
-				createdAt: r.createdAt != null ? Number(r.createdAt) : null
+				createdAt: r.createdAt != null ? Number(r.createdAt) : null,
+				activityDate: r.activityDate != null ? Number(r.activityDate) : null
 			}));
 		}
 		if (custRes.ok) {
@@ -93,7 +99,7 @@
 					</span>
 					<div class="body">
 						<div class="meta">
-							<span class="time">{fmtDate(a.createdAt)}</span>
+							<span class="time">{fmtDate(a.activityDate ?? a.createdAt)}</span>
 							<span class="badge type-{a.type}">{typeLabel(a.type)}</span>
 							{#if customerMap[a.customerId]}
 								<span class="customer">{customerMap[a.customerId]}</span>

@@ -38,6 +38,14 @@
 			if (isNaN(d.getTime())) return String(val);
 			return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
 		}
+		if (fieldType === 'datetime-local') {
+			const d = typeof val === 'number' ? new Date(val * 1000) : new Date(String(val));
+			if (isNaN(d.getTime())) return String(val);
+			return new Intl.DateTimeFormat('ja-JP', {
+				year: 'numeric', month: 'long', day: 'numeric',
+				hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo'
+			}).format(d);
+		}
 		return String(val);
 	}
 

@@ -8,6 +8,7 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import { fieldDefsToFormFields, type RecordFormSpec } from './field-adapter';
 	import type { FieldDef } from '$lib/server/db/table-service';
+	import { toJstDatetimeLocal } from '$lib/datetime';
 	import type { FormField } from '$lib/types/chat';
 	import type {
 		CustomerDetailCustomer,
@@ -122,6 +123,14 @@
 				if (view.mode === 'edit' && view.recordId) {
 					const recRes = await fetch(`/api/database/${view.type}/records/${view.recordId}`);
 					if (recRes.ok) values = (await recRes.json()) as Record<string, unknown>;
+				}
+				if (view.mode === 'create') {
+					// datetime-local フィールドにデフォルト値がなければ現在日時を設定
+					for (const f of info.fields) {
+						if (f.type === 'datetime-local' && (values[f.key] == null || values[f.key] === '')) {
+							values = { ...values, [f.key]: toJstDatetimeLocal(new Date()) };
+						}
+					}
 				}
 				if (cancelled) return;
 				formLabel = info.label ?? labelFor(view.type);

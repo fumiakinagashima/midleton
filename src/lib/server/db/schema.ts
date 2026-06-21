@@ -81,6 +81,8 @@ export const activities = sqliteTable('activities', {
 		.notNull()
 		.default('note'),
 	content: text('content').notNull(),
+	// ユーザーが任意で設定する「実際に活動を行った日時」（登録日時 createdAt と異なる場合に使う）
+	activityDate: integer('activity_date', { mode: 'timestamp' }),
 	// 登録者の accountId（セッションから設定）。ログイン実装前の既存データは ''
 	createdBy: text('created_by').notNull().default(''),
 	custom: text('custom').default('{}'),

@@ -1,4 +1,5 @@
 import { eq, desc, sql } from 'drizzle-orm';
+import { parseJstDatetime } from '$lib/datetime';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { Db } from './index';
 import {
@@ -17,7 +18,7 @@ export type CustomFieldType = 'text' | 'number' | 'select' | 'date' | 'email' | 
 export type FieldDef = {
 	key: string;
 	label: string;
-	type: CustomFieldType | 'recordSelect';
+	type: CustomFieldType | 'recordSelect' | 'datetime-local';
 	required?: boolean;
 	options?: { label: string; value: string }[];
 	// 登録・編集フォームの選択肢（省略時は options を使用）。
@@ -114,7 +115,8 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 					{ label: 'メール', value: 'email' }, { label: '面談', value: 'meeting' }
 				]
 			},
-			{ key: 'content', label: '内容', type: 'textarea', required: true, listable: true }
+			{ key: 'content', label: '内容', type: 'textarea', required: true, listable: true },
+			{ key: 'activityDate', label: '活動日時', type: 'datetime-local' }
 		]
 	}
 };
@@ -126,7 +128,7 @@ const CORE_COLUMN_KEYS: Record<string, string[]> = {
 	customers: ['name', 'email', 'phone', 'postalCode', 'address', 'website', 'status', 'notes'],
 	contacts: ['customerId', 'name', 'nameKana', 'email', 'phone', 'role', 'department', 'notes'],
 	deals: ['customerId', 'title', 'amount', 'status', 'plannedStart', 'plannedEnd', 'notes'],
-	activities: ['customerId', 'type', 'content']
+	activities: ['customerId', 'type', 'content', 'activityDate']
 };
 
 const SYSTEM_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'entityTypeId']);
@@ -159,7 +161,7 @@ export async function updateCoreCustomFields(db: Db, tableName: string, fields: 
 		...fields.map((f, i) =>
 			db.insert(coreCustomFields).values({
 				id: crypto.randomUUID(), tableName,
-				key: f.key, label: f.label, type: f.type,
+				key: f.key, label: f.label, type: f.type as CustomFieldType,
 				required: f.required ?? false,
 				options: JSON.stringify(f.options ?? []),
 				refTable: f.refTable ?? null,
@@ -296,10 +298,13 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 			}));
 	}
 	if (type === 'activities') {
-		return (await db.select().from(activities).orderBy(desc(activities.createdAt)).limit(limit))
+		return (await db.select().from(activities)
+			.orderBy(desc(sql`COALESCE(${activities.activityDate}, ${activities.createdAt})`))
+			.limit(limit))
 			.map(a => ({
 				id: a.id, customerId: a.customerId,
 				type: a.type, content: a.content,
+				activityDate: toTs(a.activityDate),
 				...(JSON.parse(a.custom ?? '{}') as RecordRow),
 				createdAt: toTs(a.createdAt)
 			}));
@@ -357,6 +362,7 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 		return {
 			id: a.id, customerId: a.customerId,
 			type: a.type, content: a.content,
+			activityDate: toTs(a.activityDate),
 			...(JSON.parse(a.custom ?? '{}') as RecordRow),
 			createdAt: toTs(a.createdAt)
 		};
@@ -436,11 +442,13 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 	}
 	if (type === 'activities') {
 		const customData = extractCustomData('activities', data);
+		const actDate = data.activityDate ? parseJstDatetime(String(data.activityDate)) : null;
 		await db.insert(activities).values({
 			id,
 			customerId: String(data.customerId ?? ''),
 			type: (data.type as 'note' | 'call' | 'email' | 'meeting' | 'deal_created') ?? 'note',
 			content: String(data.content ?? ''),
+			...(actDate !== null ? { activityDate: actDate } : {}),
 			custom: JSON.stringify(customData)
 		});
 		return (await getRecord(db, 'activities', id))!;
@@ -511,10 +519,14 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 		const [existing] = await db.select({ custom: activities.custom }).from(activities).where(eq(activities.id, id));
 		const existingCustom = JSON.parse(existing?.custom ?? '{}') as Record<string, unknown>;
 		const mergedCustom = { ...existingCustom, ...extractCustomData('activities', data) };
+		const actDate = data.activityDate
+			? (String(data.activityDate) !== '' ? parseJstDatetime(String(data.activityDate)) : null)
+			: undefined;
 		await db.update(activities).set({
 			...(data.customerId != null ? { customerId: String(data.customerId) } : {}),
 			...(data.type != null ? { type: data.type as 'note' | 'call' | 'email' | 'meeting' | 'deal_created' } : {}),
 			...(data.content != null ? { content: String(data.content) } : {}),
+			...(actDate !== undefined ? { activityDate: actDate } : {}),
 			custom: JSON.stringify(mergedCustom)
 		}).where(eq(activities.id, id));
 		return (await getRecord(db, 'activities', id))!;
@@ -561,7 +573,7 @@ export async function createEntityType(db: Db, input: EntityTypeInput): Promise<
 		...input.fields.map((f, i) =>
 			db.insert(entityFields).values({
 				id: crypto.randomUUID(), entityTypeId: id,
-				key: f.key, label: f.label, type: f.type,
+				key: f.key, label: f.label, type: f.type as CustomFieldType,
 				required: f.required ?? false,
 				options: JSON.stringify(f.options ?? []),
 				refTable: f.refTable ?? null,
@@ -593,7 +605,7 @@ export async function updateEntityType(db: Db, name: string, input: Partial<Enti
 			queries.push(
 				db.insert(entityFields).values({
 					id: crypto.randomUUID(), entityTypeId: et.id,
-					key: f.key, label: f.label, type: f.type,
+					key: f.key, label: f.label, type: f.type as CustomFieldType,
 					required: f.required ?? false,
 					options: JSON.stringify(f.options ?? []),
 					refTable: f.refTable ?? null,
