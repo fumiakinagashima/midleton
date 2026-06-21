@@ -168,6 +168,15 @@
 		openedParams[stepId] = new Set([...openedParams[stepId], key]);
 	}
 
+	function closeParam(step: { id: string; params?: Record<string, string> }, key: string) {
+		if (step.params) delete step.params[key];
+		const s = openedParams[step.id];
+		if (s) {
+			s.delete(key);
+			openedParams[step.id] = new Set(s);
+		}
+	}
+
 	// get_contacts 等、同じtoolが複数カテゴリ（検索・集計）から参照される場合に、
 	// 再読込後どちらのカテゴリで表示するかをstep.categoryで覚えておく。未設定（AI生成・旧データ）はtoolからの逆引きにフォールバックする。
 	function currentCategoryKey(step: { id: string; tool: string; category?: string }): string {
@@ -372,7 +381,7 @@
 						{#if shown}
 							{@const selVal = refSelectValue(step.params?.[field.key])}
 							{@const hasRefs = visible.length > 0 || itemOpts.length > 0 || selVal !== '__literal__'}
-							<div class="wf-line wf-param">
+							<div class="wf-line wf-param" class:wf-param-optional={!field.required}>
 								<label for="wf-param-{step.id}-{field.key}">{field.label}</label>
 								{#if field.type === 'select'}
 									<select
@@ -451,6 +460,13 @@
 											}}
 										/>
 									{/if}
+								{/if}
+								{#if editable && !field.required}
+									<button
+										class="wf-param-del"
+										onclick={() => closeParam(step, field.key)}
+										title="このパラメーターを削除"
+									>×</button>
 								{/if}
 							</div>
 						{/if}
@@ -719,6 +735,19 @@
 		font-size: 0.75rem;
 		color: var(--color-text-muted);
 		white-space: nowrap;
+	}
+
+	.wf-param-del {
+		background: none;
+		border: none;
+		color: var(--color-text-muted);
+		cursor: pointer;
+		font-size: 13px;
+		padding: 0 2px;
+		line-height: 1;
+		margin-left: 2px;
+		flex-shrink: 0;
+		&:hover { color: #ef4444; }
 	}
 
 	.wf-add-param select {
