@@ -4,9 +4,10 @@ AIファーストなチャットベースの CRM/SFA。ユーザーはチャッ�
 
 ## 主な機能
 
-- **チャットAI**（`/`）— Claude API + MCP ツールによる顧客・商談・タスク等のCRUD、検索・集計、ノーコードUI（フォーム・テーブル・チャート・ガント・カンバン等）生成、Word/Excel/PowerPoint資料生成
+- **チャットAI**（`/`）— Claude API + MCP ツールによる顧客・商談・タスク等の検索・集計・分析、ノーコードUI（フォーム・テーブル・チャート・ガント・カンバン・タイムライン等）生成、資料データ素材生成（CSV/Markdown）
 - **クイックアクション** — チャット入力欄の「+」から、AIを介さず一覧・集計系ツールを即時実行（トークン消費なし）
 - **データ管理**（`/database`）— コア・カスタムテーブルのCRUD・スキーマ編集、申請（承認ルート）管理、アカウント管理、リマインダー管理
+- **ワークフロー**（`/database/workflows`）— ノーコードで自動化ワークフローを作成（毎日定時トリガー、foreach/condition、AI生成・AIレビュー・手動実行）
 - **名刺取り込み**（`/bizcard`）— カメラで撮影した名刺から顧客情報をAIで抽出し登録
 - **設定**（`/settings`）— 外部API連携、メール送信設定、クイックアクション選択、自身のプロフィール編集
 - **通知・リマインダー** — 通知センターと、Cron Triggerによるリマインダー自動配信（通知センター／メール／Slack）
@@ -439,7 +440,7 @@ AI がレスポンスとして返す動的UIコンポーネント。システム
 </ui>
 ```
 
-フィールドタイプ: `text` / `email` / `number` / `textarea` / `select` / `date`
+フィールドタイプ: `text` / `email` / `number` / `textarea` / `select` / `date` / `datetime-local` / `recordSelect`（リレーション先を検索選択）/ `hidden`
 
 #### Table（チャット用）
 
@@ -466,10 +467,14 @@ AI がレスポンスとして返す動的UIコンポーネント。システム
 | `Values` | キー・バリュー形式のサマリー表示（健全性スコア等） |
 | `Chart` | BarChart/LineChart/PieChart を単一・複数系列（grouped/stacked）でチャット内に表示 |
 | `Gantt` | プロジェクト・タスクのガントチャート表示 |
+| `Timeline` | 活動履歴の時系列ビジュアル表示 |
 | `Kanban` | 商談ステータス等のカンバンボード表示 |
+| `Workflow` | ワークフロー定義の表示・編集（`WorkflowEditorDialog` を開く） |
 | `Link` | レコードへのリンク。`newTab="true"` で別タブ表示（会話を中断させない） |
+| `Reply` | AIが質問・選択肢を提示する際のインライン回答UI（単一選択・複数選択・テキスト入力） |
 | `Bizcard` | 名刺画像のスキャン・読取結果表示 |
-| `DocumentJob` | Word/Excel/PowerPoint資料生成ジョブの進行状況・ダウンロードリンク表示 |
+| `DocHandoff` | 資料データファイル（CSV/Markdown）のDLリンクと外部AIツール向けプロンプト表示 |
+| `DocumentJob` | 非同期資料生成ジョブの進行状況・完了通知表示（`DocHandoff` 移行後は非推奨） |
 
 ---
 
@@ -501,7 +506,9 @@ midleton/
 │       ├── components/
 │       │   ├── ui/           # アプリUIコンポーネント（デザインシステム）
 │       │   ├── chat/         # AI がレスポンスとして返すコンポーネント
+│       │   ├── dialog/       # 詳細・編集・登録の中央ダイアログ群（チャットと/databaseで共有）
 │       │   ├── database/     # データ管理画面専用コンポーネント
+│       │   ├── icon/         # SVGアイコンコンポーネント
 │       │   └── bizcard/      # 名刺スキャン専用コンポーネント
 │       ├── quick-actions/    # クイックアクションのカタログ定義
 │       ├── server/
@@ -509,9 +516,11 @@ midleton/
 │       │   ├── mcp/          # MCP ツール定義
 │       │   ├── ai/           # Claude API 連携・システムプロンプト
 │       │   ├── auth/         # セッション・パスワードハッシュ
-│       │   ├── documents/    # Word/Excel/PowerPoint 生成（R2保存）
+│       │   ├── documents/    # 資料データファイル生成・R2保存
 │       │   ├── reminders/    # リマインダー配信
 │       │   ├── email/        # システムメール送信
+│       │   ├── slack/        # Slack Incoming Webhook 送信
+│       │   ├── workflow/     # ワークフロー実行エンジン
 │       │   └── quick-actions/# クイックアクションの実行・整形
 │       ├── styles/           # グローバルスタイル・テーマ
 │       └── types/            # 共通型定義
