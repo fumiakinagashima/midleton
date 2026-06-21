@@ -1,7 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { buildSystemPrompt } from './prompt';
-import { tools, dispatchTool } from '$lib/server/mcp';
+import { tools as allTools, dispatchTool } from '$lib/server/mcp';
+
+// メインチャットはSELECTのみ。create_* / update_* / delete_* はダイアログ経由でユーザーが実行する。
+const WRITE_TOOL_PREFIX = ['create_', 'update_', 'delete_'];
+const tools = allTools.filter(
+	(t) => !WRITE_TOOL_PREFIX.some((prefix) => t.name.startsWith(prefix))
+);
 import { DEFAULT_AI_MODEL } from './settings';
 import type { Db } from '$lib/server/db';
 import type { MessageContent, WorkflowStep } from '$lib/types/chat';

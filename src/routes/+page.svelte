@@ -11,6 +11,7 @@
 	import Bizcard from '$lib/components/chat/Bizcard.svelte';
 	import DocumentJob from '$lib/components/chat/DocumentJob.svelte';
 	import DocHandoff from '$lib/components/chat/DocHandoff.svelte';
+	import FormButton from '$lib/components/chat/FormButton.svelte';
 	import Reply from '$lib/components/chat/Reply.svelte';
 	import FormDialog from '$lib/components/dialog/FormDialog.svelte';
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
@@ -367,16 +368,14 @@
 	}
 
 	function finalizeStreamingMessage() {
-		let nextPanelForm: FormContent | null = null;
 		let nextPanelWorkflow: WorkflowContent | null = null;
 		let nextPanelRecord: typeof panelRecord = null;
 		const contents: MessageContent[] = [];
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
 		for (const c of streamingUIContents) {
 			if (c.type === 'form') {
-				const asRecord = coreToolToPanel(c as FormContent);
-				if (asRecord) nextPanelRecord = asRecord;
-				else nextPanelForm = c as FormContent;
+				// フォームはボタンとして描画。ダイアログは自動で開かずユーザーが押して開く。
+				contents.push(c);
 			} else if (c.type === 'workflow') {
 				nextPanelWorkflow = c as WorkflowContent;
 			} else if (c.type === 'customer_detail') {
@@ -385,7 +384,7 @@
 				contents.push(c);
 			}
 		}
-		if (contents.length === 0 && !nextPanelForm && !nextPanelWorkflow && !nextPanelRecord) {
+		if (contents.length === 0 && !nextPanelWorkflow && !nextPanelRecord) {
 			contents.push({ type: 'text', text: m.chat_error() });
 		}
 		hidePreviousDealKanban(contents);
@@ -394,7 +393,6 @@
 			messages = [...messages, message];
 			persistMessage(message);
 		}
-		if (nextPanelForm) panelForm = nextPanelForm;
 		if (nextPanelWorkflow) panelWorkflow = nextPanelWorkflow;
 		if (nextPanelRecord) panelRecord = nextPanelRecord;
 		streamingText = '';
@@ -701,7 +699,11 @@
 								{#if content.type === 'text'}
 									<div class="assistant-text">{@html renderMarkdown(content.text)}</div>
 								{:else if content.type === 'form'}
-									<!-- フォームはパネルで表示 -->
+									<FormButton form={content} onclick={() => {
+										const asRecord = coreToolToPanel(content);
+										if (asRecord) panelRecord = asRecord;
+										else panelForm = content;
+									}} />
 								{:else if content.type === 'table'}
 									<Table
 										columns={content.columns}
