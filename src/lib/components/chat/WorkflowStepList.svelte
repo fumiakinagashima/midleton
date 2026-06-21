@@ -154,6 +154,29 @@
 	// tool が決まれば常にそこからカテゴリを逆引きできるため、これは未確定の間だけ使う。
 	let pendingCategory = $state<Record<string, string>>({});
 
+	// 任意パラメーターをユーザーが明示的に開いたもの（ステップID → パラメーターキーのSet）
+	let openedParams = $state<Record<string, Set<string>>>({});
+
+	function isParamShown(stepId: string, fieldKey: string, hasValue: boolean, required: boolean): boolean {
+		if (required) return true;
+		if (hasValue) return true;
+		return openedParams[stepId]?.has(fieldKey) ?? false;
+	}
+
+	function openParam(stepId: string, key: string) {
+		if (!openedParams[stepId]) openedParams[stepId] = new Set();
+		openedParams[stepId] = new Set([...openedParams[stepId], key]);
+	}
+
+	function closeParam(step: { id: string; params?: Record<string, string> }, key: string) {
+		if (step.params) delete step.params[key];
+		const s = openedParams[step.id];
+		if (s) {
+			s.delete(key);
+			openedParams[step.id] = new Set(s);
+		}
+	}
+
 	// get_contacts 等、同じtoolが複数カテゴリ（検索・集計）から参照される場合に、
 	// 再読込後どちらのカテゴリで表示するかをstep.categoryで覚えておく。未設定（AI生成・旧データ）はtoolからの逆引きにフォールバックする。
 	function currentCategoryKey(step: { id: string; tool: string; category?: string }): string {
@@ -352,86 +375,126 @@
 				{@const tool = getWorkflowActionTool(step.tool)}
 				{#if tool}
 					{#each tool.params as field (field.key)}
-						{@const selVal = refSelectValue(step.params?.[field.key])}
-						<div class="wf-line wf-param">
-							<label for="wf-param-{step.id}-{field.key}">{field.label}</label>
-							{#if field.type === 'select'}
-								<select
-									id="wf-param-{step.id}-{field.key}"
-									value={step.params?.[field.key] ?? ''}
-									disabled={!editable}
-									onchange={(e) => {
-										if (!step.params) step.params = {};
-										step.params[field.key] = e.currentTarget.value;
-									}}
-								>
-									{#each field.options ?? [] as opt (opt.value)}
-										<option value={opt.value}>{opt.label}</option>
-									{/each}
-								</select>
-							{:else}
-								<select
-									id="wf-param-{step.id}-{field.key}"
-									value={selVal}
-									disabled={!editable}
-									onchange={(e) => {
-										if (!step.params) step.params = {};
-										step.params[field.key] = operandFromSelect(e.currentTarget.value);
-									}}
-								>
-									<option value="__literal__">直接入力</option>
-									{#each visible as v (v.id)}
-										<option value={v.id}>{v.label}の結果を使う</option>
-									{/each}
-									{#each itemOpts as opt (opt.foreachStepId + ':' + opt.field.key)}
-										<option value={itemSelectValue(opt)}>{itemOptionLabel(opt)}</option>
-									{/each}
-								</select>
-							{/if}
-							{#if selVal === '__literal__' && field.type !== 'select'}
-								{#if field.type === 'textarea'}
-									<textarea
-										value={step.params?.[field.key] ?? ''}
+						{@const fieldVal = step.params?.[field.key] ?? ''}
+						{@const hasValue = fieldVal !== '' && fieldVal != null}
+						{@const shown = isParamShown(step.id, field.key, hasValue, !!field.required)}
+						{#if shown}
+							{@const selVal = refSelectValue(step.params?.[field.key])}
+							{@const hasRefs = visible.length > 0 || itemOpts.length > 0 || selVal !== '__literal__'}
+							<div class="wf-line wf-param" class:wf-param-optional={!field.required}>
+								<label for="wf-param-{step.id}-{field.key}">{field.label}</label>
+								{#if field.type === 'select'}
+									<select
+										id="wf-param-{step.id}-{field.key}"
+										value={fieldVal}
 										disabled={!editable}
-										oninput={(e) => {
+										onchange={(e) => {
 											if (!step.params) step.params = {};
 											step.params[field.key] = e.currentTarget.value;
 										}}
-									></textarea>
-								{:else if field.type === 'number'}
-									<input
-										type="number"
-										value={step.params?.[field.key] ?? ''}
+									>
+										{#each field.options ?? [] as opt (opt.value)}
+											<option value={opt.value}>{opt.label}</option>
+										{/each}
+									</select>
+								{:else if hasRefs}
+									<select
+										id="wf-param-{step.id}-{field.key}"
+										value={selVal}
 										disabled={!editable}
-										oninput={(e) => {
+										onchange={(e) => {
 											if (!step.params) step.params = {};
-											step.params[field.key] = e.currentTarget.value;
+											step.params[field.key] = operandFromSelect(e.currentTarget.value);
 										}}
-									/>
-								{:else if field.type === 'date'}
-									<input
-										type="date"
-										value={step.params?.[field.key] ?? ''}
-										disabled={!editable}
-										oninput={(e) => {
-											if (!step.params) step.params = {};
-											step.params[field.key] = e.currentTarget.value;
-										}}
-									/>
-								{:else}
-									<input
-										type="text"
-										value={step.params?.[field.key] ?? ''}
-										disabled={!editable}
-										oninput={(e) => {
-											if (!step.params) step.params = {};
-											step.params[field.key] = e.currentTarget.value;
-										}}
-									/>
+									>
+										<option value="__literal__">直接入力</option>
+										{#each visible as v (v.id)}
+											<option value={v.id}>{v.label}の結果を使う</option>
+										{/each}
+										{#each itemOpts as opt (opt.foreachStepId + ':' + opt.field.key)}
+											<option value={itemSelectValue(opt)}>{itemOptionLabel(opt)}</option>
+										{/each}
+									</select>
 								{/if}
-							{/if}
-						</div>
+								{#if (selVal === '__literal__' || !hasRefs) && field.type !== 'select'}
+									{#if field.type === 'textarea'}
+										<textarea
+											value={fieldVal}
+											disabled={!editable}
+											oninput={(e) => {
+												if (!step.params) step.params = {};
+												step.params[field.key] = e.currentTarget.value;
+											}}
+										></textarea>
+									{:else if field.type === 'number'}
+										<input
+											id={!hasRefs ? `wf-param-${step.id}-${field.key}` : undefined}
+											type="number"
+											value={fieldVal}
+											disabled={!editable}
+											oninput={(e) => {
+												if (!step.params) step.params = {};
+												step.params[field.key] = e.currentTarget.value;
+											}}
+										/>
+									{:else if field.type === 'date'}
+										<input
+											id={!hasRefs ? `wf-param-${step.id}-${field.key}` : undefined}
+											type="date"
+											value={fieldVal}
+											disabled={!editable}
+											oninput={(e) => {
+												if (!step.params) step.params = {};
+												step.params[field.key] = e.currentTarget.value;
+											}}
+										/>
+									{:else}
+										<input
+											id={!hasRefs ? `wf-param-${step.id}-${field.key}` : undefined}
+											type="text"
+											value={fieldVal}
+											disabled={!editable}
+											oninput={(e) => {
+												if (!step.params) step.params = {};
+												step.params[field.key] = e.currentTarget.value;
+											}}
+										/>
+									{/if}
+								{/if}
+								{#if editable && !field.required}
+									<button
+										class="wf-param-del"
+										onclick={() => closeParam(step, field.key)}
+										title="このパラメーターを削除"
+									>×</button>
+								{/if}
+							</div>
+						{/if}
 					{/each}
+					{#if editable}
+						{@const hiddenOptional = tool.params.filter(
+							(f) => !isParamShown(step.id, f.key, !!(step.params?.[f.key] ?? '') , !!f.required)
+						)}
+						{#if hiddenOptional.length > 0}
+							<div class="wf-line wf-add-param">
+								<select
+									value=""
+									onchange={(e) => {
+										const key = e.currentTarget.value;
+										if (key) {
+											openParam(step.id, key);
+											e.currentTarget.value = '';
+										}
+									}}
+								>
+									<option value="">＋ オプションを追加...</option>
+									{#each hiddenOptional as f (f.key)}
+										<option value={f.key}>{f.label}</option>
+									{/each}
+								</select>
+							</div>
+						{/if}
+					{/if}
 				{/if}
 			{:else if step.kind === 'condition'}
 				{@const rightSel = refSelectValue(step.right)}
@@ -672,6 +735,32 @@
 		font-size: 0.75rem;
 		color: var(--color-text-muted);
 		white-space: nowrap;
+	}
+
+	.wf-param-del {
+		background: none;
+		border: none;
+		color: var(--color-text-muted);
+		cursor: pointer;
+		font-size: 13px;
+		padding: 0 2px;
+		line-height: 1;
+		margin-left: 2px;
+		flex-shrink: 0;
+		&:hover { color: #ef4444; }
+	}
+
+	.wf-add-param select {
+		font-size: 0.75rem;
+		color: var(--color-text-muted);
+		background: none;
+		border: 1px dashed var(--color-border);
+		padding: 3px 8px;
+		cursor: pointer;
+		&:hover {
+			border-color: var(--color-primary);
+			color: var(--color-primary);
+		}
 	}
 
 	.wf-del {
