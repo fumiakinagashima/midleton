@@ -389,10 +389,10 @@
 - [x] 選択中のツール・前段ステップの結果に応じて入力欄・選択肢を動的に切り替える（現状は静的なパラメーター一覧表示）
 
 ### 4. 資料生成の素材渡し方式への転換（`feature/v3-doc-handoff`）
-- [ ] Office系ファイルの直接生成をやめ、**整形済みデータファイル（CSV/Markdown）＋仕上げ用プロンプト**を生成してユーザーが外部のAIツール（Copilot / Canvas / ChatGPT等）で完成させる方式へ変更
-- [ ] `build_handoff_data` MCPツール: DBからデータ取得→CSV/Markdown生成→R2保存→DLリンク
-- [ ] チャットに `<ui type="doc_handoff">` コンポーネント（コピー用プロンプト＋データDLリンク）を表示
-- [ ] 旧・直接生成ツール（Word/PowerPoint/Excel）はコードを残しつつAIに非公開化
+- [x] Office系ファイルの直接生成をやめ、**整形済みデータファイル（CSV/Markdown）＋仕上げ用プロンプト**を生成してユーザーが外部のAIツール（Copilot / Canvas / ChatGPT等）で完成させる方式へ変更
+- [x] `build_handoff_data` MCPツール: DBからデータ取得→CSV/Markdown生成→R2保存→DLリンク
+- [x] チャットに `<ui type="doc_handoff">` コンポーネント（コピー用プロンプト＋データDLリンク）を表示
+- [x] 旧・直接生成ツール（Word/PowerPoint/Excel）はコードを残しつつAIに非公開化
 
 ### 5. メインチャットの用途定義と表示の整理（`feature/v3-chat-ux`）
 - [ ] チャットの役割を「SELECTのみ（読み取り＋動線ボタン）」に明確化。登録・編集・削除は固定ダイアログ経由に限定

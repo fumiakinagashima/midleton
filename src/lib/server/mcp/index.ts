@@ -29,6 +29,7 @@ export type ToolName =
 	| 'get_customer_health_score'
 	| 'get_customer_health_ranking'
 	| 'get_customer_handover_summary'
+	| 'build_handoff_data'
 	| 'create_word_document'
 	| 'create_excel_workbook'
 	| 'create_powerpoint_presentation'
@@ -109,6 +110,7 @@ export async function dispatchTool(
 		case 'get_customer_health_score':      return customers.handleGetCustomerHealthScore(db, input, env);
 		case 'get_customer_health_ranking':    return customers.handleGetCustomerHealthRanking(db, input);
 		case 'get_customer_handover_summary':  return customers.handleGetCustomerHandoverSummary(db, input, env);
+		case 'build_handoff_data':             return documents.handleBuildHandoffData(input, env);
 		case 'create_word_document':           return documents.handleCreateWordDocument(db, input, env, ctx);
 		case 'create_excel_workbook':          return documents.handleCreateExcelWorkbook(db, input, env, ctx);
 		case 'create_powerpoint_presentation': return documents.handleCreatePowerpointPresentation(db, input, env, ctx);
