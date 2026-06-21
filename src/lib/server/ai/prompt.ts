@@ -183,7 +183,7 @@ create_contact のフォームが表示され、顧客は検索付きセレク�
 - topic: "customers" → 顧客・担当者管理
 - topic: "deals" → 案件管理
 - topic: "activities" → 活動履歴
-- topic: "documents" → 資料生成（Word/Excel/PowerPoint）
+- topic: "documents" → 資料生成（CSV/Markdown素材ファイル＋外部AIプロンプト）
 - topic: "approvals" → 申請管理
 - topic: "apps" → ノーコードアプリ生成
 - topic: "reminders" → リマインダー
@@ -417,23 +417,21 @@ get_customer_health_ranking の結果は table コンポーネントで表示す
 <ui type="link" href="/database/activities/xxxx" label="活動履歴を見る" newTab="true">
 </ui>
 
-## 資料生成（Word / Excel / PowerPoint）
+## 資料生成（素材渡し方式）
 
-案件の進捗・売上情報などをもとに社内向けの資料を作成したい場合は、create_word_document / create_excel_workbook / create_powerpoint_presentation のいずれかを使う。「営業会議資料を作って」「案件状況をExcelでまとめて」「会議用にスライドを作って」などに使う。
+「Excelにまとめて」「営業会議資料を作って」「スライド用にデータを整理して」などの資料作成依頼には build_handoff_data を使う。Copilot / Canvas / ChatGPT 等の外部AIツールで仕上げるための素材ファイル（CSV/Markdown）を生成する方式。
 
-1. まず summarize_deals / get_deals / search_deals / summarize_customers / summarize_activities / get_customer_detail など既存のツールで必要なデータを取得・集計する
-2. 用途に応じて形式を選ぶ
-   - Word（create_word_document）: 報告書・議事録など文章中心の資料。blocks に heading / paragraph / table を順に並べる
-   - Excel（create_excel_workbook）: 一覧・集計表など表形式データ。sheets にシート名・列・行を構成する
-   - PowerPoint（create_powerpoint_presentation）: 会議・プレゼン用スライド。slides にタイトル・本文（箇条書き）・表を構成する
-3. filename は拡張子を付けない、わかりやすい名前にする（例: "2026年6月_営業会議資料"）
-4. **表（table/sheets）の各セルに渡す値は、そのまま文字列として資料に出力される（AIによる変換・整形は行われない）。渡す前に必ず表示用の文字列に整形する**
-   - 金額: "1,200,000円" のようにカンマ区切り＋単位を付ける（"1.2M円"「120万円」のような独自の略記・単位変換は禁止）
-   - 日付: "2026-06-01" や "2026年6月1日" のような文字列にする（unixタイムスタンプや ISO 8601 の生の値をそのまま渡さない）
-5. ツールの戻り値は { type: "document_job", jobId, label }（資料はバックグラウンドで生成され、jobId はその進行状況を表す）
-6. 生成後は地の文で資料の内容を簡潔に説明し、続けて document_job コンポーネントを表示する。jobId・label はツールの結果をそのまま使う（書き換えない）。生成が完了するとUI側が自動的にダウンロードリンクに切り替わる
+1. まず search_deals / get_customers / search_activities / get_customer_detail 等の既存ツールで必要なデータを取得・集計する
+2. build_handoff_data を呼び出す
+   - filename: 拡張子なし（例: "2026年6月_案件一覧"）
+   - format: csv（表形式・Excelで開く場合）または markdown（文章・複数テーブル混在の場合）
+   - tables: 取得したデータを columns + rows に構成して渡す。各セルの値は表示用文字列に整形する（金額は "1,200,000円"、日付は "2026年6月1日" 形式。数値の略記禁止）
+   - prompt: ユーザーが外部AIツールにそのままコピペして使えるプロンプト（日本語。何をどう仕上げてほしいか具体的に書く）
+3. ツールの戻り値は { type: "doc_handoff", downloadUrl, filename, label, prompt }（promptは渡したものがそのまま返る）
+4. 返答にはデータの概要を地の文で説明し、続けて doc_handoff コンポーネントを表示する。downloadUrl・filename・label はツール結果をそのまま使い、プロンプトを body に入れる
 
-<ui type="document_job" jobId="xxxx" label="2026年6月_営業会議資料.xlsx">
+<ui type="doc_handoff" downloadUrl="/api/attachments/xxxx?filename=..." filename="2026年6月_案件一覧.csv" label="案件一覧 (CSV)">
+添付のCSVをもとに、案件一覧表をExcelで作成してください。「ステータス」列でフィルターをかけ、「金額」列を降順でソートした状態にしてください。
 </ui>
 
 ## メールの下書き作成・送信
