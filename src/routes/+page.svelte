@@ -117,6 +117,15 @@
 
 	// コアCRUDフォームを RecordDialog のパネル指定に変換。対象外（リマインダー等）は null。
 	function coreToolToPanel(form: FormContent): typeof panelRecord {
+		// entity 属性が指定されている場合は RecordDialog で直接開く（カスタムテーブル含む）
+		if (form.entity) {
+			const prefill: Record<string, string> = {};
+			for (const f of form.fields) {
+				if (f.key === 'id') continue;
+				if (f.value != null && f.value !== '') prefill[f.key] = String(f.value);
+			}
+			return { type: form.entity, recordId: null, view: 'form', prefill };
+		}
 		const type = CORE_TOOL_TYPE[form.tool];
 		if (!type) return null;
 		if (form.tool.startsWith('update_')) {

@@ -528,6 +528,83 @@ text / email / tel / number / textarea / select / date / datetime-local / hidden
 
 **multiselect フィールドの使い方**: 複数選択に使う。\`options\` で選択肢を指定し、value は選択済みの値をカンマ区切りにした文字列（例: \`"notification,slack:abc123"\`）。
 
+## メモ・議事録からの連続登録
+
+商談メモ・議事録・テキストを貼り付けて「登録して」「このメモから登録して」のように依頼された場合。
+
+**【最重要】AIはDBへの書き込みを一切行わない。create_* / update_* ツールの直接呼び出しは禁止。必ず以下の形式でフォームボタンを表示するだけにする。**
+
+### 出力フォーマット（必ずこの形式で出力する）
+
+エンティティごとに「見出し → 抽出内容の箇条書き → フォームボタン」の3点セットを繰り返す。以下が実際の出力例:
+
+## 活動履歴
+- 活動日時: 2026-06-19 15:00
+- 種別: 面談
+- 顧客: 西日本フードサービス
+- 内容: 挨拶・雑談（約20分）
+
+<ui type="form" title="活動履歴を登録する" tool="create_activity">
+[{"key":"customer_id","value":"<IDをここに>"},{"key":"activity_date","value":"2026-06-19T15:00"},{"key":"type","value":"meeting"},{"key":"content","value":"挨拶と軽い雑談（約20分）"}]
+</ui>
+
+## 案件
+- 案件名: 8月開始（仮）
+- 顧客: 西日本フードサービス
+
+<ui type="form" title="案件を登録する" tool="create_deal">
+[{"key":"customer_id","value":"<IDをここに>"},{"key":"title","value":"8月開始（仮）"}]
+</ui>
+
+## リマインダー
+- 日時: 来週（2026-06-28 10:00）
+- 内容: 西日本フードサービスへ確認の連絡
+
+<ui type="form" title="リマインダーを設定する" tool="create_reminder">
+[{"key":"remind_at","value":"2026-06-28T10:00"},{"key":"content","value":"西日本フードサービスへ確認の連絡（8月案件）"}]
+</ui>
+
+（上記はあくまでも出力例の形式。実際の出力はメモの内容から抽出した値を使うこと）
+
+箇条書きはユーザーが「登録ボタンを押す前に内容を確認できる」ためのもの。登録はユーザーがボタンを押してダイアログを送信した時点で行われる。
+
+### ステップ1: 顧客の確認
+
+テキストに会社名があれば必ず \`search_customers\` で検索する（推測で customer_id を使わない）。
+
+- **既存顧客が見つかった場合**: その customer_id を担当者・案件・活動履歴フォームの prefill に使う
+- **新規顧客の場合**: 顧客登録フォームを最初に置く。後続フォームの顧客欄は空欄（ユーザーが登録後に選択）
+
+### ステップ2: エンティティの順序
+
+**顧客 → 担当者 → 案件 → 活動履歴 → リマインダー**（不要なものは省く）
+
+新規顧客＋担当者が1名セットの場合は \`create_customer_with_contact\` でまとめる（このツールだけは key + label + type が必要）:
+<ui type="form" title="顧客・担当者を登録する" tool="create_customer_with_contact">
+[
+  {"key":"name","label":"会社名","type":"text","required":true,"value":"抽出した会社名"},
+  {"key":"contact_name","label":"担当者氏名","type":"text","required":true,"value":"抽出した担当者名"},
+  {"key":"contact_role","label":"役職","type":"text","value":"抽出した役職"},
+  {"key":"contact_department","label":"部署","type":"text","value":"抽出した部署"},
+  {"key":"email","label":"メールアドレス","type":"email","value":"抽出したメール"},
+  {"key":"phone","label":"電話番号","type":"tel","value":"抽出した電話番号"}
+]
+</ui>
+
+### 制約
+- テキストに含まれない項目は prefill に含めない（空文字列も渡さない）
+- 活動種別: note / call / email / meeting から最も適切なものを選ぶ（face-to-face訪問・商談 → meeting）
+- 金額は数値のみ（例: 1500000）
+- リマインダーの日時が「来週ごろ」など曖昧な場合は現在日時から合理的な日時を設定する
+
+### カスタムテーブルへの登録
+
+カスタムテーブルへの登録が必要な場合は \`entity\` 属性でテーブル識別名を指定する（\`tool\` 属性は不要）:
+<ui type="form" entity="テーブル識別名" title="レコードを登録する">
+[{"key":"フィールドキー","value":"抽出した値"}]
+</ui>
+\`entity\` には \`list_entity_types\` で取得したテーブルの \`name\` を指定し、フィールドキーはそのテーブルのフィールド定義の \`key\` を使う。
+
 ## 案件・担当者・活動履歴の登録と編集
 
 フォームのフィールド構造はシステムが自動取得するため、AI は tool 名とユーザーが指定した値（prefill）のみを渡せばよい。**AI はこれらのツールを直接呼び出さない。フォームを表示するのみで、登録・更新はユーザーがフォームを送信した時点で行われる。**
