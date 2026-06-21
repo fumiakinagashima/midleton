@@ -87,7 +87,7 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 		id: 'deals', label: '案件', icon: 'briefcase', isCore: true,
 		fields: [
 			{ key: 'title', label: '案件タイトル', type: 'text', required: true, listable: true },
-			{ key: 'customerId', label: '顧客ID', type: 'text', required: true },
+			{ key: 'customerId', label: '顧客', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
 			{ key: 'amount', label: '金額', type: 'number', listable: true },
 			{
 				key: 'status', label: 'ステータス', type: 'select', listable: true,
