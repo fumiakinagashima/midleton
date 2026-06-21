@@ -1,4 +1,4 @@
-import { and, eq, like, desc } from 'drizzle-orm';
+import { and, eq, like, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 import type { Db } from '../db';
@@ -219,7 +219,7 @@ export async function handleGetCustomerDetail(db: Db, input: unknown) {
 			.select()
 			.from(activities)
 			.where(eq(activities.customerId, customer.id))
-			.orderBy(desc(activities.createdAt))
+			.orderBy(desc(sql`COALESCE(${activities.activityDate}, ${activities.createdAt})`))
 			.limit(activities_limit)
 	]);
 

@@ -218,6 +218,7 @@ export type CustomerDetailActivity = {
 	type: string;
 	content: string;
 	createdAt: string | number;
+	activityDate?: string | number | null;
 };
 
 export type CustomerDetailContent = {
