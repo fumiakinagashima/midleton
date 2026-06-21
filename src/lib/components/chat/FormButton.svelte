@@ -42,6 +42,7 @@
 		font-weight: 500;
 		cursor: pointer;
 		transition: opacity 0.15s;
+		width: fit-content;
 
 		&:hover {
 			opacity: 0.85;

@@ -600,14 +600,6 @@
 
 	function handlePanelCancel() {
 		panelForm = null;
-		const message: Message = {
-			id: crypto.randomUUID(),
-			role: 'assistant',
-			contents: [{ type: 'text', text: 'キャンセルしました。' }],
-			createdAt: new Date()
-		};
-		messages = [...messages, message];
-		persistMessage(message);
 	}
 
 	async function handleBizcardFormSubmit(msg: Message, bizcardContent: BizcardContent, tool: string, data: Record<string, string>) {

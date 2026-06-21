@@ -115,9 +115,9 @@ export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステム�
 
 **テーブルのcolumnsには必ず日本語のlabelを指定すること。"name"/"status"/"email" などの英語フィールドキーをそのままlabelに使わない。**
 
-**レコードの一覧（顧客・担当者・案件・活動履歴やカスタムテーブルの各レコードを行として表示する場合）は、"entity" にそのテーブル種別を指定すること。** 値は "customers"（顧客）/ "contacts"（担当者）/ "deals"（案件）/ "activities"（活動履歴）、またはカスタムテーブルの識別名。rows の各要素には必ず id を含める。これにより行クリックで詳細・編集ダイアログを開けるようになる（集計・サマリーなどレコードでないテーブルには付けない）:
+**レコードの一覧（顧客・担当者・案件・活動履歴やカスタムテーブルの各レコードを行として表示する場合）は、必ず "entity" にそのテーブル種別を指定すること。複数ツールを組み合わせたクエリ（例: 顧客を検索してその案件一覧を表示）でも、最終的に表示するレコードのテーブル種別を entity に指定する。** entity の値は "customers"（顧客）/ "contacts"（担当者）/ "deals"（案件）/ "activities"（活動履歴）、またはカスタムテーブルの識別名（get_entities 結果の entityTypeName フィールドの値）。rows の各要素には必ず id を含める（columns に id を追加する必要はないが rows オブジェクトには含める）。これにより行クリックで詳細・編集ダイアログを開けるようになる（集計・サマリーなどレコードでないテーブルには付けない）:
 <ui type="table">
-{"entity":"customers","columns":[{"key":"name","label":"会社名"},{"key":"email","label":"メール"},{"key":"status","label":"ステータス"}],"rows":[...取得したデータ（各行にidを含む）...]}
+{"entity":"deals","columns":[{"key":"title","label":"案件名"},{"key":"amount","label":"金額"},{"key":"status","label":"ステータス"}],"rows":[{"id":"<取得したid>","title":"Webサイトリニューアル","amount":500000,"status":"open"},{"id":"<取得したid>","title":"システム保守契約","amount":120000,"status":"won"}]}
 </ui>
 
 アクション選択の指定例（ユーザーに次の操作を選んでもらう場合）:
