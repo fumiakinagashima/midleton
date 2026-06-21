@@ -140,6 +140,7 @@ export function parseUITag(tag: string): MessageContent | null {
 	const name = /name="([^"]+)"/.exec(attrStr)?.[1];
 	const id = /id="([^"]+)"/.exec(attrStr)?.[1];
 	const tool = /tool="([^"]+)"/.exec(attrStr)?.[1];
+	const entity = /entity="([^"]+)"/.exec(attrStr)?.[1];
 	const submitLabel = /submitLabel="([^"]+)"/.exec(attrStr)?.[1];
 	const chartType = /chartType="([^"]+)"/.exec(attrStr)?.[1] as 'bar' | 'line' | 'pie' | undefined;
 	const chartMode = /mode="([^"]+)"/.exec(attrStr)?.[1] as 'normal' | 'stacked' | 'grouped' | undefined;
@@ -152,8 +153,8 @@ export function parseUITag(tag: string): MessageContent | null {
 	const filename = /filename="([^"]+)"/.exec(attrStr)?.[1];
 
 	try {
-		if (type === 'form' && tool) {
-			return { type: 'form', title, fields: body ? JSON.parse(body) : [], tool, submitLabel };
+		if (type === 'form' && (tool || entity)) {
+			return { type: 'form', title, fields: body ? JSON.parse(body) : [], tool: tool ?? '', entity, submitLabel };
 		} else if (type === 'table') {
 			const { columns, rows, entity } = JSON.parse(body);
 			return { type: 'table', columns, rows, entity };
