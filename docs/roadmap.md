@@ -371,7 +371,7 @@
     - [x] チャット履歴のサーバー永続化（フェーズ6 ⑥で実装）後も、通知センターは「再訪時のエントリポイント」として併用する
 
 
-## v3（2026-06-20〜）
+## v3（2026-06-20〜2026-06-21、完了）
 
 1機能1ブランチで順番に実装する。
 
@@ -406,6 +406,7 @@
 - [x] カスタムテーブルは `entity="<name>"` 属性で指定（`FormContent.entity`、`parseUITag`、`coreToolToPanel` の entity ルートを追加）
 - [x] 新規顧客を先に登録→担当者・案件を各ダイアログで登録するフロー（システムプロンプトで順序・customer_id 解決ルールを指示）
 - [x] 書き込みはすべてユーザーがダイアログで送信した時点で確定（AIが直接書き込まない）
+- [x] 案件登録フォームの顧客フィールドを `recordSelect` 化（`deals.customerId`、顧客名で検索選択）
 
 ### 7. 名刺取り込みの修正（`feature/v3-bizcard-fix`）
 - [x] 名刺読み取り後の顧客・担当者登録をダイアログ（RecordDialog）化（画面遷移を廃止）
@@ -505,7 +506,7 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [x] 実行ログ・`workflow_runs`テーブル（マイグレーション`0023_workflow_runs.sql`、`src/lib/server/db/workflow-run-service.ts`）。`processDueWorkflows`が成功・失敗を問わず開始/終了時刻とエラーを記録し、`/database/workflows/[id]`に実行ログ一覧を表示する
 - [x] アクション「通知センターに通知」（`send_notification` MCPツール、`communication.ts`）。宛先は自動でワークフロー登録者。cron実行時はセッションが無いため、`processDueWorkflows`で`workflow.accountId`をこの実行スコープの`env.accountId`として引き渡すように修正
 
-**v2完了（2026-06-18）、v3完了（2026-06-19）**。さらなる精度向上はmainマージ後のバージョンアップとして別途取り組む。
+**v2完了（2026-06-18）、v3完了（2026-06-21）**。さらなる精度向上はmainマージ後のバージョンアップとして別途取り組む。
 - [x] **変数ヘルプ**: 各ステップ行に「ここで使える変数を見る」ボタン（`InfoCircle`、`WorkflowStepList.svelte`）を追加し、クリックでそのステップの位置から参照可能な先行ステップの結果・`@item:<foreachのid>:<field>`の一覧を、実際の`@step:<id>`/`@item:...`トークン付きで展開表示する
 - [x] **ネストしたforeach対応**: 内側のforeachに入ると外側の`@item`が見えなくなる問題を修正。`@item:<field>`（旧形式・最も内側のforeachを指す）に加えて`@item:<foreachのid>:<field>`形式を導入し、祖先のforeach全てをスタック（`ItemScope[]`/`ItemStack`）として保持するように変更（`workflow-tools.ts`の`parseItemRef`/`makeItemRef`、`workflow-validation.ts`、`run.ts`の`resolveOperand`、`WorkflowStepList.svelte`）。ネストしている場合、エディタのselect・変数ヘルプには外側・内側どちらの項目かをラベルで区別して両方表示する。AI向けの`ITEM_REF_SEMANTICS_NOTE`（`prompt.ts`）にもネスト時のスコープ規則を追記
 - [x] Slack（通知）の対象追加。「通知」カテゴリに`includeSlackTargets`フラグを追加し、自作テーブル（`includeEntityTargets`）と同じ「カテゴリに動的に対象を追加する」パターンを再利用。設定済みのSlack連携（`hooks.slack.com`のwebhook）が個別の対象選択肢として並ぶ（`listSlackIntegrationsForWorkflow`、webhook URLはクライアントに渡さずid/nameのみ返す）。対象選択時に`step.tool='send_slack_notification'`・`step.params.integration_id`を直接設定し、`validateWorkflow`で連携削除時の参照チェックも追加（`get_entities`と同様のパターン）。`send_slack_notification`はワークフロー専用ツールとしてMCPに追加し、AIチャットには公開しない（AIがSlackに送る場合は既存の`list_integrations`+`call_external_api`を使うため、別ツールを公開すると重複になる）
@@ -535,3 +536,29 @@ v1はノードグラフ（キャンバス・ポート・x/y座標）で一度実
 - [ ] デモ用シードデータ作成
 - [ ] デモ動画撮影・X 投稿
 - [ ] ランディングページ作成
+
+
+## v4（予定）
+
+**テーマ: 俯瞰・朝イチの行動起点 — マネージャー（ペルソナ3）と IT活用派（ペルソナ4）の体験を強化する**
+
+### 1. AIブリーフィング（対象: ペルソナ1・4）
+
+「今日やるべきことを朝一でまとめて教えてくれる」機能。チャット画面を開くと、または専用ボタンで、AIがその日のフォロー漏れ・直近の案件状況・リマインダーを要約して提示する。現場営業（1）にとっては行動直結の起点、IT活用派（4）にとってはAIらしさを体感できるショーケース。
+
+- [ ] ブリーフィング生成エンドポイント（`/api/briefing`）— 案件・活動履歴・リマインダーを横断してAIが要約
+- [ ] システムプロンプト設計（フォロー漏れ検出・優先度付け・今日のアクション提案）
+- [ ] チャット画面の「今日のブリーフィング」ボタン（入力欄左下等）またはチャット開始時の自動表示
+- [ ] ブリーフィング結果はチャット上に `Values` + テキスト + `<ui type="form">` 動線ボタンの組み合わせで表示
+- [ ] フォローすべき案件・担当者はクリックで `RecordDialog` に直接遷移できる形式にする
+
+### 2. ダッシュボード（対象: ペルソナ3・4）
+
+手動ウィジェットビルダーは作らず、**「チャットで自然言語指示 → AI が chart/values/table を生成 → ピン留めして常設化」** の方式。既存のチャットコンポーネントをそのまま再利用し、BIツールとの差別化軸は「会話でカスタマイズできる」点に置く。
+
+- [ ] ダッシュボード画面（`/dashboard`）— ピン留めしたコンポーネントをグリッド表示
+- [ ] チャットからのピン留め機能 — 表示中の chart / values / table の右上に「ダッシュボードに追加」ボタン
+- [ ] ピン定義の保存（`dashboard_pins` テーブル: `accountId`, `title`, `content` JSON, `position`, `createdAt`）
+- [ ] ダッシュボード上のウィジェット更新（「更新」ボタンで同じクエリを再実行）・削除・並び替え
+- [ ] ダッシュボード画面にもチャット欄を設置し、「この数字を月別に分解して」等の追加指示を会話で行える
+- [ ] サイドバーに「ダッシュボード」リンクを追加
