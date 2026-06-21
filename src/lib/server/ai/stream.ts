@@ -1,7 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
+import { eq } from 'drizzle-orm';
 import { buildSystemPrompt } from './prompt';
-import { tools, dispatchTool } from '$lib/server/mcp';
+import { tools as allTools, dispatchTool } from '$lib/server/mcp';
+import { entityTypes } from '$lib/server/db/schema';
+
+// メインチャットはSELECTのみ。create_* / update_* / delete_* はダイアログ経由でユーザーが実行する。
+const WRITE_TOOL_PREFIX = ['create_', 'update_', 'delete_'];
+const tools = allTools.filter(
+	(t) => !WRITE_TOOL_PREFIX.some((prefix) => t.name.startsWith(prefix))
+);
 import { DEFAULT_AI_MODEL } from './settings';
 import type { Db } from '$lib/server/db';
 import type { MessageContent, WorkflowStep } from '$lib/types/chat';
@@ -111,7 +119,7 @@ const RECORD_LIST_TOOL_ENTITY: Record<string, string> = {
 	list_approvals: 'approvals'
 };
 
-// entity 未指定のレコード一覧テーブルに、リクエストで使われた検索ツール由来の entity を補完する。
+// entity 未指定のレコード一覧テーブルに、ヒント entity を補完する。
 // 行クリックで詳細ダイアログを開けるようにするためのフォールバック（rows に id がある場合のみ）。
 function applyEntityHint(events: StreamEvent[], entity: string | undefined): void {
 	if (!entity) return;
@@ -214,9 +222,12 @@ export async function streamChat(
 	const anthropic = new Anthropic({ apiKey });
 	let messages: MessageParam[] = [...history];
 	let lastTurnEvents: StreamEvent[] = [];
-	// このリクエストで使われたレコード一覧系ツールの entity。1種類だけ使われた場合のみ
-	// table への entity 補完に使う（複数種別が混在する場合は誤った種別を割り当てないよう補完しない）。
-	const recordEntities = new Set<string>();
+	// ターン単位で entity を追跡する。
+	// 「最後に単一エンティティ種別だけを使ったターン」の entity を記憶し、
+	// 最終ターンで entity 未指定テーブルへのフォールバックに使う。
+	// 複数エンティティを同一ターンで使った場合は undefined（どれかわからないため補完しない）。
+	// 例: search_customers → search_deals という2ターン構成では、後半ターンの 'deals' が残る。
+	let hintEntity: string | undefined;
 
 	for (let turn = 0; turn < 10; turn++) {
 		const processor = new TextStreamProcessor();
@@ -252,15 +263,39 @@ export async function streamChat(
 		turnEvents.push(...processor.flush());
 		lastTurnEvents = turnEvents;
 
+		// このターンで使ったレコード一覧系ツールの entity を収集する
+		const turnEntities = new Set<string>();
 		for (const b of toolBlocks) {
 			const ent = RECORD_LIST_TOOL_ENTITY[b.name];
-			if (ent) recordEntities.add(ent);
+			if (ent) turnEntities.add(ent);
 		}
-		const soleRecordEntity = recordEntities.size === 1 ? [...recordEntities][0] : undefined;
+		// get_entities はカスタムテーブル名（entity_type_id → name）を DB から解決して補完する
+		await Promise.all(
+			toolBlocks
+				.filter((b) => b.name === 'get_entities')
+				.map(async (b) => {
+					try {
+						const input = JSON.parse(b.inputJson || '{}') as { entity_type_id?: string };
+						if (input.entity_type_id) {
+							const [et] = await db
+								.select({ name: entityTypes.name })
+								.from(entityTypes)
+								.where(eq(entityTypes.id, input.entity_type_id));
+							if (et?.name) turnEntities.add(et.name);
+						}
+					} catch { /* ignore */ }
+				})
+		);
+		// hintEntity を更新: 単一ならその entity、複数なら ambiguous で undefined、ゼロなら維持
+		if (turnEntities.size === 1) {
+			hintEntity = [...turnEntities][0];
+		} else if (turnEntities.size > 1) {
+			hintEntity = undefined;
+		}
 
 		const finalMsg = await stream.finalMessage();
 		if (finalMsg.stop_reason !== 'tool_use') {
-			applyEntityHint(turnEvents, soleRecordEntity);
+			applyEntityHint(turnEvents, hintEntity);
 			for (const e of turnEvents) emit(e);
 			return;
 		}
@@ -292,6 +327,6 @@ export async function streamChat(
 	}
 
 	// ターン上限に達した場合は最後のターンの内容を表示する
-	applyEntityHint(lastTurnEvents, recordEntities.size === 1 ? [...recordEntities][0] : undefined);
+	applyEntityHint(lastTurnEvents, hintEntity);
 	for (const e of lastTurnEvents) emit(e);
 }
