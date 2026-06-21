@@ -602,10 +602,9 @@
 		panelForm = null;
 	}
 
-	async function handleBizcardFormSubmit(msg: Message, bizcardContent: BizcardContent, tool: string, data: Record<string, string>) {
+	function handleBizcardComplete(msg: Message, bizcardContent: BizcardContent) {
 		bizcardContent.completed = true;
 		persistMessage(msg);
-		await submitToChat(tool, data);
 	}
 
 	async function runQuickAction(action: QuickActionDef) {
@@ -734,7 +733,7 @@
 										<Link label={extra.label} href={extra.href} description={extra.description} newTab={extra.newTab} />
 									{:else if extra.type === 'bizcard'}
 										{#if !extra.completed}
-											<Bizcard title={extra.title} onSubmitForm={(tool, data) => handleBizcardFormSubmit(msg, extra, tool, data)} />
+											<Bizcard title={extra.title} onComplete={() => handleBizcardComplete(msg, extra)} />
 										{/if}
 									{:else if extra.type === 'document_job'}
 										<DocumentJob jobId={extra.jobId} label={extra.label} onResolved={(result) => resolveDocumentJob(msg, extra.jobId, result)} />
