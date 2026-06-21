@@ -313,13 +313,17 @@ export async function handleAddEntityField(db: Db, input: unknown) {
 
 export async function handleGetEntities(db: Db, input: unknown) {
 	const { entity_type_id, limit } = getEntitiesSchema.parse(input);
-	const rows = await db
-		.select()
-		.from(entities)
-		.where(eq(entities.entityTypeId, entity_type_id))
-		.orderBy(desc(entities.createdAt))
-		.limit(limit);
-	return rows.map((r) => ({ ...r, data: parseJson(r.data) }));
+	const [[et], rows] = await Promise.all([
+		db.select({ name: entityTypes.name }).from(entityTypes).where(eq(entityTypes.id, entity_type_id)),
+		db.select().from(entities)
+			.where(eq(entities.entityTypeId, entity_type_id))
+			.orderBy(desc(entities.createdAt))
+			.limit(limit)
+	]);
+	return {
+		entityTypeName: et?.name,
+		rows: rows.map((r) => ({ ...r, data: parseJson(r.data) }))
+	};
 }
 
 export async function handleCreateEntity(db: Db, input: unknown) {
