@@ -136,10 +136,10 @@
 						<div class="actions">
 							{#if onRegister}
 								<button type="button" class="action-btn primary" onclick={() => onRegister(r, 'both')}>
-									顧客登録する
+									顧客・担当者を登録する
 								</button>
 								<button type="button" class="action-btn secondary" onclick={() => onRegister(r, 'existing')}>
-									顧客を選択する
+									顧客を選択して担当者を登録する
 								</button>
 							{:else}
 								<a href={registerUrl(r)} class="action-btn primary">顧客として登録</a>

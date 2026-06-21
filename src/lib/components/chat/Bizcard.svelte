@@ -1,67 +1,82 @@
 <script lang="ts">
 	import BizcardScanner from '$lib/components/bizcard/BizcardScanner.svelte';
-	import Form from './Form.svelte';
+	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
 	import type { BizcardResult } from '../../../routes/api/bizcard/+server';
-	import type { FormField } from '$lib/types/chat';
+
+	function portal(node: HTMLElement) {
+		document.body.appendChild(node);
+		return {
+			destroy() {
+				node.parentNode?.removeChild(node);
+			}
+		};
+	}
 
 	type Props = {
 		title?: string;
-		onSubmitForm: (tool: string, data: Record<string, string>) => void;
+		onComplete?: () => void;
 	};
 
-	let { title, onSubmitForm }: Props = $props();
+	let { title, onComplete }: Props = $props();
 
-	let pendingNewCustomer = $state<BizcardResult | null>(null);
-	let pendingExistingCustomer = $state<BizcardResult | null>(null);
+	type DialogState =
+		| { kind: 'customer'; prefill: Record<string, string>; bizcard: BizcardResult }
+		| { kind: 'contact'; prefill: Record<string, string> }
+		| null;
 
-	const newContactFields = $derived<FormField[]>(
-		pendingNewCustomer
-			? [
-					{ key: 'name', label: '会社名', type: 'text', required: true, value: pendingNewCustomer.company ?? pendingNewCustomer.name ?? '' },
-					{ key: 'contact_name', label: '担当者氏名', type: 'text', required: true, value: pendingNewCustomer.name ?? '' },
-					{ key: 'contact_name_kana', label: '担当者名（カナ）', type: 'text' },
-					{ key: 'contact_role', label: '役職', type: 'text', value: pendingNewCustomer.title ?? '' },
-					{ key: 'contact_department', label: '部署', type: 'text' },
-					{ key: 'email', label: 'メールアドレス', type: 'email', value: pendingNewCustomer.email ?? '' },
-					{ key: 'phone', label: '電話番号', type: 'tel', value: pendingNewCustomer.phone ?? '' },
-					{ key: 'address', label: '住所', type: 'text', value: pendingNewCustomer.address ?? '' },
-					{ key: 'website', label: 'ホームページ', type: 'text', value: pendingNewCustomer.website ?? '' }
-				]
-			: []
-	);
+	let dialog = $state<DialogState>(null);
 
-	const existingContactFields = $derived<FormField[]>(
-		pendingExistingCustomer
-			? [
-					{ key: 'customer_id', label: '顧客を選択する', type: 'recordSelect', required: true, refTable: 'customers' },
-					{ key: 'name', label: '担当者氏名', type: 'text', required: true, value: pendingExistingCustomer.name ?? '' },
-					{ key: 'name_kana', label: '担当者名（カナ）', type: 'text' },
-					{ key: 'role', label: '役職', type: 'text', value: pendingExistingCustomer.title ?? '' },
-					{ key: 'department', label: '部署', type: 'text' },
-					{ key: 'email', label: 'メールアドレス', type: 'email', value: pendingExistingCustomer.email ?? '' },
-					{ key: 'phone', label: '電話番号', type: 'tel', value: pendingExistingCustomer.phone ?? '' }
-				]
-			: []
-	);
+	function buildCustomerPrefill(r: BizcardResult): Record<string, string> {
+		const p: Record<string, string> = {};
+		const name = r.company ?? r.name;
+		if (name) p.name = name;
+		if (r.email) p.email = r.email;
+		if (r.phone) p.phone = r.phone;
+		if (r.address) p.address = r.address;
+		if (r.website) p.website = r.website;
+		if (r.name && r.company) {
+			const label = r.title ? `${r.name}（${r.title}）` : r.name;
+			p.notes = `担当者: ${label}`;
+		}
+		return p;
+	}
+
+	function buildContactPrefill(r: BizcardResult, customerId?: string): Record<string, string> {
+		const p: Record<string, string> = {};
+		if (r.name) p.name = r.name;
+		if (r.title) p.role = r.title;
+		if (r.email) p.email = r.email;
+		if (r.phone) p.phone = r.phone;
+		if (customerId) p.customerId = customerId;
+		return p;
+	}
 
 	function handleRegister(result: BizcardResult, mode: 'both' | 'existing') {
 		if (mode === 'both') {
-			pendingNewCustomer = result;
-			pendingExistingCustomer = null;
+			dialog = { kind: 'customer', prefill: buildCustomerPrefill(result), bizcard: result };
 		} else {
-			pendingExistingCustomer = result;
-			pendingNewCustomer = null;
+			dialog = { kind: 'contact', prefill: buildContactPrefill(result) };
 		}
 	}
 
-	function handleSubmitNew(data: Record<string, string>) {
-		onSubmitForm('create_customer_with_contact', data);
-		pendingNewCustomer = null;
+	function handleCustomerSaved(record: Record<string, unknown>) {
+		const customerId = String(record.id ?? '');
+		const bizcard = dialog?.kind === 'customer' ? dialog.bizcard : null;
+		if (bizcard && customerId) {
+			dialog = { kind: 'contact', prefill: buildContactPrefill(bizcard, customerId) };
+		} else {
+			dialog = null;
+			onComplete?.();
+		}
 	}
 
-	function handleSubmitExisting(data: Record<string, string>) {
-		onSubmitForm('create_contact', data);
-		pendingExistingCustomer = null;
+	function handleContactSaved() {
+		dialog = null;
+		onComplete?.();
+	}
+
+	function handleClose() {
+		dialog = null;
 	}
 </script>
 
@@ -70,12 +85,26 @@
 {/if}
 <BizcardScanner onRegister={handleRegister} />
 
-{#if pendingNewCustomer}
-	<Form title="顧客・担当者登録" fields={newContactFields} onsubmit={handleSubmitNew} />
-{/if}
-
-{#if pendingExistingCustomer}
-	<Form title="担当者登録" fields={existingContactFields} onsubmit={handleSubmitExisting} />
+{#if dialog?.kind === 'customer'}
+	<div use:portal>
+		<RecordDialog
+			type="customers"
+			prefill={dialog.prefill}
+			initialView="form"
+			onclose={handleClose}
+			onSaved={handleCustomerSaved}
+		/>
+	</div>
+{:else if dialog?.kind === 'contact'}
+	<div use:portal>
+		<RecordDialog
+			type="contacts"
+			prefill={dialog.prefill}
+			initialView="form"
+			onclose={handleClose}
+			onSaved={handleContactSaved}
+		/>
+	</div>
 {/if}
 
 <style lang="scss">
