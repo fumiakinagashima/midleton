@@ -336,3 +336,19 @@ export type Workflow = typeof workflows.$inferSelect;
 export type NewWorkflow = typeof workflows.$inferInsert;
 export type WorkflowRun = typeof workflowRuns.$inferSelect;
 export type NewWorkflowRun = typeof workflowRuns.$inferInsert;
+
+export const briefings = sqliteTable('briefings', {
+	id: text('id').primaryKey(),
+	// null = 全アカウント共通。通常はログイン中アカウントのIDを設定する
+	accountId: text('account_id'),
+	// JST日付文字列 "YYYY-MM-DD"
+	date: text('date').notNull(),
+	// MessageContent[] をJSON文字列化して保存
+	contents: text('contents').notNull(),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export type Briefing = typeof briefings.$inferSelect;
+export type NewBriefing = typeof briefings.$inferInsert;
