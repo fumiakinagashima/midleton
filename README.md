@@ -29,28 +29,79 @@ AIファーストなチャットベースの CRM/SFA。ユーザーはチャッ�
 
 ## 開発環境のセットアップ
 
+### 必要なもの
+
+- [Bun](https://bun.sh/) v1.x 以上
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm install -g wrangler`)
+
+### 1. インストール
+
 ```sh
+git clone https://github.com/your-org/midleton.git
+cd midleton
 bun install
 ```
 
-`.dev.vars` を作成して環境変数を設定:
+### 2. 環境変数の設定
 
-```
-ANTHROPIC_API_KEY="your-api-key-here"
-MOCK_AI="true"   # true にするとモックレスポンスで動作確認できる
-```
+`.dev.vars.example` をコピーして `.dev.vars` を作成し、必要な値を入力する:
 
 ```sh
-bun dev   # Vite + platformProxy で HMR 付き起動
+cp .dev.vars.example .dev.vars
 ```
 
-全ルートがログインを要求するため、`/signin` でログインする。マイグレーション適用時にテスト用アカウント5件・管理者アカウント（`info@alcogy.com`）が投入される（パスワードはいずれも `password`）。顧客・商談等のデモデータを投入する場合は以下を実行:
+最低限必要な設定:
+
+```sh
+ANTHROPIC_API_KEY="sk-ant-..."  # Anthropic API キー
+MOCK_AI="false"                 # true にするとAPI不要でモックレスポンスで動作確認できる
+```
+
+メール機能を使う場合は `EMAIL_PROVIDER` と対応するキーも設定する（`resend` / `ses` / `smtp`）。
+
+### 3. データベースのマイグレーション
+
+D1 ローカルデータベースにマイグレーションを適用する（`.wrangler/state/` にSQLiteが作成される）:
+
+```sh
+bunx wrangler d1 migrations apply midleton --local
+```
+
+マイグレーション完了時にテスト用アカウント5件と管理者アカウントが自動で作成される:
+
+| メールアドレス | パスワード | 権限 |
+|---|---|---|
+| `info@alcogy.com` | `password` | admin |
+| `user1@example.com` ～ `user5@example.com` | `password` | general |
+
+### 4. デモデータの投入（任意）
+
+顧客・担当者・商談・活動のサンプルデータを投入する場合:
 
 ```sh
 bun run db:seed:demo
 ```
 
-> **注意**: メール送信のSMTPプロバイダー（`/settings/email`）は `cloudflare:sockets`（workerdランタイム専用API）を使用するため、`bun dev`（Node.js上のVite）では動作しません。本番環境または `wrangler dev`（ビルド後）でのみ送信できます。ローカルでの動作確認には Resend または AWS SES を使用してください。
+### 5. 開発サーバーの起動
+
+```sh
+bun dev   # Vite + platformProxy で HMR 付き起動
+```
+
+ブラウザで `http://localhost:5173` を開き、`/signin` からログインする。
+
+KV・R2 はローカルでは `.wrangler/state/` に自動作成されるため、追加設定は不要。
+
+> **メール送信（SMTP）の注意**: `/settings/email` のSMTPプロバイダーは `cloudflare:sockets`（workerdランタイム専用API）を使うため、`bun dev`（Node.js上のVite）では動作しない。ローカルで確認する場合は Resend または AWS SES を使用すること。
+
+### その他のコマンド
+
+```sh
+bun run check          # 型チェック（svelte-check）
+bun run test:unit      # ユニットテスト（Vitest）
+bun run test:e2e       # E2Eテスト（Playwright）
+bun run db:studio      # Drizzle Studio でローカルDBを確認
+```
 
 ## UIコンポーネント
 
