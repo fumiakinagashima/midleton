@@ -42,10 +42,10 @@
 	const W = 680;
 	const PL = 90;
 	const PR = 16;
-	const PT = 16;
+	const PT = 12;
 	const rotateLabs = $derived(labels.length > 10);
-	const H = $derived(rotateLabs ? 330 : 250);
-	const PB = $derived((isMulti ? 52 : 40) + (rotateLabs ? 80 : 0));
+	const H = $derived(rotateLabs ? 280 : 200);
+	const PB = $derived((isMulti ? 40 : 28) + (rotateLabs ? 80 : 0));
 	const plotW = $derived(W - PL - PR);
 	const plotH = $derived(H - PT - PB);
 

@@ -5,7 +5,6 @@
 	import Values from '$lib/components/chat/Values.svelte';
 	import Gantt from '$lib/components/chat/Gantt.svelte';
 	import Timeline from '$lib/components/chat/Timeline.svelte';
-	import Chart from '$lib/components/chat/Chart.svelte';
 	import Kanban from '$lib/components/chat/Kanban.svelte';
 	import Link from '$lib/components/chat/Link.svelte';
 	import Bizcard from '$lib/components/chat/Bizcard.svelte';
@@ -775,8 +774,9 @@
 										<Gantt title={extra.title} filter={extra.filter} />
 									{:else if extra.type === 'timeline'}
 										<Timeline title={extra.title} filter={extra.filter} />
-									{:else if extra.type === 'chart'}
-										<Chart chartType={extra.chartType} title={extra.title} data={extra.data} />
+									<!-- chart display temporarily disabled -->
+									<!-- {:else if extra.type === 'chart'}
+										<Chart chartType={extra.chartType} title={extra.title} data={extra.data} /> -->
 									{:else if extra.type === 'kanban'}
 										{#if !extra.completed}
 											<Kanban

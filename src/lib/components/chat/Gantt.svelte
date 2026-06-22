@@ -85,7 +85,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: 10px;
 		overflow: hidden;
-		width: min(900px, 80vw);
+		width: 100%;
 	}
 
 	.card-title {
