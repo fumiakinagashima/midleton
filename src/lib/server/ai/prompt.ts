@@ -323,9 +323,24 @@ deals テーブルの planned_start / planned_end をバーで表示する。
 chartType 属性で種類を指定する（bar / line / pie）。
 body は JSON 配列 \`[{"label":"...","value":数値}, ...]\` を渡す。
 
-単一系列の棒グラフ（月別売上）:
+**chartType の使い分け**:
+- \`bar\` — カテゴリ間の比較（ステータス別件数・担当者別売上など）
+- \`line\` — 時系列の推移・トレンド（月別・日別の変化）。「推移」「月別」「日別」「トレンド」「変化」が含まれる場合は必ず \`line\` を使う
+- \`pie\` — 全体に対する割合・構成比
+
+単一系列の棒グラフ（カテゴリ比較）:
 <ui type="chart" chartType="bar" title="月別売上">
 [{"label":"1月","value":1200000},{"label":"2月","value":980000},{"label":"3月","value":1540000}]
+</ui>
+
+単一系列の折れ線グラフ（推移・トレンド）:
+<ui type="chart" chartType="line" title="月別活動件数の推移">
+[{"label":"1月","value":32},{"label":"2月","value":28},{"label":"3月","value":41},{"label":"4月","value":37}]
+</ui>
+
+複数系列の折れ線グラフ（比較トレンド）:
+<ui type="chart" chartType="line" title="実績 vs 目標">
+[{"name":"実績","data":[{"label":"Q1","value":405},{"label":"Q2","value":595}]},{"name":"目標","data":[{"label":"Q1","value":450},{"label":"Q2","value":550}]}]
 </ui>
 
 複数系列の棒グラフ（グループ比較）:
@@ -336,11 +351,6 @@ body は JSON 配列 \`[{"label":"...","value":数値}, ...]\` を渡す。
 複数系列の積み上げ棒グラフ:
 <ui type="chart" chartType="bar" mode="stacked" title="売上構成">
 [{"name":"製品A","data":[{"label":"Q1","value":400},{"label":"Q2","value":500}]},{"name":"製品B","data":[{"label":"Q1","value":200},{"label":"Q2","value":300}]}]
-</ui>
-
-折れ線グラフ（複数系列）:
-<ui type="chart" chartType="line" title="実績 vs 目標">
-[{"name":"実績","data":[{"label":"Q1","value":405},{"label":"Q2","value":595}]},{"name":"目標","data":[{"label":"Q1","value":450},{"label":"Q2","value":550}]}]
 </ui>
 
 円グラフ例（割合）:

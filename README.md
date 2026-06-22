@@ -418,54 +418,6 @@ bun run db:studio      # Drizzle Studio でローカルDBを確認
 
 ---
 
-#### BarChart
-
-SVG棒グラフ（外部ライブラリ不使用）。
-
-```svelte
-<BarChart title="月別売上（万円）" data={[
-  { label: '1月', value: 120 },
-  { label: '2月', value: 85 }
-]} />
-```
-
-| prop | 型 | 説明 |
-|------|----|------|
-| `data` | `{ label: string; value: number }[]` | データ |
-| `title` | `string?` | グラフタイトル |
-| `color` | `string?` | バーの色（CSS変数可） |
-
----
-
-#### LineChart
-
-SVG折れ線グラフ（エリア塗りつぶし付き）。
-
-```svelte
-<LineChart title="四半期推移" data={quarterData} color="var(--chart-3)" />
-```
-
-| prop | 型 | 説明 |
-|------|----|------|
-| `data` | `{ label: string; value: number }[]` | データ |
-| `color` | `string?` | 線・エリアの色 |
-
----
-
-#### PieChart
-
-SVG円グラフ（ドーナツモード対応）。
-
-```svelte
-<PieChart title="ステータス分布" data={pieData} donut />
-```
-
-| prop | 型 | 説明 |
-|------|----|------|
-| `data` | `{ label: string; value: number }[]` | データ |
-| `donut` | `boolean?` | ドーナツ型にする |
-
----
 
 #### TypingIndicator
 
@@ -516,7 +468,6 @@ AI がレスポンスとして返す動的UIコンポーネント。システム
 | コンポーネント | 用途 |
 |------|------|
 | `Values` | キー・バリュー形式のサマリー表示（健全性スコア等） |
-| `Chart` | BarChart/LineChart/PieChart を単一・複数系列（grouped/stacked）でチャット内に表示 |
 | `Gantt` | プロジェクト・タスクのガントチャート表示 |
 | `Timeline` | 活動履歴の時系列ビジュアル表示 |
 | `Kanban` | 商談ステータス等のカンバンボード表示 |
