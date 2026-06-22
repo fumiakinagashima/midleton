@@ -41,6 +41,7 @@
 	import Plus from '$lib/components/icon/Plus.svelte';
 	import ArrowUp from '$lib/components/icon/ArrowUp.svelte';
 	import Clock from '$lib/components/icon/Clock.svelte';
+	import Sparkles from '$lib/components/icon/Sparkles.svelte';
 	import { CHAT_TITLE_MAX_LENGTH, CHAT_TEXTAREA_MAX_HEIGHT_PX, DEAL_STATUS_IDS } from '$lib/constants';
 
 	function renderMarkdown(text: string): string {
@@ -97,6 +98,7 @@
 	let currentChatId: string | null = untrack(() => data.seedChat?.id ?? null);
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
+	let briefingLoading = $state(false);
 	let panelForm = $state<FormContent | null>(null);
 	let panelWorkflow = $state<WorkflowContent | null>(null);
 	let panelRecord = $state<{ type: string; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null>(null);
@@ -616,6 +618,38 @@
 		persistMessage(msg);
 	}
 
+	async function runBriefing() {
+		if (loading || briefingLoading) return;
+		briefingLoading = true;
+		const isFirst = !hasStarted;
+		if (isFirst) {
+			hasStarted = true;
+			await tick();
+			repositionInput(true);
+		}
+		try {
+			const res = await fetch('/api/briefing', { method: 'POST' });
+			const result = (await res.json()) as { contents?: MessageContent[]; error?: string };
+			if (!res.ok || result.error) {
+				toast.error(result.error ?? m.chat_error());
+				return;
+			}
+			const msg: Message = {
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				contents: result.contents ?? [],
+				createdAt: new Date()
+			};
+			messages = [...messages, msg];
+			persistMessage(msg);
+			await tick();
+		} catch {
+			toast.error(m.chat_error());
+		} finally {
+			briefingLoading = false;
+		}
+	}
+
 	async function runQuickAction(action: QuickActionDef) {
 		quickActionMenuOpen = false;
 		if (loading) return;
@@ -789,6 +823,19 @@
 			></textarea>
 			<div class="input-footer">
 				<div class="input-footer-left">
+					<button
+						class="icon-btn briefing-btn"
+						onclick={runBriefing}
+						disabled={loading || briefingLoading}
+						title={m.briefing_button()}
+						aria-label={m.briefing_button()}
+					>
+						{#if briefingLoading}
+							<span class="briefing-spinner"></span>
+						{:else}
+							<Sparkles size={16} />
+						{/if}
+					</button>
 					<div class="quick-action-wrap">
 						<button
 							class="icon-btn"
@@ -1227,6 +1274,24 @@
 		color: var(--color-primary);
 		border-color: var(--color-primary);
 		transform: rotate(45deg);
+	}
+
+	.briefing-btn {
+		position: relative;
+	}
+
+	.briefing-spinner {
+		display: inline-block;
+		width: 14px;
+		height: 14px;
+		border: 2px solid var(--color-border);
+		border-top-color: var(--color-primary);
+		border-radius: 50%;
+		animation: spin 0.7s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 
 	.quick-action-menu {

@@ -50,6 +50,8 @@
   "chat_placeholder_noenter": "メッセージを入力（Enter で改行）",
   "integrations": "API連携",
   "quick_actions": "クイックアクション",
+  "briefing_button": "今日のブリーフィング",
+  "briefing_loading": "ブリーフィングを生成中…",
   "integrations_add": "連携を追加",
   "integrations_edit": "編集",
   "integrations_delete": "削除",
