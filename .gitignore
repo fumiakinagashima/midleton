@@ -28,3 +28,7 @@ vite.config.ts.timestamp-*
 /test-results
 /playwright-report
 /blob-report
+
+# Internal docs
+/docs
+CLAUDE.md
