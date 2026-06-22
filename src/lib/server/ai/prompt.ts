@@ -1223,6 +1223,59 @@ ${input.period}
 ${customerBlocks}`;
 }
 
+export const BRIEFING_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムの朝イチブリーフィングAIです。
+営業担当者が今日取り組むべきことを、案件・活動履歴・リマインダーのデータから簡潔にまとめます。
+
+## 出力ルール
+- 必ずJSON形式のみで出力する（説明文・マークダウンのコードブロックは不要）
+- summaryは100文字程度の日本語で、今日の重点ポイントを端的にまとめる
+- followupDealsはフォローアップが必要と判断した案件のみ含める（直近7日以上活動なし、または重要度の高いもの）
+- followupDealsは優先度の高い順に最大5件まで
+- nextActionは「電話でフォロー」「提案書送付」のような具体的な短いアクション（20文字以内）
+
+## 出力スキーマ
+{
+  "summary": "string",
+  "followupDeals": [
+    {
+      "id": "string",
+      "title": "string",
+      "customerName": "string",
+      "amount": number | null,
+      "lastActivityDays": number | null,
+      "nextAction": "string"
+    }
+  ]
+}`;
+
+export function buildBriefingPrompt(input: {
+	today: string;
+	openDeals: { id: string; title: string; customerName: string; amount: number | null; lastActivityDays: number | null }[];
+	todayReminders: { content: string; timeLabel: string }[];
+}): string {
+	const dealsText = input.openDeals.length === 0
+		? '進行中案件なし'
+		: input.openDeals.map(d => {
+			const days = d.lastActivityDays == null ? '活動記録なし' : `最終活動 ${d.lastActivityDays} 日前`;
+			const amount = d.amount != null ? `${d.amount.toLocaleString()}円` : '金額未設定';
+			return `- [${d.id}] ${d.customerName} / ${d.title} / ${amount} / ${days}`;
+		}).join('\n');
+
+	const remindersText = input.todayReminders.length === 0
+		? '今日のリマインダーなし'
+		: input.todayReminders.map(r => `- ${r.timeLabel}: ${r.content}`).join('\n');
+
+	return `今日の日付: ${input.today}
+
+## 進行中案件（${input.openDeals.length}件）
+${dealsText}
+
+## 今日のリマインダー
+${remindersText}
+
+上記データをもとにブリーフィングを生成してください。`;
+}
+
 export const CHAT_TITLE_SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムのチャット履歴用タイトル生成AIです。
 ユーザーが送った最初のメッセージから、チャット履歴一覧に表示する短いタイトルを生成するのが役目です。
 
