@@ -1,7 +1,7 @@
 import { eq, desc, and, inArray, gte, lte, or, isNull } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
 import type { Db } from '../db';
-import { customers, deals, activities, reminders } from '../db/schema';
+import { customers, deals, activities, reminders, briefings } from '../db/schema';
 import { BRIEFING_SYSTEM_PROMPT, buildBriefingPrompt } from './prompt';
 import type { MessageContent } from '$lib/types/chat';
 import { formatJstDateTime } from '$lib/datetime';
@@ -35,6 +35,31 @@ type BriefingResult = {
 		nextAction: string;
 	}[];
 };
+
+export async function getCachedBriefing(
+	db: Db,
+	accountId: string | null
+): Promise<MessageContent[] | null> {
+	const todayJst = getJstDateString(new Date());
+	const [cached] = await db
+		.select()
+		.from(briefings)
+		.where(
+			and(
+				eq(briefings.date, todayJst),
+				accountId
+					? or(isNull(briefings.accountId), eq(briefings.accountId, accountId))
+					: isNull(briefings.accountId)
+			)
+		)
+		.limit(1);
+	if (!cached) return null;
+	try {
+		return JSON.parse(cached.contents) as MessageContent[];
+	} catch {
+		return null;
+	}
+}
 
 export async function computeBriefing(
 	db: Db,
@@ -182,6 +207,22 @@ export async function computeBriefing(
 			rows: todayReminders.map((r) => ({ timeLabel: r.timeLabel, content: r.content }))
 		});
 	}
+
+	// DBにキャッシュ保存（同日の既存キャッシュは上書き）
+	await db
+		.delete(briefings)
+		.where(
+			and(
+				eq(briefings.date, todayJst),
+				accountId ? eq(briefings.accountId, accountId) : isNull(briefings.accountId)
+			)
+		);
+	await db.insert(briefings).values({
+		id: crypto.randomUUID(),
+		accountId,
+		date: todayJst,
+		contents: JSON.stringify(contents)
+	});
 
 	return contents;
 }

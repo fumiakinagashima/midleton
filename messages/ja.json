@@ -52,6 +52,7 @@
   "quick_actions": "クイックアクション",
   "briefing_button": "今日のブリーフィング",
   "briefing_loading": "ブリーフィングを生成中…",
+  "briefing_refresh": "更新",
   "integrations_add": "連携を追加",
   "integrations_edit": "編集",
   "integrations_delete": "削除",
