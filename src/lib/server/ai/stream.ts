@@ -169,15 +169,8 @@ export function parseUITag(tag: string): MessageContent | null {
 			const opts = body ? JSON.parse(body) : {};
 			return { type: 'timeline', title, filter: opts.filter };
 		} else if (type === 'chart') {
-			const parsed = JSON.parse(body);
-			const isSeries = Array.isArray(parsed) && parsed[0] && 'data' in parsed[0];
-			return {
-				type: 'chart',
-				chartType: chartType ?? 'bar',
-				title,
-				mode: chartMode,
-				...(isSeries ? { series: parsed } : { data: parsed })
-			};
+			// chart display is temporarily disabled
+			return null;
 		} else if (type === 'kanban') {
 			const { columns, cards } = JSON.parse(body);
 			return { type: 'kanban', title, columns, cards };
