@@ -40,7 +40,6 @@
 	import Plus from '$lib/components/icon/Plus.svelte';
 	import ArrowUp from '$lib/components/icon/ArrowUp.svelte';
 	import Clock from '$lib/components/icon/Clock.svelte';
-	import Sparkles from '$lib/components/icon/Sparkles.svelte';
 	import { CHAT_TITLE_MAX_LENGTH, CHAT_TEXTAREA_MAX_HEIGHT_PX, DEAL_STATUS_IDS } from '$lib/constants';
 
 	function renderMarkdown(text: string): string {
@@ -97,8 +96,6 @@
 	let currentChatId: string | null = untrack(() => data.seedChat?.id ?? null);
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
-	let briefingLoading = $state(false);
-	let briefingMessageId = $state<string | null>(null);
 	let panelForm = $state<FormContent | null>(null);
 	let panelWorkflow = $state<WorkflowContent | null>(null);
 	let panelRecord = $state<{ type: string; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null>(null);
@@ -618,51 +615,6 @@
 		persistMessage(msg);
 	}
 
-	async function runBriefing(force = false) {
-		if (loading || briefingLoading) return;
-		briefingLoading = true;
-		const isFirst = !hasStarted;
-		if (isFirst) {
-			hasStarted = true;
-			await tick();
-			repositionInput(true);
-		}
-		try {
-			const res = await fetch('/api/briefing', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ force })
-			});
-			const result = (await res.json()) as { contents?: MessageContent[]; error?: string; cached?: boolean };
-			if (!res.ok || result.error) {
-				toast.error(result.error ?? m.chat_error());
-				return;
-			}
-			const newContents = result.contents ?? [];
-			if (briefingMessageId) {
-				// すでに表示済みなら内容を上書き（新規追加しない）
-				messages = messages.map((m) =>
-					m.id === briefingMessageId ? { ...m, contents: newContents } : m
-				);
-			} else {
-				const msg: Message = {
-					id: crypto.randomUUID(),
-					role: 'assistant',
-					contents: newContents,
-					createdAt: new Date()
-				};
-				messages = [...messages, msg];
-				briefingMessageId = msg.id;
-				persistMessage(msg);
-			}
-			await tick();
-		} catch {
-			toast.error(m.chat_error());
-		} finally {
-			briefingLoading = false;
-		}
-	}
-
 	async function runQuickAction(action: QuickActionDef) {
 		quickActionMenuOpen = false;
 		if (loading) return;
@@ -811,20 +763,6 @@
 						</div>
 					{/if}
 				</div>
-				{#if msg.id === briefingMessageId}
-					<div class="briefing-refresh-row">
-						<button
-							class="briefing-refresh-btn"
-							onclick={() => runBriefing(true)}
-							disabled={loading || briefingLoading}
-						>
-							{#if briefingLoading}
-								<span class="briefing-spinner"></span>
-							{/if}
-							{m.briefing_refresh()}
-						</button>
-					</div>
-				{/if}
 			{/each}
 
 			{#if loading}
@@ -851,19 +789,6 @@
 			></textarea>
 			<div class="input-footer">
 				<div class="input-footer-left">
-					<button
-						class="icon-btn briefing-btn"
-						onclick={() => runBriefing(false)}
-						disabled={loading || briefingLoading}
-						title={m.briefing_button()}
-						aria-label={m.briefing_button()}
-					>
-						{#if briefingLoading}
-							<span class="briefing-spinner"></span>
-						{:else}
-							<Sparkles size={16} />
-						{/if}
-					</button>
 					<div class="quick-action-wrap">
 						<button
 							class="icon-btn"
@@ -1302,53 +1227,6 @@
 		color: var(--color-primary);
 		border-color: var(--color-primary);
 		transform: rotate(45deg);
-	}
-
-	.briefing-btn {
-		position: relative;
-	}
-
-	.briefing-refresh-row {
-		display: flex;
-		justify-content: flex-end;
-		margin-top: 4px;
-		padding-right: 2px;
-	}
-
-	.briefing-refresh-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		font-size: 0.75rem;
-		padding: 3px 8px;
-		color: var(--color-text-muted);
-		background: none;
-		border: 1px solid var(--color-border);
-		border-radius: 4px;
-		cursor: pointer;
-		line-height: 1.4;
-		&:hover:not(:disabled) {
-			color: var(--color-text);
-			border-color: var(--color-text-muted);
-		}
-		&:disabled {
-			opacity: 0.4;
-			cursor: not-allowed;
-		}
-	}
-
-	.briefing-spinner {
-		display: inline-block;
-		width: 14px;
-		height: 14px;
-		border: 2px solid var(--color-border);
-		border-top-color: var(--color-primary);
-		border-radius: 50%;
-		animation: spin 0.7s linear infinite;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
 	}
 
 	.quick-action-menu {

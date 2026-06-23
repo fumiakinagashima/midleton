@@ -1,6 +1,7 @@
 import type { Db } from '../db';
 import { dispatchTool, type ToolName, type ToolEnv } from '../mcp';
 import { getReminderChannelOptions } from '../db/reminder-service';
+import { getCachedBriefing, computeBriefing } from '../ai/briefing';
 import type { MessageContent } from '$lib/types/chat';
 import type { QuickActionId } from '$lib/quick-actions/catalog';
 
@@ -312,6 +313,17 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 					]
 				}
 			];
+		}
+	},
+
+	ai_briefing: {
+		build: async (db, env) => {
+			const accountId = env?.accountId ?? null;
+			const cached = await getCachedBriefing(db, accountId);
+			if (cached) return cached;
+			const apiKey = env?.ANTHROPIC_API_KEY ?? '';
+			if (!apiKey) return [{ type: 'text', text: 'ANTHROPIC_API_KEY が設定されていません。' }];
+			return computeBriefing(db, accountId, apiKey);
 		}
 	}
 };
