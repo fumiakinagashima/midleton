@@ -13,7 +13,8 @@ export type QuickActionId =
 	| 'summarize_activities'
 	| 'create_customer'
 	| 'scan_bizcard'
-	| 'create_reminder';
+	| 'create_reminder'
+	| 'ai_briefing';
 
 export type QuickActionDef = {
 	id: QuickActionId;
@@ -34,7 +35,8 @@ export const quickActionCatalog: QuickActionDef[] = [
 	{ id: 'summarize_activities', label: '活動サマリ', description: '種別ごとの活動件数を表示します', icon: '📝' },
 	{ id: 'create_customer', label: '顧客登録', description: '顧客情報の登録フォームを表示します', icon: '➕' },
 	{ id: 'scan_bizcard', label: '名刺読取', description: '名刺をスキャンして顧客・担当者を登録します', icon: '📇' },
-	{ id: 'create_reminder', label: 'リマインダー設定', description: 'リマインダーの登録フォームを表示します', icon: '⏰' }
+	{ id: 'create_reminder', label: 'リマインダー設定', description: 'リマインダーの登録フォームを表示します', icon: '⏰' },
+	{ id: 'ai_briefing', label: 'AIブリーフィング', description: '今日のフォロー推奨案件とリマインダーをAIが要約します', icon: '✨' }
 ];
 
 export const DEFAULT_QUICK_ACTION_IDS: QuickActionId[] = [

@@ -40,7 +40,12 @@ const HELP: Record<string, object> = {
 		tips: [
 			'自然な日本語で指示するだけでOKです',
 			'各機能の詳しい使い方を聞く場合は「顧客管理の使い方を教えて」のように指定してください',
-			'データ管理・設定変更は /database・/settings からも直接操作できます'
+			'データ管理・設定変更はサイドメニューの「データ管理」「設定」からも直接操作できます',
+			'顧客・案件・担当者・活動の削除は、一覧の行をクリックして詳細ダイアログを開き、右上の「削除」ボタンから行えます'
+		],
+		relatedPages: [
+			{ label: 'データ管理', href: '/database', description: '顧客・案件・活動などのデータを直接管理できます' },
+			{ label: '設定', href: '/settings', description: 'アプリの各種設定を変更できます' }
 		]
 	},
 	customers: {
@@ -51,10 +56,14 @@ const HELP: Record<string, object> = {
 			{ action: '名刺をスキャンして登録する', examples: ['名刺を読み取って登録したい', '名刺をスキャンしたい'] },
 			{ action: '顧客を検索・一覧表示する', examples: ['田中さんの会社を探して', '東京の顧客一覧を見せて'] },
 			{ action: '顧客情報を更新する', examples: ['〇〇社のメールアドレスを変更して', '〇〇社のステータスを無効にして'] },
+			{ action: '顧客情報を削除する', description: 'チャットまたはデータ管理の顧客一覧で行をクリックして詳細ダイアログを開き、右上の「削除」ボタンから削除します', examples: ['〇〇社を削除したい', '〇〇社の情報を消したい'] },
 			{ action: '担当者を追加する', examples: ['〇〇社に鈴木さんを担当者として登録して'] },
 			{ action: '顧客の詳細を確認する', examples: ['〇〇社の案件・活動・担当者をまとめて教えて'] },
 			{ action: 'ヘルススコアを確認する', examples: ['〇〇社との関係は良好？', 'スコアが低い顧客は？'] },
 			{ action: '引き継ぎサマリーを作成する', examples: ['〇〇社の引き継ぎ資料を作って', '〇〇社とのやり取りをまとめて'] }
+		],
+		relatedPages: [
+			{ label: '顧客一覧', href: '/database/customers', description: '顧客の一覧表示・登録・編集・削除ができます' }
 		]
 	},
 	deals: {
@@ -62,25 +71,33 @@ const HELP: Record<string, object> = {
 		operations: [
 			{ action: '案件を登録する', examples: ['〇〇社にシステム導入の案件を作って'] },
 			{ action: '案件一覧・集計を見る', examples: ['今月の商談状況を教えて', '受注案件の合計金額は？', '案件をガントチャートで見せて', '営業パイプラインをカンバンで見せて'] },
-			{ action: '案件のステータスを更新する', examples: ['〇〇案件を受注にして', '〇〇案件が失注になった'] }
+			{ action: '案件のステータスを更新する', examples: ['〇〇案件を受注にして', '〇〇案件が失注になった'] },
+			{ action: '案件を削除する', description: 'チャットまたはデータ管理の案件一覧で行をクリックして詳細ダイアログを開き、右上の「削除」ボタンから削除します', examples: ['〇〇案件を削除したい', '〇〇社の案件を消して'] }
 		],
 		statusValues: [
 			{ value: 'open', label: '商談中' },
 			{ value: 'won', label: '受注' },
 			{ value: 'lost', label: '失注' }
+		],
+		relatedPages: [
+			{ label: '案件一覧', href: '/database/deals', description: '案件の一覧表示・登録・編集・削除ができます' }
 		]
 	},
 	activities: {
 		title: '活動履歴',
 		operations: [
 			{ action: '活動を記録する', examples: ['〇〇社に電話した記録を残して', '〇〇社との面談メモを追加して', '〇〇社にメールを送った'] },
-			{ action: '活動履歴を確認する', examples: ['〇〇社との最近のやり取りは？', '今週の活動一覧を見せて'] }
+			{ action: '活動履歴を確認する', examples: ['〇〇社との最近のやり取りは？', '今週の活動一覧を見せて'] },
+			{ action: '活動履歴を削除する', description: 'チャットまたはデータ管理の活動一覧で行をクリックして詳細ダイアログを開き、右上の「削除」ボタンから削除します', examples: ['〇〇の活動記録を削除して', '誤って登録した活動を消したい'] }
 		],
 		activityTypes: [
 			{ value: 'note', label: 'メモ' },
 			{ value: 'call', label: '電話' },
 			{ value: 'email', label: 'メール' },
 			{ value: 'meeting', label: '面談' }
+		],
+		relatedPages: [
+			{ label: '活動履歴一覧', href: '/database/activities', description: '活動履歴の一覧表示・登録・削除ができます' }
 		]
 	},
 	documents: {
@@ -105,8 +122,10 @@ const HELP: Record<string, object> = {
 			{ action: '申請を取り消す', examples: ['〇〇の申請を取り消して'] }
 		],
 		tips: [
-			'申請の詳細確認・承認操作は /database/approvals からも行えます',
 			'承認ルートは複数ステップ・並列承認に対応しています'
+		],
+		relatedPages: [
+			{ label: '申請管理', href: '/database/approvals', description: '申請の詳細確認・承認・否決操作ができます' }
 		]
 	},
 	apps: {
@@ -120,7 +139,10 @@ const HELP: Record<string, object> = {
 		tips: [
 			'AIが設計したフィールド構成を確認してから作成されます',
 			'顧客・案件などのコアデータと関連付けることもできます',
-			'作成後は /database から直接データ管理ができます'
+			'作成後はデータ管理画面から直接データ管理ができます'
+		],
+		relatedPages: [
+			{ label: 'データ管理', href: '/database', description: '作成したカスタムアプリのデータ管理ができます' }
 		]
 	},
 	reminders: {
@@ -131,8 +153,11 @@ const HELP: Record<string, object> = {
 		],
 		tips: [
 			'通知先はフォーム送信時に選択できます（通知センター・メール・Slack）',
-			'Slack通知は /settings/integrations でWebhook URLの設定が必要です',
-			'登録済みリマインダーは /database/reminders から管理できます'
+			'Slack通知は外部API連携画面でWebhook URLの設定が必要です'
+		],
+		relatedPages: [
+			{ label: 'リマインダー管理', href: '/database/reminders', description: '登録済みリマインダーの確認・削除ができます' },
+			{ label: '外部API連携', href: '/settings/integrations', description: 'Slack Webhook URLの設定ができます' }
 		]
 	},
 	email: {
@@ -142,7 +167,10 @@ const HELP: Record<string, object> = {
 		],
 		tips: [
 			'AIが下書きを作成し、フォームで内容を確認・編集してから送信します',
-			'メール送信は /settings/email でメールサービスの設定が必要です'
+			'初回利用時はメール設定画面でメールサービスの設定が必要です'
+		],
+		relatedPages: [
+			{ label: 'メール設定', href: '/settings/email', description: 'メール送信サービスの設定ができます' }
 		]
 	}
 };
