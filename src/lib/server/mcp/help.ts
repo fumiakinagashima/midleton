@@ -11,7 +11,7 @@ export const tools: Tool[] = [
 			properties: {
 				topic: {
 					type: 'string',
-					enum: ['overview', 'customers', 'deals', 'activities', 'documents', 'reminders', 'email'],
+					enum: ['overview', 'customers', 'deals', 'activities', 'reminders', 'email'],
 					description: '知りたいトピック（省略時は全体概要）'
 				}
 			}
@@ -20,7 +20,7 @@ export const tools: Tool[] = [
 ];
 
 const getHelpInputSchema = z.object({
-	topic: z.enum(['overview', 'customers', 'deals', 'activities', 'documents', 'reminders', 'email']).optional()
+	topic: z.enum(['overview', 'customers', 'deals', 'activities', 'reminders', 'email']).optional()
 });
 
 const HELP: Record<string, object> = {
@@ -31,8 +31,7 @@ const HELP: Record<string, object> = {
 			{ name: '顧客・担当者管理', topic: 'customers', examples: ['〇〇株式会社を登録して', '田中さんの会社を探して', '名刺を読み取って登録したい'] },
 			{ name: '案件管理', topic: 'deals', examples: ['〇〇社に新しい案件を作って', '今月の商談状況を教えて'] },
 			{ name: '活動履歴', topic: 'activities', examples: ['〇〇社に電話した記録を残して', '先週の活動一覧を見せて'] },
-			{ name: '資料生成', topic: 'documents', examples: ['今月の営業報告書をWordで作って', '案件一覧をExcelにまとめて', '会議用スライドを作って'] },
-			{ name: 'リマインダー', topic: 'reminders', examples: ['明日の10時にフォローアップをリマインドして'] },
+{ name: 'リマインダー', topic: 'reminders', examples: ['明日の10時にフォローアップをリマインドして'] },
 			{ name: 'メール送信', topic: 'email', examples: ['〇〇社にお礼メールを送って'] }
 		],
 		tips: [
@@ -96,19 +95,6 @@ const HELP: Record<string, object> = {
 		],
 		relatedPages: [
 			{ label: '活動履歴一覧', href: '/database/activities', description: '活動履歴の一覧表示・登録・削除ができます' }
-		]
-	},
-	documents: {
-		title: '資料生成（Word / Excel / PowerPoint）',
-		operations: [
-			{ action: 'Word文書を作成する', description: '報告書・議事録など文章中心の資料', examples: ['今月の営業報告書をWordで作って', '〇〇社への提案書を作成して'] },
-			{ action: 'Excelブックを作成する', description: '一覧・集計表など表形式データ', examples: ['案件一覧をExcelにまとめて', '今月の売上をExcelで集計して'] },
-			{ action: 'PowerPointスライドを作成する', description: '会議・プレゼン用スライド', examples: ['営業会議用のスライドを作って', '〇〇社向けの提案スライドを作成して'] }
-		],
-		tips: [
-			'AIがデータを収集してから生成するため、少し時間がかかる場合があります',
-			'生成完了後、自動的にダウンロードリンクが表示されます',
-			'どんな内容を含めてほしいか具体的に伝えると、より良い資料が作れます'
 		]
 	},
 	reminders: {
