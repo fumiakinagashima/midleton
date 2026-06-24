@@ -122,16 +122,14 @@
 					{field.label}
 					{#if field.required}<span class="required">*</span>{/if}
 				</legend>
-				<div class="checkbox-group">
+				<div class="toggle-group">
 					{#each field.options ?? [] as opt}
-						<label class="checkbox-option">
-							<input
-								type="checkbox"
-								checked={(values[field.key] ?? '').split(',').filter(Boolean).includes(opt.value)}
-								onchange={(e) => toggleMultiselect(field.key, opt.value, e.currentTarget.checked)}
-							/>
-							{opt.label}
-						</label>
+						{@const selected = (values[field.key] ?? '').split(',').filter(Boolean).includes(opt.value)}
+						<button
+							type="button"
+							class:active={selected}
+							onclick={() => toggleMultiselect(field.key, opt.value, !selected)}
+						>{opt.label}</button>
 					{/each}
 				</div>
 				{#if errors[field.key]}<p class="error-msg">{errors[field.key]}</p>{/if}
@@ -230,26 +228,34 @@
 		margin-left: 2px;
 	}
 
-	.checkbox-group {
+	.toggle-group {
 		display: flex;
-		flex-direction: column;
-		gap: 6px;
+		flex-wrap: wrap;
+		gap: 8px;
 		margin-top: 4px;
-	}
 
-	.checkbox-option {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		width: fit-content;
-		font-size: 0.9375rem;
-		padding: 2px 4px;
-		color: var(--color-text);
-		cursor: pointer;
-	}
-	.checkbox-option input[type='checkbox'] {
-		width: auto;
-		padding: 0;
+		button {
+			padding: 8px 16px;
+			border: 1px solid var(--color-border);
+			border-radius: 8px;
+			background: var(--color-surface);
+			color: var(--color-text-muted);
+			font-size: 0.875rem;
+			cursor: pointer;
+			transition: border-color 0.15s, color 0.15s, background 0.15s;
+
+			&:hover {
+				border-color: var(--color-primary);
+				color: var(--color-text);
+			}
+
+			&.active {
+				border-color: var(--color-primary);
+				background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+				color: var(--color-primary);
+				font-weight: 500;
+			}
+		}
 	}
 
 	input,
