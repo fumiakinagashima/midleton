@@ -8,11 +8,8 @@ import * as deals from './deals';
 import * as activities from './activities';
 import * as communication from './communication';
 import * as documents from './documents';
-import * as entities from './entities';
-import * as approvals from './approvals';
 import * as help from './help';
 import * as followup from './followup';
-import * as workflows from './workflows';
 
 export type { ToolEnv } from './shared';
 
@@ -55,24 +52,8 @@ export type ToolName =
 	| 'send_slack_notification'
 	| 'create_reminder'
 	| 'create_reminders_bulk'
-	| 'list_entity_types'
-	| 'create_app'
-	| 'get_entity_fields'
-	| 'create_entity_type'
-	| 'add_entity_field'
-	| 'get_entities'
-	| 'create_entity'
-	| 'update_entity'
-	| 'list_approvals'
-	| 'get_approval'
-	| 'create_approval'
-	| 'update_approval_step'
-	| 'cancel_approval'
 	| 'get_help'
-	| 'suggest_customer_followup'
-	| 'save_workflow'
-	| 'list_workflows'
-	| 'get_workflow';
+	| 'suggest_customer_followup';
 
 export const tools: Tool[] = [
 	...integrations.tools,
@@ -83,11 +64,8 @@ export const tools: Tool[] = [
 	...activities.tools,
 	...communication.tools,
 	...documents.tools,
-	...entities.tools,
-	...approvals.tools,
 	...help.tools,
-	...followup.tools,
-	...workflows.tools
+	...followup.tools
 ];
 
 export async function dispatchTool(
@@ -136,24 +114,8 @@ export async function dispatchTool(
 		case 'send_slack_notification':        return communication.handleSendSlackNotification(db, input, env);
 		case 'create_reminder':                return communication.handleCreateReminder(db, input, env);
 		case 'create_reminders_bulk':          return communication.handleCreateRemindersBulk(db, input, env);
-		case 'list_entity_types':              return entities.handleListEntityTypes(db);
-		case 'create_app':                     return entities.handleCreateApp(db, input);
-		case 'get_entity_fields':              return entities.handleGetEntityFields(db, input);
-		case 'create_entity_type':             return entities.handleCreateEntityType(db, input);
-		case 'add_entity_field':               return entities.handleAddEntityField(db, input);
-		case 'get_entities':                   return entities.handleGetEntities(db, input);
-		case 'create_entity':                  return entities.handleCreateEntity(db, input);
-		case 'update_entity':                  return entities.handleUpdateEntity(db, input);
-		case 'list_approvals':                 return approvals.handleListApprovals(db, input);
-		case 'get_approval':                   return approvals.handleGetApproval(db, input);
-		case 'create_approval':                return approvals.handleCreateApproval(db, input, env);
-		case 'update_approval_step':           return approvals.handleUpdateApprovalStep(db, input, env);
-		case 'cancel_approval':                return approvals.handleCancelApproval(db, input);
 		case 'get_help':                       return help.handleGetHelp(input);
 		case 'suggest_customer_followup':      return followup.handleSuggestCustomerFollowup(db, input, env);
-		case 'save_workflow':                  return workflows.handleSaveWorkflow(db, input, env);
-		case 'list_workflows':                 return workflows.handleListWorkflows(db, env);
-		case 'get_workflow':                   return workflows.handleGetWorkflow(db, input, env);
 		default:
 			throw new Error(`Unknown tool: ${name}`);
 	}

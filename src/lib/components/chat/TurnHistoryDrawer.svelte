@@ -38,7 +38,6 @@
 		document_job: '資料生成',
 		reply: '質問',
 		form: 'フォーム',
-		workflow: 'ワークフロー',
 		customer_detail: '顧客詳細'
 	};
 

@@ -22,6 +22,13 @@
       "when": 1749350000000,
       "tag": "0002_integrations",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1750766400000,
+      "tag": "0026_remove_workflows_approvals_entities",
+      "breakpoints": true
     }
   ]
 }

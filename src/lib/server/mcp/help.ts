@@ -11,7 +11,7 @@ export const tools: Tool[] = [
 			properties: {
 				topic: {
 					type: 'string',
-					enum: ['overview', 'customers', 'deals', 'activities', 'documents', 'approvals', 'apps', 'reminders', 'email'],
+					enum: ['overview', 'customers', 'deals', 'activities', 'documents', 'reminders', 'email'],
 					description: '知りたいトピック（省略時は全体概要）'
 				}
 			}
@@ -20,20 +20,18 @@ export const tools: Tool[] = [
 ];
 
 const getHelpInputSchema = z.object({
-	topic: z.enum(['overview', 'customers', 'deals', 'activities', 'documents', 'approvals', 'apps', 'reminders', 'email']).optional()
+	topic: z.enum(['overview', 'customers', 'deals', 'activities', 'documents', 'reminders', 'email']).optional()
 });
 
 const HELP: Record<string, object> = {
 	overview: {
 		title: 'Midleton 使い方ガイド',
-		description: 'チャットで業務指示を出すだけで、顧客管理・案件管理・資料作成・申請管理などが完結するAIファーストなCRM/SFAシステムです',
+		description: 'チャットで業務指示を出すだけで、顧客管理・案件管理・資料作成が完結するAIファーストなCRM/SFAシステムです',
 		features: [
 			{ name: '顧客・担当者管理', topic: 'customers', examples: ['〇〇株式会社を登録して', '田中さんの会社を探して', '名刺を読み取って登録したい'] },
-			{ name: '案件管理', topic: 'deals', examples: ['〇〇社に新しい案件を作って', '今月の商談状況を教えて', '案件をガントチャートで見せて'] },
+			{ name: '案件管理', topic: 'deals', examples: ['〇〇社に新しい案件を作って', '今月の商談状況を教えて'] },
 			{ name: '活動履歴', topic: 'activities', examples: ['〇〇社に電話した記録を残して', '先週の活動一覧を見せて'] },
-			{ name: '資料生成（Word/Excel/PowerPoint）', topic: 'documents', examples: ['今月の営業報告書をWordで作って', '案件一覧をExcelにまとめて', '会議用スライドを作って'] },
-			{ name: '申請管理', topic: 'approvals', examples: ['出張費用の申請を作って', '承認待ちの申請は？'] },
-			{ name: 'ノーコードアプリ生成', topic: 'apps', examples: ['在庫管理アプリを作って', 'プロジェクト管理テーブルが欲しい'] },
+			{ name: '資料生成', topic: 'documents', examples: ['今月の営業報告書をWordで作って', '案件一覧をExcelにまとめて', '会議用スライドを作って'] },
 			{ name: 'リマインダー', topic: 'reminders', examples: ['明日の10時にフォローアップをリマインドして'] },
 			{ name: 'メール送信', topic: 'email', examples: ['〇〇社にお礼メールを送って'] }
 		],
@@ -111,38 +109,6 @@ const HELP: Record<string, object> = {
 			'AIがデータを収集してから生成するため、少し時間がかかる場合があります',
 			'生成完了後、自動的にダウンロードリンクが表示されます',
 			'どんな内容を含めてほしいか具体的に伝えると、より良い資料が作れます'
-		]
-	},
-	approvals: {
-		title: '申請管理',
-		operations: [
-			{ action: '申請を作成する', examples: ['出張費用10万円の申請を作って', '〇〇の承認申請を出したい'] },
-			{ action: '申請一覧を確認する', examples: ['自分の申請状況を教えて', '承認待ちの申請は？'] },
-			{ action: '申請を承認・否決する', examples: ['〇〇の申請を承認して', '〇〇申請のステップ1を却下して'] },
-			{ action: '申請を取り消す', examples: ['〇〇の申請を取り消して'] }
-		],
-		tips: [
-			'承認ルートは複数ステップ・並列承認に対応しています'
-		],
-		relatedPages: [
-			{ label: '申請管理', href: '/database/approvals', description: '申請の詳細確認・承認・否決操作ができます' }
-		]
-	},
-	apps: {
-		title: 'ノーコードアプリ生成',
-		description: 'CRMのコア機能（顧客/案件/活動）以外の業務データを管理するカスタムテーブル・アプリを対話で設計・作成できます',
-		operations: [
-			{ action: 'アプリを新規作成する', examples: ['在庫管理アプリを作って', 'プロジェクト管理テーブルが欲しい', '問い合わせ管理を作りたい'] },
-			{ action: 'フィールドを追加する', examples: ['在庫管理テーブルに「担当者」フィールドを追加して'] },
-			{ action: 'データを登録・確認する', examples: ['在庫管理に新しい商品を登録して', '在庫管理の一覧を見せて'] }
-		],
-		tips: [
-			'AIが設計したフィールド構成を確認してから作成されます',
-			'顧客・案件などのコアデータと関連付けることもできます',
-			'作成後はデータ管理画面から直接データ管理ができます'
-		],
-		relatedPages: [
-			{ label: 'データ管理', href: '/database', description: '作成したカスタムアプリのデータ管理ができます' }
 		]
 	},
 	reminders: {

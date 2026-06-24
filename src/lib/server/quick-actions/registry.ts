@@ -14,12 +14,6 @@ const ACTIVITY_TYPE_LABEL: Record<string, string> = {
 	meeting: '面談',
 	deal_created: '案件登録'
 };
-const APPROVAL_STATUS_LABEL: Record<string, string> = {
-	pending: '審査中',
-	approved: '承認済',
-	rejected: '否決',
-	cancelled: '取消'
-};
 
 function yen(amount: unknown): string {
 	if (amount === null || amount === undefined || amount === '') return '—';
@@ -101,29 +95,6 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 		}
 	},
 
-	deals_kanban: {
-		tool: 'search_deals',
-		input: { limit: 50 },
-		format: (result) => {
-			const rows = result as Record<string, unknown>[];
-			if (rows.length === 0) return [{ type: 'text', text: '案件が登録されていません。' }];
-			return [
-				{
-					type: 'kanban',
-					title: '案件パイプライン',
-					columns: Object.entries(DEAL_STATUS_LABEL).map(([id, label]) => ({ id, label })),
-					cards: rows.map((r) => ({
-						id: r.id as string,
-						title: r.title as string,
-						subtitle: r.customerName as string | undefined,
-						amount: (r.amount as number | null) ?? undefined,
-						columnId: r.status as string
-					}))
-				}
-			];
-		}
-	},
-
 	get_contacts: {
 		tool: 'get_contacts',
 		input: { limit: 100 },
@@ -139,47 +110,6 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 						{ key: 'role', label: '役職' },
 						{ key: 'department', label: '部署' },
 						{ key: 'email', label: 'メール' }
-					],
-					rows
-				}
-			];
-		}
-	},
-
-	list_approvals: {
-		tool: 'list_approvals',
-		input: {},
-		format: (result) => {
-			const rows = result as Record<string, unknown>[];
-			if (rows.length === 0) return [{ type: 'text', text: '申請はありません。' }];
-			return [
-				{
-					type: 'table',
-					entity: 'approvals',
-					columns: [
-						{ key: 'title', label: 'タイトル' },
-						{ key: 'submittedBy', label: '申請者' },
-						{ key: 'statusLabel', label: 'ステータス' }
-					],
-					rows: rows.map((r) => ({ ...r, statusLabel: APPROVAL_STATUS_LABEL[r.status as string] ?? r.status }))
-				}
-			];
-		}
-	},
-
-	list_entity_types: {
-		tool: 'list_entity_types',
-		input: {},
-		format: (result) => {
-			const rows = result as Record<string, unknown>[];
-			if (rows.length === 0) return [{ type: 'text', text: 'カスタムテーブルはまだありません。' }];
-			return [
-				{
-					type: 'table',
-					columns: [
-						{ key: 'icon', label: '' },
-						{ key: 'label', label: 'テーブル名' },
-						{ key: 'name', label: '識別名' }
 					],
 					rows
 				}

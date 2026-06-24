@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Table from '$lib/components/chat/Table.svelte';
-	import WorkflowEditorDialog from '$lib/components/dialog/WorkflowEditorDialog.svelte';
 	import ActionSelector from '$lib/components/chat/ActionSelector.svelte';
 	import Values from '$lib/components/chat/Values.svelte';
 	import Gantt from '$lib/components/chat/Gantt.svelte';
@@ -14,11 +13,10 @@
 	import Reply from '$lib/components/chat/Reply.svelte';
 	import FormDialog from '$lib/components/dialog/FormDialog.svelte';
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
-	import ApprovalDialog from '$lib/components/dialog/ApprovalDialog.svelte';
 	import { type CoreType } from '$lib/components/dialog/field-adapter';
 	import TurnHistoryDrawer from '$lib/components/chat/TurnHistoryDrawer.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, TimelineContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, DocHandoffContent, ReplyContent, CustomerDetailContent, WorkflowContent } from '$lib/types/chat';
+	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, TimelineContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, DocHandoffContent, ReplyContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
 	import * as m from '$lib/paraglide/messages.js';
 	import { tick, untrack } from 'svelte';
@@ -97,9 +95,7 @@
 	let quickActions = $state(loadQuickActions());
 	let quickActionMenuOpen = $state(false);
 	let panelForm = $state<FormContent | null>(null);
-	let panelWorkflow = $state<WorkflowContent | null>(null);
 	let panelRecord = $state<{ type: string; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null>(null);
-	let panelApprovalId = $state<string | null>(null);
 	let historyDrawerOpen = $state(false);
 
 	// コアエンティティのCRUDツールフォームは FormDialog ではなく RecordDialog（REST + getTableInfo）で開く
@@ -376,23 +372,13 @@
 	}
 
 	function finalizeStreamingMessage() {
-		let nextPanelWorkflow: WorkflowContent | null = null;
 		let nextPanelRecord: typeof panelRecord = null;
 		const contents: MessageContent[] = [];
 		if (streamingText.trim()) contents.push({ type: 'text', text: streamingText });
 		for (const c of streamingUIContents) {
-			if (c.type === 'form') {
-				// フォームはボタンとして描画。ダイアログは自動で開かずユーザーが押して開く。
-				contents.push(c);
-			} else if (c.type === 'workflow') {
-				nextPanelWorkflow = c as WorkflowContent;
-			} else if (c.type === 'customer_detail') {
-				nextPanelRecord = { type: 'customers', recordId: (c as CustomerDetailContent).customer.id, view: 'detail' };
-			} else {
-				contents.push(c);
-			}
+			contents.push(c);
 		}
-		if (contents.length === 0 && !nextPanelWorkflow && !nextPanelRecord) {
+		if (contents.length === 0 && !nextPanelRecord) {
 			contents.push({ type: 'text', text: m.chat_error() });
 		}
 		hidePreviousDealKanban(contents);
@@ -401,7 +387,6 @@
 			messages = [...messages, message];
 			persistMessage(message);
 		}
-		if (nextPanelWorkflow) panelWorkflow = nextPanelWorkflow;
 		if (nextPanelRecord) panelRecord = nextPanelRecord;
 		streamingText = '';
 		streamingUIContents = [];
@@ -708,8 +693,7 @@
 										columns={content.columns}
 										rows={content.rows}
 										onRowClick={content.entity ? (row) => {
-										if (content.entity === 'approvals') panelApprovalId = String(row.id);
-										else panelRecord = { type: content.entity!, recordId: String(row.id), view: 'detail' };
+										panelRecord = { type: content.entity!, recordId: String(row.id), view: 'detail' };
 									} : undefined}
 									/>
 								{:else if content.type === 'actions'}
@@ -842,18 +826,6 @@
 			oncancel={handlePanelCancel}
 		/>
 	{/if}
-	{#if panelWorkflow}
-		<WorkflowEditorDialog
-			id={panelWorkflow.id}
-			initialName={panelWorkflow.name}
-			initialTriggerHour={panelWorkflow.triggerHour}
-			initialTriggerMinute={panelWorkflow.triggerMinute}
-			initialSteps={panelWorkflow.steps}
-			entityTypes={data.entityTypes}
-			slackIntegrations={data.slackIntegrations}
-			onclose={() => (panelWorkflow = null)}
-		/>
-	{/if}
 	{#if panelRecord}
 		<RecordDialog
 			type={panelRecord.type}
@@ -867,14 +839,6 @@
 				panelRecord = null;
 				if (entity) removeRecordRow(entity, id);
 			}}
-		/>
-	{/if}
-	{#if panelApprovalId}
-		<ApprovalDialog
-			mode="detail"
-			id={panelApprovalId}
-			accountId={page.data.account?.id}
-			onclose={() => (panelApprovalId = null)}
 		/>
 	{/if}
 	<TurnHistoryDrawer turns={pastTurns} open={historyDrawerOpen} onclose={() => (historyDrawerOpen = false)} />

@@ -91,49 +91,6 @@ export const activities = sqliteTable('activities', {
 		.default(sql`(unixepoch())`)
 });
 
-export const entityTypes = sqliteTable('entity_types', {
-	id: text('id').primaryKey(),
-	name: text('name').notNull().unique(),
-	label: text('label').notNull(),
-	icon: text('icon'),
-	createdAt: integer('created_at', { mode: 'timestamp' })
-		.notNull()
-		.default(sql`(unixepoch())`)
-});
-
-export const entityFields = sqliteTable('entity_fields', {
-	id: text('id').primaryKey(),
-	entityTypeId: text('entity_type_id')
-		.notNull()
-		.references(() => entityTypes.id),
-	key: text('key').notNull(),
-	label: text('label').notNull(),
-	type: text('type', { enum: ['text', 'number', 'select', 'date', 'email', 'tel', 'textarea', 'recordSelect'] })
-		.notNull()
-		.default('text'),
-	required: integer('required', { mode: 'boolean' }).notNull().default(false),
-	options: text('options').default('[]'),
-	refTable: text('ref_table'),
-	sortOrder: integer('sort_order').notNull().default(0),
-	createdAt: integer('created_at', { mode: 'timestamp' })
-		.notNull()
-		.default(sql`(unixepoch())`)
-});
-
-export const entities = sqliteTable('entities', {
-	id: text('id').primaryKey(),
-	entityTypeId: text('entity_type_id')
-		.notNull()
-		.references(() => entityTypes.id),
-	data: text('data').notNull().default('{}'),
-	createdAt: integer('created_at', { mode: 'timestamp' })
-		.notNull()
-		.default(sql`(unixepoch())`),
-	updatedAt: integer('updated_at', { mode: 'timestamp' })
-		.notNull()
-		.default(sql`(unixepoch())`)
-});
-
 export const coreCustomFields = sqliteTable('core_custom_fields', {
 	id: text('id').primaryKey(),
 	tableName: text('table_name').notNull(),
@@ -208,27 +165,6 @@ export const accounts = sqliteTable('accounts', {
 		.default(sql`(unixepoch())`)
 });
 
-export const approvalRequests = sqliteTable('approval_requests', {
-	id: text('id').primaryKey(),
-	title: text('title').notNull(),
-	type: text('type').notNull(),
-	entityType: text('entity_type'),
-	entityId: text('entity_id'),
-	status: text('status', { enum: ['pending', 'approved', 'rejected', 'cancelled'] })
-		.notNull()
-		.default('pending'),
-	submittedBy: text('submitted_by').notNull().default(''),
-	data: text('data').notNull().default('{}'),
-	route: text('route').notNull().default('[]'),
-	attachments: text('attachments').notNull().default('[]'),
-	createdAt: integer('created_at', { mode: 'timestamp' })
-		.notNull()
-		.default(sql`(unixepoch())`),
-	updatedAt: integer('updated_at', { mode: 'timestamp' })
-		.notNull()
-		.default(sql`(unixepoch())`)
-});
-
 export const notifications = sqliteTable('notifications', {
 	id: text('id').primaryKey(),
 	type: text('type').notNull().default('generic'),
@@ -281,62 +217,6 @@ export const chatMessages = sqliteTable('chat_messages', {
 		.default(sql`(unixepoch())`)
 });
 
-export const workflows = sqliteTable('workflows', {
-	id: text('id').primaryKey(),
-	name: text('name').notNull(),
-	// WorkflowStep[] のJSON（src/lib/types/chat.ts）
-	steps: text('steps').notNull().default('[]'),
-	triggerHour: integer('trigger_hour').notNull(),
-	triggerMinute: integer('trigger_minute').notNull(),
-	enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
-	// null = 全アカウント共通（ログイン実装前の既存データ想定）
-	accountId: text('account_id'),
-	createdAt: integer('created_at', { mode: 'timestamp' })
-		.notNull()
-		.default(sql`(unixepoch())`),
-	updatedAt: integer('updated_at', { mode: 'timestamp' })
-		.notNull()
-		.default(sql`(unixepoch())`)
-});
-
-export type Customer = typeof customers.$inferSelect;
-export type NewCustomer = typeof customers.$inferInsert;
-export type Contact = typeof contacts.$inferSelect;
-export type NewContact = typeof contacts.$inferInsert;
-export type Deal = typeof deals.$inferSelect;
-export type NewDeal = typeof deals.$inferInsert;
-export type Activity = typeof activities.$inferSelect;
-export type NewActivity = typeof activities.$inferInsert;
-export type EntityType = typeof entityTypes.$inferSelect;
-export type EntityField = typeof entityFields.$inferSelect;
-export type Entity = typeof entities.$inferSelect;
-export type CoreCustomField = typeof coreCustomFields.$inferSelect;
-export type EmailProviderSettings = typeof emailProviders.$inferSelect;
-export type NewEmailProviderSettings = typeof emailProviders.$inferInsert;
-export type AiSettings = typeof aiSettings.$inferSelect;
-export type Account = typeof accounts.$inferSelect;
-export type Integration = typeof integrations.$inferSelect;
-export type NewIntegration = typeof integrations.$inferInsert;
-export type ApprovalRequest = typeof approvalRequests.$inferSelect;
-export type NewApprovalRequest = typeof approvalRequests.$inferInsert;
-export type Notification = typeof notifications.$inferSelect;
-export type NewNotification = typeof notifications.$inferInsert;
-export type Reminder = typeof reminders.$inferSelect;
-export type NewReminder = typeof reminders.$inferInsert;
-export const workflowRuns = sqliteTable('workflow_runs', {
-	id: text('id').primaryKey(),
-	workflowId: text('workflow_id').notNull(),
-	ok: integer('ok', { mode: 'boolean' }).notNull(),
-	error: text('error'),
-	startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
-	finishedAt: integer('finished_at', { mode: 'timestamp' }).notNull()
-});
-
-export type Workflow = typeof workflows.$inferSelect;
-export type NewWorkflow = typeof workflows.$inferInsert;
-export type WorkflowRun = typeof workflowRuns.$inferSelect;
-export type NewWorkflowRun = typeof workflowRuns.$inferInsert;
-
 export const briefings = sqliteTable('briefings', {
 	id: text('id').primaryKey(),
 	// null = 全アカウント共通。通常はログイン中アカウントのIDを設定する
@@ -350,5 +230,24 @@ export const briefings = sqliteTable('briefings', {
 		.default(sql`(unixepoch())`)
 });
 
+export type Customer = typeof customers.$inferSelect;
+export type NewCustomer = typeof customers.$inferInsert;
+export type Contact = typeof contacts.$inferSelect;
+export type NewContact = typeof contacts.$inferInsert;
+export type Deal = typeof deals.$inferSelect;
+export type NewDeal = typeof deals.$inferInsert;
+export type Activity = typeof activities.$inferSelect;
+export type NewActivity = typeof activities.$inferInsert;
+export type CoreCustomField = typeof coreCustomFields.$inferSelect;
+export type EmailProviderSettings = typeof emailProviders.$inferSelect;
+export type NewEmailProviderSettings = typeof emailProviders.$inferInsert;
+export type AiSettings = typeof aiSettings.$inferSelect;
+export type Account = typeof accounts.$inferSelect;
+export type Integration = typeof integrations.$inferSelect;
+export type NewIntegration = typeof integrations.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+export type Reminder = typeof reminders.$inferSelect;
+export type NewReminder = typeof reminders.$inferInsert;
 export type Briefing = typeof briefings.$inferSelect;
 export type NewBriefing = typeof briefings.$inferInsert;
