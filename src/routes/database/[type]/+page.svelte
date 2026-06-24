@@ -5,7 +5,6 @@
 	import type { PageData } from './$types';
 	import type { RecordRow } from '$lib/server/db/table-service';
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
-	import SchemaEditorDialog from '$lib/components/dialog/SchemaEditorDialog.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import SearchIcon from '$lib/components/icon/Search.svelte';
 	import XIcon from '$lib/components/icon/X.svelte';
@@ -20,7 +19,6 @@
 
 	// 全テーブル（コア＋カスタム）の詳細/編集/登録をダイアログで開く
 	let dialog = $state<{ recordId: string | null; view: 'detail' | 'form' } | null>(null);
-	let schemaDialogOpen = $state(false);
 
 	function openDetail(id: string) {
 		dialog = { recordId: id, view: 'detail' };
@@ -142,7 +140,6 @@
 			{#if type === 'deals'}
 				<a href="/database/{type}/gantt" class="btn-schema">ガントチャート</a>
 			{/if}
-			<button class="btn-schema" onclick={() => (schemaDialogOpen = true)}>スキーマ編集</button>
 			<button class="btn-primary" onclick={openCreate}>+ 新規作成</button>
 		</div>
 	</header>
@@ -237,15 +234,6 @@
 		onclose={() => (dialog = null)}
 		onSaved={refreshAfterDialog}
 		onDeleted={refreshAfterDialog}
-	/>
-{/if}
-
-{#if schemaDialogOpen && type}
-	<SchemaEditorDialog
-		mode="edit"
-		{type}
-		onclose={() => (schemaDialogOpen = false)}
-		onSaved={async () => { schemaDialogOpen = false; await invalidateAll(); }}
 	/>
 {/if}
 

@@ -1,17 +1,9 @@
 import { eq, desc, sql } from 'drizzle-orm';
 import { parseJstDatetime } from '$lib/datetime';
-import type { BatchItem } from 'drizzle-orm/batch';
 import type { Db } from './index';
 import {
-	customers, contacts, deals, activities,
-	entityTypes, entityFields, entities, coreCustomFields
+	customers, contacts, deals, activities, coreCustomFields
 } from './schema';
-
-/** クエリ件数が可変の場合に `db.batch([...])` を呼ぶためのヘルパー。空配列なら何もしない。 */
-async function batchIfNonEmpty<U extends BatchItem<'sqlite'>>(db: Db, queries: U[]): Promise<void> {
-	if (queries.length === 0) return;
-	await db.batch(queries as [U, ...U[]]);
-}
 
 export type CustomFieldType = 'text' | 'number' | 'select' | 'date' | 'email' | 'tel' | 'textarea';
 
@@ -47,10 +39,9 @@ export const CORE_TABLE_NAMES = ['customers', 'contacts', 'deals', 'activities']
 // /database/[type] ルートと衝突する予約済み名
 const RESERVED_NAMES = new Set([
 	...CORE_TABLE_NAMES,
-	'approvals', 'accounts', 'reminders', // 固定ルート
-	'entity_types', 'entity_fields', 'entities', 'core_custom_fields',
-	'approval_requests', 'approval_attachments', 'integrations', // 物理テーブル名
-	'new', 'schema', 'gantt',         // サブルート名
+	'accounts', 'reminders',
+	'core_custom_fields', 'integrations',
+	'new', 'schema', 'gantt',
 ]);
 
 const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: FieldDef[] }> = {
@@ -131,7 +122,7 @@ const CORE_COLUMN_KEYS: Record<string, string[]> = {
 	activities: ['customerId', 'type', 'content', 'activityDate']
 };
 
-const SYSTEM_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'entityTypeId']);
+const SYSTEM_KEYS = new Set(['id', 'createdAt', 'updatedAt']);
 
 function extractCustomData(type: string, data: Record<string, unknown>): Record<string, unknown> {
 	const coreKeys = new Set(CORE_COLUMN_KEYS[type] ?? []);
@@ -155,6 +146,8 @@ export async function getCoreCustomFields(db: Db, tableName: string): Promise<Fi
 	}));
 }
 
+export type EditableField = Omit<FieldDef, 'listable' | 'isCustom'> & { _id: string };
+
 export async function updateCoreCustomFields(db: Db, tableName: string, fields: EditableField[]): Promise<void> {
 	await db.batch([
 		db.delete(coreCustomFields).where(eq(coreCustomFields.tableName, tableName)),
@@ -172,28 +165,11 @@ export async function updateCoreCustomFields(db: Db, tableName: string, fields: 
 }
 
 export async function getTableInfo(db: Db, type: string): Promise<TableInfo | null> {
-	if (CORE_TABLE_BASE[type]) {
-		const customFields = await getCoreCustomFields(db, type);
-		return {
-			...CORE_TABLE_BASE[type],
-			fields: [...CORE_TABLE_BASE[type].fields, ...customFields]
-		};
-	}
-
-	const [et] = await db.select().from(entityTypes).where(eq(entityTypes.name, type));
-	if (!et) return null;
-
-	const fields = await db.select().from(entityFields)
-		.where(eq(entityFields.entityTypeId, et.id))
-		.orderBy(entityFields.sortOrder);
-
+	if (!CORE_TABLE_BASE[type]) return null;
+	const customFields = await getCoreCustomFields(db, type);
 	return {
-		id: et.name, label: et.label, icon: et.icon ?? 'table', isCore: false,
-		fields: fields.map(f => ({
-			key: f.key, label: f.label, type: f.type, required: f.required,
-			options: JSON.parse(f.options ?? '[]'), listable: true,
-			refTable: f.refTable ?? undefined
-		}))
+		...CORE_TABLE_BASE[type],
+		fields: [...CORE_TABLE_BASE[type].fields, ...customFields]
 	};
 }
 
@@ -205,66 +181,12 @@ export async function listAllTables(db: Db): Promise<(TableInfo & { count: numbe
 		db.select({ count: sql<number>`count(*)` }).from(activities)
 	]);
 
-	const coreTables = [
+	return [
 		{ ...CORE_TABLE_BASE.customers, count: c1.count },
 		{ ...CORE_TABLE_BASE.contacts, count: c2.count },
 		{ ...CORE_TABLE_BASE.deals, count: c3.count },
 		{ ...CORE_TABLE_BASE.activities, count: c4.count }
 	];
-
-	const customTypes = await db.select().from(entityTypes);
-	const customTables = await Promise.all(
-		customTypes.map(async (et) => {
-			const [fields, [{ count }]] = await Promise.all([
-				db.select().from(entityFields)
-					.where(eq(entityFields.entityTypeId, et.id))
-					.orderBy(entityFields.sortOrder),
-				db.select({ count: sql<number>`count(*)` })
-					.from(entities).where(eq(entities.entityTypeId, et.id))
-			]);
-			return {
-				id: et.name, label: et.label, icon: et.icon ?? 'table', isCore: false, count,
-				fields: fields.map(f => ({
-					key: f.key, label: f.label, type: f.type, required: f.required,
-					options: JSON.parse(f.options ?? '[]'), listable: true,
-					refTable: f.refTable ?? undefined
-				}))
-			};
-		})
-	);
-
-	return [...coreTables, ...customTables];
-}
-
-export type EntityTypeForWorkflow = {
-	id: string;
-	label: string;
-	fields: { key: string; label: string }[];
-};
-
-/** テーブル名（entity_types.name）からid（entity_types.id）を取得する。カスタムテーブル削除前のワークフロー参照チェック等で使う。 */
-export async function getEntityTypeByName(db: Db, name: string): Promise<{ id: string } | null> {
-	const [et] = await db.select({ id: entityTypes.id }).from(entityTypes).where(eq(entityTypes.name, name));
-	return et ?? null;
-}
-
-/** ワークフローの「自作テーブル」対象選択用に、カスタムテーブル一覧をid付きで取得する。 */
-export async function listEntityTypesForWorkflow(db: Db): Promise<EntityTypeForWorkflow[]> {
-	const types = await db.select().from(entityTypes);
-	return Promise.all(
-		types.map(async (et) => {
-			const fields = await db
-				.select()
-				.from(entityFields)
-				.where(eq(entityFields.entityTypeId, et.id))
-				.orderBy(entityFields.sortOrder);
-			return {
-				id: et.id,
-				label: et.label,
-				fields: fields.map((f) => ({ key: f.key, label: f.label }))
-			};
-		})
-	);
 }
 
 export async function listRecords(db: Db, type: string, limit = 200): Promise<RecordRow[]> {
@@ -309,18 +231,7 @@ export async function listRecords(db: Db, type: string, limit = 200): Promise<Re
 				createdAt: toTs(a.createdAt)
 			}));
 	}
-
-	const [et] = await db.select().from(entityTypes).where(eq(entityTypes.name, type));
-	if (!et) return [];
-
-	return (await db.select().from(entities)
-		.where(eq(entities.entityTypeId, et.id))
-		.orderBy(desc(entities.createdAt)).limit(limit))
-		.map(e => ({
-			id: e.id,
-			...(JSON.parse(e.data ?? '{}') as RecordRow),
-			createdAt: toTs(e.createdAt), updatedAt: toTs(e.updatedAt)
-		}));
+	return [];
 }
 
 export async function getRecord(db: Db, type: string, id: string): Promise<RecordRow | null> {
@@ -367,14 +278,7 @@ export async function getRecord(db: Db, type: string, id: string): Promise<Recor
 			createdAt: toTs(a.createdAt)
 		};
 	}
-
-	const [e] = await db.select().from(entities).where(eq(entities.id, id));
-	if (!e) return null;
-	return {
-		id: e.id,
-		...(JSON.parse(e.data ?? '{}') as RecordRow),
-		createdAt: toTs(e.createdAt), updatedAt: toTs(e.updatedAt)
-	};
+	return null;
 }
 
 export async function recordActivity(
@@ -454,12 +358,7 @@ export async function createRecord(db: Db, type: string, data: Record<string, un
 		return (await getRecord(db, 'activities', id))!;
 	}
 
-	const [et] = await db.select().from(entityTypes).where(eq(entityTypes.name, type));
-	if (!et) throw new Error(`Table not found: ${type}`);
-
-	const { id: _, entityTypeId: __, createdAt: ___, updatedAt: ____, ...entityData } = data;
-	await db.insert(entities).values({ id, entityTypeId: et.id, data: JSON.stringify(entityData) });
-	return (await getRecord(db, type, id))!;
+	throw new Error(`Table not found: ${type}`);
 }
 
 export async function updateRecord(db: Db, type: string, id: string, data: Record<string, unknown>): Promise<RecordRow> {
@@ -496,7 +395,6 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 		const [existing] = await db.select({ custom: deals.custom }).from(deals).where(eq(deals.id, id));
 		const existingCustom = JSON.parse(existing?.custom ?? '{}') as Record<string, unknown>;
 		const mergedCustom = { ...existingCustom, ...extractCustomData('deals', data) };
-		// ステータス変更に応じて closedAt を更新する（ツール経路 handleUpdateDeal と挙動を揃える）
 		const closedAt =
 			data.status === 'won' || data.status === 'lost'
 				? new Date()
@@ -532,11 +430,7 @@ export async function updateRecord(db: Db, type: string, id: string, data: Recor
 		return (await getRecord(db, 'activities', id))!;
 	}
 
-	const { id: _, entityTypeId: __, createdAt: ___, updatedAt: ____, ...entityData } = data;
-	await db.update(entities).set({
-		data: JSON.stringify(entityData), updatedAt: new Date()
-	}).where(eq(entities.id, id));
-	return (await getRecord(db, type, id))!;
+	throw new Error(`Table not found: ${type}`);
 }
 
 export async function deleteRecord(db: Db, type: string, id: string): Promise<void> {
@@ -544,86 +438,5 @@ export async function deleteRecord(db: Db, type: string, id: string): Promise<vo
 	if (type === 'contacts') { await db.delete(contacts).where(eq(contacts.id, id)); return; }
 	if (type === 'deals') { await db.delete(deals).where(eq(deals.id, id)); return; }
 	if (type === 'activities') { await db.delete(activities).where(eq(activities.id, id)); return; }
-	await db.delete(entities).where(eq(entities.id, id));
-}
-
-// ── Entity type (custom table) management ──────────────────────────────────
-
-export type EditableField = Omit<FieldDef, 'listable' | 'isCustom'> & { _id: string };
-
-export type EntityTypeInput = {
-	name: string;
-	label: string;
-	icon?: string;
-	fields: EditableField[];
-};
-
-export async function createEntityType(db: Db, input: EntityTypeInput): Promise<void> {
-	if (RESERVED_NAMES.has(input.name)) {
-		throw new Error(`テーブル名 "${input.name}" はシステムで予約されています。別の名前を使用してください。`);
-	}
-	const [existing] = await db.select({ name: entityTypes.name }).from(entityTypes).where(eq(entityTypes.name, input.name));
-	if (existing) {
-		throw new Error(`テーブル名 "${input.name}" はすでに使用されています。`);
-	}
-
-	const id = crypto.randomUUID();
-	await db.batch([
-		db.insert(entityTypes).values({ id, name: input.name, label: input.label, icon: input.icon }),
-		...input.fields.map((f, i) =>
-			db.insert(entityFields).values({
-				id: crypto.randomUUID(), entityTypeId: id,
-				key: f.key, label: f.label, type: f.type as CustomFieldType,
-				required: f.required ?? false,
-				options: JSON.stringify(f.options ?? []),
-				refTable: f.refTable ?? null,
-				sortOrder: i
-			})
-		)
-	]);
-}
-
-export async function updateEntityType(db: Db, name: string, input: Partial<EntityTypeInput>): Promise<void> {
-	const [et] = await db.select().from(entityTypes).where(eq(entityTypes.name, name));
-	if (!et) throw new Error(`Table not found: ${name}`);
-
-	const queries: BatchItem<'sqlite'>[] = [];
-
-	if (input.label != null || input.icon != null) {
-		queries.push(
-			db.update(entityTypes).set({
-				...(input.label != null ? { label: input.label } : {}),
-				...(input.icon != null ? { icon: input.icon } : {})
-			}).where(eq(entityTypes.id, et.id))
-		);
-	}
-
-	if (input.fields != null) {
-		queries.push(db.delete(entityFields).where(eq(entityFields.entityTypeId, et.id)));
-		for (let i = 0; i < input.fields.length; i++) {
-			const f = input.fields[i];
-			queries.push(
-				db.insert(entityFields).values({
-					id: crypto.randomUUID(), entityTypeId: et.id,
-					key: f.key, label: f.label, type: f.type as CustomFieldType,
-					required: f.required ?? false,
-					options: JSON.stringify(f.options ?? []),
-					refTable: f.refTable ?? null,
-					sortOrder: i
-				})
-			);
-		}
-	}
-
-	await batchIfNonEmpty(db, queries);
-}
-
-export async function deleteEntityType(db: Db, name: string): Promise<void> {
-	const [et] = await db.select().from(entityTypes).where(eq(entityTypes.name, name));
-	if (!et) return;
-	await db.batch([
-		db.delete(entities).where(eq(entities.entityTypeId, et.id)),
-		db.delete(entityFields).where(eq(entityFields.entityTypeId, et.id)),
-		db.delete(entityTypes).where(eq(entityTypes.id, et.id))
-	]);
+	throw new Error(`Table not found: ${type}`);
 }

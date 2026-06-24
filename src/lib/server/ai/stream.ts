@@ -1,9 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
-import { eq } from 'drizzle-orm';
 import { buildSystemPrompt } from './prompt';
 import { tools as allTools, dispatchTool } from '$lib/server/mcp';
-import { entityTypes } from '$lib/server/db/schema';
 
 // メインチャットはSELECTのみ。create_* / update_* / delete_* はダイアログ経由でユーザーが実行する。
 const WRITE_TOOL_PREFIX = ['create_', 'update_', 'delete_'];
@@ -12,7 +10,7 @@ const tools = allTools.filter(
 );
 import { DEFAULT_AI_MODEL } from './settings';
 import type { Db } from '$lib/server/db';
-import type { MessageContent, WorkflowStep } from '$lib/types/chat';
+import type { MessageContent } from '$lib/types/chat';
 import type { ToolEnv } from '$lib/server/mcp';
 
 export type StreamEvent =
@@ -69,43 +67,6 @@ export class TextStreamProcessor {
 	}
 }
 
-// AIが steps の params/left/right に数値・真偽値をそのまま出力することがあるが、
-// 型上は常に文字列（WorkflowOperand）のため、後段の parseStepRef 等が壊れないよう文字列化する。
-function sanitizeWorkflowSteps(steps: unknown): WorkflowStep[] {
-	if (!Array.isArray(steps)) return steps as WorkflowStep[];
-	return steps.map((s) => {
-		if (!s || typeof s !== 'object') return s;
-		const step = s as Record<string, unknown>;
-		if (step.kind === 'action') {
-			const params = step.params;
-			if (params && typeof params === 'object') {
-				const fixed: Record<string, string> = {};
-				for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
-					fixed[k] = typeof v === 'string' ? v : String(v);
-				}
-				return { ...step, params: fixed };
-			}
-			return step;
-		}
-		if (step.kind === 'condition') {
-			return {
-				...step,
-				left: typeof step.left === 'string' ? step.left : String(step.left ?? ''),
-				right: typeof step.right === 'string' ? step.right : String(step.right ?? ''),
-				then: sanitizeWorkflowSteps(step.then)
-			};
-		}
-		if (step.kind === 'foreach') {
-			return {
-				...step,
-				source: typeof step.source === 'string' ? step.source : String(step.source ?? ''),
-				body: sanitizeWorkflowSteps(step.body)
-			};
-		}
-		return step;
-	});
-}
-
 // レコード一覧を返す検索系ツール → 詳細ダイアログを開くためのテーブル種別（entity）。
 // AIが <ui type="table"> の body に entity を付け忘れても、直前に使った検索ツールから補完する。
 const RECORD_LIST_TOOL_ENTITY: Record<string, string> = {
@@ -115,8 +76,7 @@ const RECORD_LIST_TOOL_ENTITY: Record<string, string> = {
 	get_deals: 'deals',
 	search_deals: 'deals',
 	get_activities: 'activities',
-	search_activities: 'activities',
-	list_approvals: 'approvals'
+	search_activities: 'activities'
 };
 
 // entity 未指定のレコード一覧テーブルに、ヒント entity を補完する。
@@ -187,16 +147,6 @@ export function parseUITag(tag: string): MessageContent | null {
 		} else if (type === 'customer_detail') {
 			const { customer, contacts, deals, activities } = JSON.parse(body);
 			return { type: 'customer_detail', customer, contacts, deals, activities };
-		} else if (type === 'workflow') {
-			const { triggerHour, triggerMinute, steps } = JSON.parse(body);
-			return {
-				type: 'workflow',
-				id,
-				name: name ?? '新規ワークフロー',
-				triggerHour,
-				triggerMinute,
-				steps: sanitizeWorkflowSteps(steps)
-			};
 		}
 	} catch {
 		// malformed JSON in UI tag
@@ -263,23 +213,6 @@ export async function streamChat(
 			const ent = RECORD_LIST_TOOL_ENTITY[b.name];
 			if (ent) turnEntities.add(ent);
 		}
-		// get_entities はカスタムテーブル名（entity_type_id → name）を DB から解決して補完する
-		await Promise.all(
-			toolBlocks
-				.filter((b) => b.name === 'get_entities')
-				.map(async (b) => {
-					try {
-						const input = JSON.parse(b.inputJson || '{}') as { entity_type_id?: string };
-						if (input.entity_type_id) {
-							const [et] = await db
-								.select({ name: entityTypes.name })
-								.from(entityTypes)
-								.where(eq(entityTypes.id, input.entity_type_id));
-							if (et?.name) turnEntities.add(et.name);
-						}
-					} catch { /* ignore */ }
-				})
-		);
 		// hintEntity を更新: 単一ならその entity、複数なら ambiguous で undefined、ゼロなら維持
 		if (turnEntities.size === 1) {
 			hintEntity = [...turnEntities][0];

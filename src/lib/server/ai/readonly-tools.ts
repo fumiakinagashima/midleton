@@ -20,11 +20,6 @@ export const READONLY_TOOL_NAMES = new Set([
 	'get_deals',
 	'get_activities',
 	'list_reminders',
-	'list_entity_types',
-	'get_entity_fields',
-	'get_entities',
-	'list_approvals',
-	'get_approval',
 	'get_help',
 	'suggest_customer_followup'
 ]);

@@ -13,7 +13,6 @@
 	import ClipboardCheck from '$lib/components/icon/ClipboardCheck.svelte';
 	import Users from '$lib/components/icon/Users.svelte';
 	import Clock from '$lib/components/icon/Clock.svelte';
-	import Workflow from '$lib/components/icon/Workflow.svelte';
 	import CreditCard from '$lib/components/icon/CreditCard.svelte';
 	import Settings from '$lib/components/icon/Settings.svelte';
 	import LogOut from '$lib/components/icon/LogOut.svelte';
@@ -205,11 +204,6 @@
 			データ管理
 		</a>
 
-		<a href="/database/approvals" class="settings-row">
-			<ClipboardCheck size={15} />
-			申請管理
-		</a>
-
 		{#if account.permission === 'admin'}
 			<a href="/database/accounts" class="settings-row">
 				<Users size={15} />
@@ -220,11 +214,6 @@
 		<a href="/database/reminders" class="settings-row">
 			<Clock size={15} />
 			リマインダー
-		</a>
-
-		<a href="/database/workflows" class="settings-row">
-			<Workflow size={15} />
-			ワークフロー
 		</a>
 
 		<a href="/bizcard" class="settings-row">
