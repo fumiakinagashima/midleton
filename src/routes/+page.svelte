@@ -36,7 +36,7 @@
 	<div class="messages" class:visible={s.hasStarted} bind:this={s.listEl}>
 		<div class="messages-inner">
 			{#each s.messages as msg (msg.id)}
-				<div class="message {msg.role}">
+				<div class="message {msg.role}" class:wide={s.isMessageWide(msg)}>
 					{#if msg.role === 'user'}
 						<div class="user-bubble">
 							{#each msg.contents as content}
@@ -55,6 +55,8 @@
 										columns={content.columns}
 										rows={content.rows}
 										onRowClick={content.entity ? (row) => s.openRecordDetail(content.entity!, String(row.id)) : undefined}
+										expanded={s.isMessageWide(msg)}
+										onToggleExpand={() => s.toggleMessageWidth(msg.id)}
 									/>
 								{:else if content.type === 'actions'}
 									<ActionSelector
@@ -67,7 +69,12 @@
 									{#if extra.type === 'values'}
 										<Values title={extra.title} items={extra.items} />
 									{:else if extra.type === 'gantt'}
-										<Gantt title={extra.title} filter={extra.filter} />
+										<Gantt
+											title={extra.title}
+											filter={extra.filter}
+											expanded={s.isMessageWide(msg)}
+											onToggleExpand={() => s.toggleMessageWidth(msg.id)}
+										/>
 									{:else if extra.type === 'timeline'}
 										<Timeline title={extra.title} filter={extra.filter} />
 									<!-- chart display temporarily disabled -->
@@ -271,8 +278,7 @@
 	}
 
 	.messages-inner {
-		max-width: none;
-		margin: 0 auto;
+		width: 100%;
 		padding: 0 24px 200px;
 		display: flex;
 		flex-direction: column;
@@ -280,8 +286,17 @@
 	}
 
 	.message {
+		width: 100%;
+		max-width: var(--chat-width);
+		margin: 0 auto;
 		display: flex;
 		flex-direction: column;
+	}
+
+	/* テーブル・ガントチャートを含むメッセージは --chat-width の中央カラムに収めず、
+	   messages-inner の全幅を使う（多くの列・長い期間を見やすくするため） */
+	.message.wide {
+		max-width: none;
 	}
 
 	/* User messages: quick slide-up */
@@ -435,7 +450,7 @@
 		   開始後はJS(repositionInput)が top(px)/translateX(-50%) を設定して下部へスライドする。 */
 		top: 50%;
 		transform: translate(-50%, -50%);
-		width: min(720px, calc(100% - 48px));
+		width: min(var(--chat-width), calc(100% - 48px));
 		z-index: 10;
 		pointer-events: none; /* pass scroll events through to messages behind it */
 	}

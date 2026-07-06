@@ -125,7 +125,10 @@
 
 <style lang="scss">
 	.kanban-wrap {
-		width: 100%;
+		min-width: var(--chat-width);
+		width: fit-content;
+		max-width: 100%;
+		margin: 0 auto;
 		overflow: hidden;
 	}
 
@@ -149,8 +152,7 @@
 		flex-direction: column;
 		gap: 6px;
 		border-radius: 10px;
-		padding: 6px;
-		margin: -6px;
+		padding: 3px;
 		transition: background 0.15s ease;
 	}
 

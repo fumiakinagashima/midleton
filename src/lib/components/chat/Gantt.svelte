@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import GanttChart from '$lib/components/database/GanttChart.svelte';
+	import Expand from '$lib/components/icon/Expand.svelte';
+	import Shrink from '$lib/components/icon/Shrink.svelte';
 	import type { RecordRow } from '$lib/server/db/table-service';
 
 	type Filter = { status?: string[]; customerId?: string };
@@ -8,9 +10,11 @@
 	type Props = {
 		title?: string;
 		filter?: Filter;
+		expanded?: boolean;
+		onToggleExpand?: () => void;
 	};
 
-	let { title, filter }: Props = $props();
+	let { title, filter, expanded = false, onToggleExpand }: Props = $props();
 
 	type Deal = {
 		id: string; title: string; customerId: string;
@@ -66,8 +70,25 @@
 </script>
 
 <div class="gantt-card">
-	{#if title}
-		<div class="card-title">{title}</div>
+	{#if title || onToggleExpand}
+		<div class="card-title">
+			<span class="card-title-text">{title ?? ''}</span>
+			{#if onToggleExpand}
+				<button
+					type="button"
+					class="expand-btn"
+					onclick={onToggleExpand}
+				>
+					{#if expanded}
+						<Shrink size={14} />
+						<span>縮小表示する</span>
+					{:else}
+						<Expand size={14} />
+						<span>拡張表示する</span>
+					{/if}
+				</button>
+			{/if}
+		</div>
 	{/if}
 	{#if loading}
 		<p class="loading">読み込み中...</p>
@@ -89,11 +110,43 @@
 	}
 
 	.card-title {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
 		padding: 10px 14px;
 		font-size: 0.875rem;
 		font-weight: 600;
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-surface);
+	}
+
+	.card-title-text {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.expand-btn {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 5px 10px;
+		border-radius: 6px;
+		background: var(--color-background);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-muted);
+		font-size: 0.75rem;
+		font-weight: 400;
+		cursor: pointer;
+		flex-shrink: 0;
+		transition: color 0.15s ease, border-color 0.15s ease;
+	}
+
+	.expand-btn:hover {
+		color: var(--color-primary);
+		border-color: var(--color-primary);
 	}
 
 	.loading, .empty {

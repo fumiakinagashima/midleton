@@ -132,6 +132,23 @@ export function createChatState(getData: () => PageData) {
 	let panelForm = $state<FormContent | null>(null);
 	let panelRecord = $state<PanelRecord>(null);
 
+	// テーブル・ガントチャートは既定で --chat-width の中央カラムに収まる縮小表示にする。
+	// ユーザーがコンポーネント上のボタンで個別に拡張表示にしたメッセージIDだけここに記録する。
+	let expandedMessageIds = $state<Set<string>>(new Set());
+
+	function isMessageWide(msg: Message): boolean {
+		const hasWideContent = msg.contents.some((c) => c.type === 'table' || c.type === 'gantt');
+		if (!hasWideContent) return false;
+		return expandedMessageIds.has(msg.id);
+	}
+
+	function toggleMessageWidth(msgId: string) {
+		const next = new Set(expandedMessageIds);
+		if (next.has(msgId)) next.delete(msgId);
+		else next.add(msgId);
+		expandedMessageIds = next;
+	}
+
 	let streamingText = $state('');
 	let streamingUIContents = $state<MessageContent[]>([]);
 
@@ -674,6 +691,8 @@ export function createChatState(getData: () => PageData) {
 		runQuickAction,
 		handleDealKanbanChange,
 		isDealStatusKanban,
+		isMessageWide,
+		toggleMessageWidth,
 		handleKey
 	};
 }
