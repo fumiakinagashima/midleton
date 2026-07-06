@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { getReminderChannelOptions } from '$lib/server/db/reminder-service';
 import type { FormField } from '$lib/types/chat';
-import type { ToolEnv } from '$lib/server/mcp';
+import type { ToolEnv } from '$lib/server/agent-tools';
 
 const DEAL_STATUS_OPTIONS = [
 	{ label: '商談中', value: 'open' },

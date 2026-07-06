@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
-import { dispatchTool } from '$lib/server/mcp';
+import { dispatchTool } from '$lib/server/agent-tools';
 import { errors } from '$lib/server/errors';
 
 const VALID_STATUSES = new Set(['open', 'won', 'lost']);

@@ -1,5 +1,5 @@
 import type { Db } from '../db';
-import { dispatchTool, type ToolName, type ToolEnv } from '../mcp';
+import { dispatchTool, type ToolName, type ToolEnv } from '../agent-tools';
 import { getReminderChannelOptions } from '../db/reminder-service';
 import { getCachedBriefing, computeBriefing } from '../ai/briefing';
 import type { MessageContent } from '$lib/types/chat';

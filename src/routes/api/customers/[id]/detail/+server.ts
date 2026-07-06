@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
-import { handleGetCustomerDetail } from '$lib/server/mcp/customers';
+import { handleGetCustomerDetail } from '$lib/server/agent-tools/customers';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });

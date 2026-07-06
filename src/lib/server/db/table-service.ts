@@ -112,7 +112,7 @@ const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: Fiel
 	}
 };
 
-// Keep for backwards compatibility with MCP tools
+// Keep for backwards compatibility with agent tools
 export const CORE_TABLE_INFO = CORE_TABLE_BASE;
 
 const CORE_COLUMN_KEYS: Record<string, string[]> = {

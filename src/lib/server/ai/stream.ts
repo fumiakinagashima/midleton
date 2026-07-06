@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { buildSystemPrompt } from './prompt';
-import { tools as allTools, dispatchTool } from '$lib/server/mcp';
+import { tools as allTools, dispatchTool } from '$lib/server/agent-tools';
 
 // メインチャットはSELECTのみ。create_* / update_* / delete_* はダイアログ経由でユーザーが実行する。
 const WRITE_TOOL_PREFIX = ['create_', 'update_', 'delete_'];
@@ -16,7 +16,7 @@ const tools = filteredTools.map((t, i) =>
 import { DEFAULT_AI_MODEL } from './settings';
 import type { Db } from '$lib/server/db';
 import type { MessageContent } from '$lib/types/chat';
-import type { ToolEnv } from '$lib/server/mcp';
+import type { ToolEnv } from '$lib/server/agent-tools';
 
 export type StreamEvent =
 	| { type: 'delta'; text: string }

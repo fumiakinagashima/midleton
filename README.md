@@ -1,10 +1,10 @@
 # Midleton
 
-AIファーストなチャットベースの CRM/SFA。ユーザーはチャットで業務指示を出し、Claude AI が MCP ツールを介して動的にフォームやテーブル・チャートなどを生成して操作を完結させる。
+AIファーストなチャットベースの CRM/SFA。ユーザーはチャットで業務指示を出し、Claude AI がエージェントツールを介して動的にフォームやテーブル・チャートなどを生成して操作を完結させる。
 
 ## 主な機能
 
-- **チャットAI**（`/`）— Claude API + MCP ツールによる顧客・商談・タスク等の検索・集計・分析、ノーコードUI（フォーム・テーブル・チャート・ガント・カンバン・タイムライン等）生成、資料データ素材生成（CSV/Markdown）
+- **チャットAI**（`/`）— Claude API + エージェントツールによる顧客・商談・タスク等の検索・集計・分析、ノーコードUI（フォーム・テーブル・チャート・ガント・カンバン・タイムライン等）生成、資料データ素材生成（CSV/Markdown）
 - **クイックアクション** — チャット入力欄の「+」から、AIを介さず一覧・集計系ツールを即時実行（トークン消費なし）
 - **データ管理**（`/database`）— コア・カスタムテーブルのCRUD・スキーマ編集、申請（承認ルート）管理、アカウント管理、リマインダー管理
 - **ワークフロー**（`/database/workflows`）— ノーコードで自動化ワークフローを作成（毎日定時トリガー、foreach/condition、AI生成・AIレビュー・手動実行）
@@ -22,8 +22,7 @@ AIファーストなチャットベースの CRM/SFA。ユーザーはチャッ�
 | バリデーション | Zod |
 | ORM | DrizzleORM |
 | インフラ | Cloudflare (Wrangler, D1, R2, KV, Queue) |
-| AI | Claude API (Anthropic) |
-| プロトコル | MCP (Model Context Protocol) |
+| AI | Claude API (Anthropic)、ツール呼び出しはアプリ内関数として実装 |
 | i18n | Paraglide-JS |
 | テスト | Vitest（ユニット）, Playwright（E2E） |
 
@@ -515,7 +514,7 @@ midleton/
 │       ├── quick-actions/    # クイックアクションのカタログ定義
 │       ├── server/
 │       │   ├── db/           # DrizzleORM スキーマ・クエリ
-│       │   ├── mcp/          # MCP ツール定義
+│       │   ├── agent-tools/  # エージェントツール定義
 │       │   ├── ai/           # Claude API 連携・システムプロンプト
 │       │   ├── auth/         # セッション・パスワードハッシュ
 │       │   ├── documents/    # 資料データファイル生成・R2保存
