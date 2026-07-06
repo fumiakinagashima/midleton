@@ -128,11 +128,7 @@
 
 <div class="page">
 	<header class="page-header">
-		<div class="breadcrumb">
-			<a href="/database">データ管理</a>
-			<span class="sep">/</span>
-			<span>リマインダー</span>
-		</div>
+		<h1>リマインダー</h1>
 		<button class="btn-primary" onclick={runDelivery} disabled={running}>
 			{running ? m.reminder_run_running() : m.reminder_run_button()}
 		</button>
@@ -208,16 +204,10 @@
 		justify-content: space-between;
 	}
 
-	.breadcrumb {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 0.9375rem;
+	h1 {
+		font-size: 1.125rem;
+		font-weight: 600;
 	}
-	.breadcrumb a { color: var(--color-primary); text-decoration: none; }
-	.breadcrumb a:hover { text-decoration: underline; }
-	.sep { color: var(--color-text-muted); }
-	.breadcrumb span:last-child { font-weight: 600; }
 
 	.btn-primary {
 		padding: 7px 14px;

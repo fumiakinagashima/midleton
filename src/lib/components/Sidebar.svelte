@@ -211,7 +211,7 @@
 			</a>
 		{/if}
 
-		<a href="/database/reminders" class="settings-row">
+		<a href="/reminder" class="settings-row">
 			<Clock size={15} />
 			リマインダー
 		</a>

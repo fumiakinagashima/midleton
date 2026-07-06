@@ -108,7 +108,7 @@ const HELP: Record<string, object> = {
 			'Slack通知は外部API連携画面でWebhook URLの設定が必要です'
 		],
 		relatedPages: [
-			{ label: 'リマインダー管理', href: '/database/reminders', description: '登録済みリマインダーの確認・削除ができます' },
+			{ label: 'リマインダー管理', href: '/reminder', description: '登録済みリマインダーの確認・削除ができます' },
 			{ label: '外部API連携', href: '/settings/integrations', description: 'Slack Webhook URLの設定ができます' }
 		]
 	},
