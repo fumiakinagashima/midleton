@@ -74,6 +74,7 @@
 											filter={extra.filter}
 											expanded={s.isMessageWide(msg)}
 											onToggleExpand={() => s.toggleMessageWidth(msg.id)}
+											onDealClick={(id: string) => s.openRecordDetail('deals', id)}
 										/>
 									{:else if extra.type === 'timeline'}
 										<Timeline title={extra.title} filter={extra.filter} />

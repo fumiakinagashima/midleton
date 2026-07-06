@@ -15,9 +15,10 @@
 		deals: Deal[];
 		customers: Customer[];
 		onDateChange: (id: string, plannedStart: string, plannedEnd: string) => void;
+		onDealClick?: (id: string) => void;
 	};
 
-	let { deals, customers, onDateChange }: Props = $props();
+	let { deals, customers, onDateChange, onDealClick }: Props = $props();
 
 	// ── Zoom ────────────────────────────────────────────────────────────────
 	let zoom = $state(1);
@@ -343,7 +344,11 @@
 		<div class="left-body" style:width="{LEFT_W}px">
 			{#each displayDeals as deal}
 				<div class="left-row" style:height="{ROW_H}px">
-					<a class="col title" href="/database/deals/{deal.id}">{deal.title}</a>
+					{#if onDealClick}
+						<button type="button" class="col title" onclick={() => onDealClick(deal.id)}>{deal.title}</button>
+					{:else}
+						<a class="col title" href="/database/deals/{deal.id}">{deal.title}</a>
+					{/if}
 					{#if showCustomer}
 						<span class="col customer">{customerMap[deal.customerId] ?? '—'}</span>
 					{/if}
@@ -547,7 +552,11 @@
 	.left-row:last-child { border-bottom: none; }
 
 	.col { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.col.title    { flex: 1; min-width: 0; color: var(--color-primary); text-decoration: none; font-weight: 500; }
+	.col.title {
+		flex: 1; min-width: 0; color: var(--color-primary); text-decoration: none; font-weight: 500;
+		background: none; border: none; padding: 0; margin: 0; text-align: left; cursor: pointer;
+		font-family: inherit; font-size: inherit;
+	}
 	.col.title:hover { text-decoration: underline; }
 	.col.customer { width: 100px; flex-shrink: 0; color: var(--color-text-muted); font-size: 0.8125rem; }
 	.col.dates    { width: 110px; flex-shrink: 0; font-size: 0.8125rem; color: var(--color-text-muted); }

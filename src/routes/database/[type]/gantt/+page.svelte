@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
 	import GanttChart from '$lib/components/database/GanttChart.svelte';
+	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -14,6 +16,16 @@
 	$effect(() => {
 		deals = data.deals;
 	});
+
+	// 案件詳細は一覧と同じくダイアログで開く（別ページへの遷移はしない）
+	let dialogRecordId = $state<string | null>(null);
+	function openDetail(id: string) {
+		dialogRecordId = id;
+	}
+	async function refreshAfterDialog() {
+		dialogRecordId = null;
+		await invalidateAll();
+	}
 
 	async function handleDateChange(id: string, plannedStart: string, plannedEnd: string) {
 		const res = await fetch(`/api/database/deals/records/${id}`, {
@@ -48,10 +60,21 @@
 		</div>
 	{:else}
 		<div class="chart-wrap">
-			<GanttChart {deals} {customers} onDateChange={handleDateChange} />
+			<GanttChart {deals} {customers} onDateChange={handleDateChange} onDealClick={openDetail} />
 		</div>
 	{/if}
 </div>
+
+{#if dialogRecordId}
+	<RecordDialog
+		type="deals"
+		recordId={dialogRecordId}
+		initialView="detail"
+		onclose={() => (dialogRecordId = null)}
+		onSaved={refreshAfterDialog}
+		onDeleted={refreshAfterDialog}
+	/>
+{/if}
 
 <style lang="scss">
 	.page {

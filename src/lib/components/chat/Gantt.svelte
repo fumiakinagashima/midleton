@@ -12,9 +12,10 @@
 		filter?: Filter;
 		expanded?: boolean;
 		onToggleExpand?: () => void;
+		onDealClick?: (id: string) => void;
 	};
 
-	let { title, filter, expanded = false, onToggleExpand }: Props = $props();
+	let { title, filter, expanded = false, onToggleExpand, onDealClick }: Props = $props();
 
 	type Deal = {
 		id: string; title: string; customerId: string;
@@ -96,7 +97,7 @@
 		<p class="empty">表示できる案件がありません。</p>
 	{:else}
 		<div class="chart-wrap">
-			<GanttChart deals={displayDeals} {customers} onDateChange={handleDateChange} />
+			<GanttChart deals={displayDeals} {customers} onDateChange={handleDateChange} {onDealClick} />
 		</div>
 	{/if}
 </div>
