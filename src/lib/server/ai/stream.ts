@@ -5,8 +5,13 @@ import { tools as allTools, dispatchTool } from '$lib/server/mcp';
 
 // メインチャットはSELECTのみ。create_* / update_* / delete_* はダイアログ経由でユーザーが実行する。
 const WRITE_TOOL_PREFIX = ['create_', 'update_', 'delete_'];
-const tools = allTools.filter(
+const filteredTools = allTools.filter(
 	(t) => !WRITE_TOOL_PREFIX.some((prefix) => t.name.startsWith(prefix))
+);
+// tools 定義は毎リクエスト同一内容のため、末尾にキャッシュブレークポイントを置いて
+// システムプロンプトと合わせてプロンプトキャッシュの対象にする
+const tools = filteredTools.map((t, i) =>
+	i === filteredTools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' as const } } : t
 );
 import { DEFAULT_AI_MODEL } from './settings';
 import type { Db } from '$lib/server/db';

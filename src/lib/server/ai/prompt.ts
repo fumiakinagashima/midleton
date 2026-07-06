@@ -1,3 +1,5 @@
+import type { TextBlockParam } from '@anthropic-ai/sdk/resources/messages';
+
 export const SYSTEM_PROMPT = `あなたはMidletonというCRM/SFAシステムのアシスタントです。
 ユーザーの業務指示を日本語で受け取り、適切なツールを使ってデータの登録・取得・更新を行います。
 
@@ -560,7 +562,7 @@ text / email / tel / number / textarea / select / date / datetime-local / hidden
 
 `;
 
-export function buildSystemPrompt(): string {
+export function buildSystemPrompt(): Array<TextBlockParam> {
 	const now = new Intl.DateTimeFormat('ja-JP', {
 		timeZone: 'Asia/Tokyo',
 		year: 'numeric',
@@ -570,7 +572,12 @@ export function buildSystemPrompt(): string {
 		hour: '2-digit',
 		minute: '2-digit'
 	}).format(new Date());
-	return `${SYSTEM_PROMPT}\n\n## 現在日時\n${now}`;
+	// SYSTEM_PROMPT本体は分単位で変化する現在日時と分離し、静的な塊としてキャッシュ対象にする
+	// （末尾に日時を連結すると毎リクエスト内容が変わりプロンプトキャッシュが効かなくなるため）
+	return [
+		{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+		{ type: 'text', text: `## 現在日時\n${now}` }
+	];
 }
 
 
