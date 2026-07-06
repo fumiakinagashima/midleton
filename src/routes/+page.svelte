@@ -14,7 +14,6 @@
 	import FormDialog from '$lib/components/dialog/FormDialog.svelte';
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
 	import { type CoreType } from '$lib/components/dialog/field-adapter';
-	import TurnHistoryDrawer from '$lib/components/chat/TurnHistoryDrawer.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
 	import type { Message, MessageContent, FormContent, ActionItem, ValuesContent, GanttContent, TimelineContent, ChartContent, KanbanContent, LinkContent, BizcardContent, DocumentJobContent, DocHandoffContent, ReplyContent } from '$lib/types/chat';
 	import type { StreamEvent } from '$lib/server/ai/stream';
@@ -37,7 +36,6 @@
 	} from '$lib/quick-actions/catalog';
 	import Plus from '$lib/components/icon/Plus.svelte';
 	import ArrowUp from '$lib/components/icon/ArrowUp.svelte';
-	import Clock from '$lib/components/icon/Clock.svelte';
 	import { CHAT_TITLE_MAX_LENGTH, CHAT_TEXTAREA_MAX_HEIGHT_PX, DEAL_STATUS_IDS } from '$lib/constants';
 
 	function renderMarkdown(text: string): string {
@@ -96,7 +94,6 @@
 	let quickActionMenuOpen = $state(false);
 	let panelForm = $state<FormContent | null>(null);
 	let panelRecord = $state<{ type: string; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null>(null);
-	let historyDrawerOpen = $state(false);
 
 	// コアエンティティのCRUDツールフォームは FormDialog ではなく RecordDialog（REST + getTableInfo）で開く
 	const CORE_TOOL_TYPE: Record<string, CoreType> = {
@@ -135,31 +132,6 @@
 		}
 		return { type, recordId: null, view: 'form', prefill };
 	}
-
-	// メッセージを「ユーザー発言1件＋それに続くAI応答群」のターン単位にまとめる。
-	// 直前のターンのみをメイン画面に表示し、それ以前は履歴ドロワーに回す。
-	type Turn = { id: string; userMsg: Message | null; assistantMsgs: Message[] };
-	let turns = $derived.by(() => {
-		const result: Turn[] = [];
-		let current: Turn | null = null;
-		for (const msg of messages) {
-			if (msg.role === 'user') {
-				current = { id: msg.id, userMsg: msg, assistantMsgs: [] };
-				result.push(current);
-			} else if (current) {
-				current.assistantMsgs.push(msg);
-			} else {
-				current = { id: msg.id, userMsg: null, assistantMsgs: [msg] };
-				result.push(current);
-			}
-		}
-		return result;
-	});
-	let latestTurn = $derived<Turn | null>(turns.length > 0 ? turns[turns.length - 1] : null);
-	let pastTurns = $derived(turns.slice(0, -1));
-	let latestTurnMessages = $derived<Message[]>(
-		latestTurn ? [...(latestTurn.userMsg ? [latestTurn.userMsg] : []), ...latestTurn.assistantMsgs] : []
-	);
 
 	let streamingText = $state('');
 	let streamingUIContents = $state<MessageContent[]>([]);
@@ -660,16 +632,10 @@
 		<p>業務を指示してください</p>
 	</div>
 
-	{#if hasStarted && pastTurns.length > 0}
-		<button class="history-btn" onclick={() => (historyDrawerOpen = true)} aria-label="会話履歴">
-			<Clock size={16} />
-		</button>
-	{/if}
-
 	<!-- Messages list -->
 	<div class="messages" class:visible={hasStarted} bind:this={listEl}>
 		<div class="messages-inner">
-			{#each latestTurnMessages as msg (msg.id)}
+			{#each messages as msg (msg.id)}
 				<div class="message {msg.role}">
 					{#if msg.role === 'user'}
 						<div class="user-bubble">
@@ -841,7 +807,6 @@
 			}}
 		/>
 	{/if}
-	<TurnHistoryDrawer turns={pastTurns} open={historyDrawerOpen} onclose={() => (historyDrawerOpen = false)} />
 </div>
 
 <style lang="scss">
@@ -883,30 +848,6 @@
 		font-size: 1rem;
 		color: var(--color-text-muted);
 		margin: 0;
-	}
-
-	/* ---- History button ---- */
-	.history-btn {
-		position: absolute;
-		top: 12px;
-		right: 12px;
-		z-index: 6;
-		width: 32px;
-		height: 32px;
-		border-radius: 50%;
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-		border: 1px solid var(--color-border);
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: color 0.15s ease, border-color 0.15s ease;
-	}
-
-	.history-btn:hover {
-		color: var(--color-primary);
-		border-color: var(--color-primary);
 	}
 
 	/* ---- Messages ---- */

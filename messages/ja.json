@@ -100,6 +100,7 @@
   "account_settings_email": "メールアドレス",
   "account_settings_role": "役職",
   "account_settings_permission": "権限",
+  "password_settings": "パスワード",
   "account_settings_password": "パスワード変更",
   "account_settings_current_password": "現在のパスワード",
   "account_settings_new_password": "新しいパスワード",

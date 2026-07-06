@@ -48,6 +48,7 @@
 			<a href="/settings/ai" class:active={currentPath === '/settings/ai'}>{m.ai_settings()}</a>
 		{/if}
 		<a href="/settings/account" class:active={currentPath === '/settings/account'}>{m.account_settings()}</a>
+		<a href="/settings/password" class:active={currentPath === '/settings/password'}>{m.password_settings()}</a>
 	</nav>
 
 	<section>

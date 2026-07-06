@@ -56,6 +56,7 @@
 			<a href="/settings/ai">{m.ai_settings()}</a>
 		{/if}
 		<a href="/settings/account">{m.account_settings()}</a>
+		<a href="/settings/password">{m.password_settings()}</a>
 	</nav>
 
 	<section>
