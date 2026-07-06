@@ -525,8 +525,10 @@
 	.rh-sub.weekend { color: #e05252; }
 
 	/* Body */
-	/* 縦・横スクロールはここ一箇所にまとめる（left-body/right-body を別々にスクロールさせない） */
-	.gantt-body { display: flex; flex: 1; overflow: auto; }
+	/* 縦・横スクロールはここ一箇所にまとめる（left-body/right-body を別々にスクロールさせない）。
+	   align-items:flex-start を指定しないと、子要素が gantt-body の可視高さぶんにストレッチされ、
+	   それを超える行が切れて（スクロールされずに）しまう。 */
+	.gantt-body { display: flex; align-items: flex-start; flex: 1; overflow: auto; }
 
 	.left-body {
 		flex-shrink: 0;
