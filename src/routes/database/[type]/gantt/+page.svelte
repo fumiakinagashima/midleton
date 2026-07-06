@@ -4,6 +4,8 @@
 	import { invalidateAll } from '$app/navigation';
 	import GanttChart from '$lib/components/database/GanttChart.svelte';
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -26,6 +28,48 @@
 		dialogRecordId = null;
 		await invalidateAll();
 	}
+
+	// ── フィルタ ──────────────────────────────────────────────────────────
+	const STATUS_OPTIONS = [
+		{ value: 'open', label: '商談中' },
+		{ value: 'won', label: '受注' },
+		{ value: 'lost', label: '失注' }
+	];
+
+	const customerOptions = $derived(customers.map((c) => ({ value: c.id, label: c.name })));
+
+	let filterCustomerId = $state('');
+	let filterStatuses = $state<Set<string>>(new Set(STATUS_OPTIONS.map((s) => s.value)));
+	let filterFrom = $state('');
+	let filterTo = $state('');
+
+	function toggleStatus(status: string) {
+		const next = new Set(filterStatuses);
+		if (next.has(status)) next.delete(status);
+		else next.add(status);
+		filterStatuses = next;
+	}
+
+	// 表示期間の指定は、期間未設定（plannedStart/End が空）の案件には適用しない
+	// （ドラッグでバーを新規作成できる行として常に表示するため）
+	function inPeriod(deal: (typeof deals)[number]): boolean {
+		if (!filterFrom && !filterTo) return true;
+		if (!deal.plannedStart || !deal.plannedEnd) return true;
+		const dealStart = new Date(`${deal.plannedStart}T00:00:00+09:00`).getTime();
+		const dealEnd = new Date(`${deal.plannedEnd}T00:00:00+09:00`).getTime();
+		const from = filterFrom ? new Date(`${filterFrom}T00:00:00+09:00`).getTime() : -Infinity;
+		const to = filterTo ? new Date(`${filterTo}T23:59:59+09:00`).getTime() : Infinity;
+		return dealEnd >= from && dealStart <= to;
+	}
+
+	const filteredDeals = $derived(
+		deals.filter(
+			(d) =>
+				(!filterCustomerId || d.customerId === filterCustomerId) &&
+				filterStatuses.has(d.status) &&
+				inPeriod(d)
+		)
+	);
 
 	async function handleDateChange(id: string, plannedStart: string, plannedEnd: string) {
 		const res = await fetch(`/api/database/deals/records/${id}`, {
@@ -59,9 +103,42 @@
 			<a href="/database/deals/new" class="btn-primary">案件を作成</a>
 		</div>
 	{:else}
-		<div class="chart-wrap">
-			<GanttChart {deals} {customers} onDateChange={handleDateChange} onDealClick={openDetail} />
+		<div class="filters">
+			<div class="filter-item customer">
+				<Select label="顧客" bind:value={filterCustomerId} options={customerOptions} placeholder="すべて" />
+			</div>
+			<div class="filter-item status">
+				<span class="filter-label">状況</span>
+				<div class="status-checks">
+					{#each STATUS_OPTIONS as opt}
+						<label class="status-check">
+							<input
+								type="checkbox"
+								checked={filterStatuses.has(opt.value)}
+								onchange={() => toggleStatus(opt.value)}
+							/>
+							{opt.label}
+						</label>
+					{/each}
+				</div>
+			</div>
+			<div class="filter-item period">
+				<span class="filter-label">表示期間</span>
+				<div class="period-inputs">
+					<DatePicker bind:value={filterFrom} max={filterTo || undefined} />
+					<span class="period-sep">〜</span>
+					<DatePicker bind:value={filterTo} min={filterFrom || undefined} />
+				</div>
+			</div>
 		</div>
+
+		{#if filteredDeals.length === 0}
+			<p class="no-match">フィルタ条件に一致する案件がありません。</p>
+		{:else}
+			<div class="chart-wrap">
+				<GanttChart deals={filteredDeals} {customers} onDateChange={handleDateChange} onDealClick={openDetail} />
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -113,6 +190,68 @@
 		text-decoration: none;
 	}
 	.btn-list:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+
+	.filters {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		gap: 20px;
+		padding: 14px 24px;
+		border-bottom: 1px solid var(--color-border);
+		flex-shrink: 0;
+	}
+
+	.filter-item.customer {
+		width: 200px;
+	}
+
+	.filter-label {
+		display: block;
+		font-size: 0.875rem;
+		color: var(--color-text-muted);
+		margin-bottom: 4px;
+	}
+
+	.status-checks {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		height: 37px;
+	}
+
+	.status-check {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.9375rem;
+		color: var(--color-text);
+		cursor: pointer;
+		white-space: nowrap;
+	}
+
+	.status-check input {
+		width: 16px;
+		height: 16px;
+		accent-color: var(--color-primary);
+		cursor: pointer;
+	}
+
+	.period-inputs {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.period-sep {
+		color: var(--color-text-muted);
+	}
+
+	.no-match {
+		padding: 40px 24px;
+		text-align: center;
+		color: var(--color-text-muted);
+		font-size: 0.875rem;
+	}
 
 	.chart-wrap {
 		flex: 1;
