@@ -64,7 +64,9 @@
 	}
 	function clientXToChartX(clientX: number): number {
 		if (!rightBodyEl) return 0;
-		return clientX - rightBodyEl.getBoundingClientRect().left + rightBodyEl.scrollLeft;
+		// スクロールは gantt-body 側にまとめたため、right-body 自体はもう動かない。
+		// getBoundingClientRect() が現在のスクロール位置を反映済みなので scrollLeft の加算は不要。
+		return clientX - rightBodyEl.getBoundingClientRect().left;
 	}
 
 	// ── Header computation ──────────────────────────────────────────────────
@@ -262,11 +264,15 @@
 	}
 
 	// ── Scroll sync ──────────────────────────────────────────────────────────
+	// 縦・横スクロールは gantt-body 一つにまとめる（left-body は sticky で固定表示）。
+	// こうしないと left-body / right-body を別々にスクロールさせる構造になり、
+	// 縦スクロール時に行がずれる・そもそもスクロールできない問題が起きる。
 	let rightHeadEl = $state<HTMLDivElement | null>(null);
 	let rightBodyEl = $state<HTMLDivElement | null>(null);
+	let ganttBodyEl = $state<HTMLDivElement | null>(null);
 
 	function onBodyScroll() {
-		if (rightHeadEl && rightBodyEl) rightHeadEl.scrollLeft = rightBodyEl.scrollLeft;
+		if (rightHeadEl && ganttBodyEl) rightHeadEl.scrollLeft = ganttBodyEl.scrollLeft;
 	}
 
 	// ── Cursor ───────────────────────────────────────────────────────────────
@@ -332,7 +338,7 @@
 	</div>
 
 	<!-- ── Body ──────────────────────────────────────────────────────────── -->
-	<div class="gantt-body">
+	<div class="gantt-body" bind:this={ganttBodyEl} onscroll={onBodyScroll}>
 		<!-- Left panel -->
 		<div class="left-body" style:width="{LEFT_W}px">
 			{#each displayDeals as deal}
@@ -362,7 +368,7 @@
 		</div>
 
 		<!-- Right panel (chart) -->
-		<div class="right-body" bind:this={rightBodyEl} onscroll={onBodyScroll}>
+		<div class="right-body" bind:this={rightBodyEl}>
 			<div class="chart-inner" style:width="{chartWidth}px">
 				<!-- Weekend backgrounds -->
 				{#each weekendRanges as wr}
@@ -519,9 +525,18 @@
 	.rh-sub.weekend { color: #e05252; }
 
 	/* Body */
-	.gantt-body { display: flex; flex: 1; overflow-y: auto; overflow-x: hidden; }
+	/* 縦・横スクロールはここ一箇所にまとめる（left-body/right-body を別々にスクロールさせない） */
+	.gantt-body { display: flex; flex: 1; overflow: auto; }
 
-	.left-body { flex-shrink: 0; border-right: 1px solid var(--color-border); overflow: hidden; }
+	.left-body {
+		flex-shrink: 0;
+		border-right: 1px solid var(--color-border);
+		background: var(--color-background);
+		/* 横スクロール時は左の見出し列を画面上に固定表示する */
+		position: sticky;
+		left: 0;
+		z-index: 5;
+	}
 	.left-row {
 		display: flex; align-items: center;
 		padding: 0 8px;
@@ -558,7 +573,8 @@
 	.lh-col.status   { width: 68px; flex-shrink: 0; }
 
 	/* Right body */
-	.right-body { flex: 1; overflow-x: auto; overflow-y: hidden; }
+	/* スクロールは親の gantt-body が担うため、ここでは overflow を持たない */
+	.right-body { flex: 1; min-width: 0; }
 	.chart-inner { position: relative; }
 
 	.weekend-bg {
