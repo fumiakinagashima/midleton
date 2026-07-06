@@ -213,7 +213,7 @@
 <style lang="scss">
 	.page {
 		padding: 40px 48px;
-		max-width: 720px;
+		max-width: 740px;
 	}
 
 	.header {

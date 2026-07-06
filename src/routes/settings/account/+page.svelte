@@ -79,7 +79,7 @@
 <style lang="scss">
 	.page {
 		padding: 40px 48px;
-		max-width: 640px;
+		max-width: 740px;
 	}
 
 	h1 {
