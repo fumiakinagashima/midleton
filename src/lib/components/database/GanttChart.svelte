@@ -599,7 +599,10 @@
 	/* Right body */
 	/* スクロールは親の gantt-body が担うため、ここでは overflow を持たない */
 	.right-body { flex: 1; min-width: 0; }
-	.chart-inner { position: relative; }
+	/* バー・グリッド線は絶対配置で left/width を自由に計算しているため、
+	   表示範囲（chartWidth）の外にはみ出た分は overflow:hidden で見た目だけ切り落とす。
+	   日付データやドラッグ計算（msToX 等）には影響しない、純粋な表示上のクリップ。 */
+	.chart-inner { position: relative; overflow: hidden; }
 
 	.weekend-bg {
 		position: absolute; top: 0;
