@@ -136,7 +136,14 @@
 			<p class="no-match">フィルタ条件に一致する案件がありません。</p>
 		{:else}
 			<div class="chart-wrap">
-				<GanttChart deals={filteredDeals} {customers} onDateChange={handleDateChange} onDealClick={openDetail} />
+				<GanttChart
+					deals={filteredDeals}
+					{customers}
+					onDateChange={handleDateChange}
+					onDealClick={openDetail}
+					rangeFrom={filterFrom || undefined}
+					rangeTo={filterTo || undefined}
+				/>
 			</div>
 		{/if}
 	{/if}

@@ -16,9 +16,12 @@
 		customers: Customer[];
 		onDateChange: (id: string, plannedStart: string, plannedEnd: string) => void;
 		onDealClick?: (id: string) => void;
+		/** 表示期間を明示的に指定する場合（"YYYY-MM-DD"）。指定した側は自動計算を上書きする */
+		rangeFrom?: string;
+		rangeTo?: string;
 	};
 
-	let { deals, customers, onDateChange, onDealClick }: Props = $props();
+	let { deals, customers, onDateChange, onDealClick, rangeFrom, rangeTo }: Props = $props();
 
 	// ── Zoom ────────────────────────────────────────────────────────────────
 	let zoom = $state(1);
@@ -36,12 +39,22 @@
 		if (!isFinite(minMs)) minMs = new Date(today.getFullYear(), today.getMonth() - 1, 1).getTime();
 		if (!isFinite(maxMs)) maxMs = new Date(today.getFullYear(), today.getMonth() + 4, 0).getTime();
 
-		const start = new Date(minMs);
-		start.setDate(1);
-		start.setMonth(start.getMonth() - 1);
+		let start: Date;
+		if (rangeFrom) {
+			start = new Date(`${rangeFrom}T00:00:00+09:00`);
+		} else {
+			start = new Date(minMs);
+			start.setDate(1);
+			start.setMonth(start.getMonth() - 1);
+		}
 
-		const end = new Date(maxMs);
-		end.setMonth(end.getMonth() + 2, 0);
+		let end: Date;
+		if (rangeTo) {
+			end = new Date(`${rangeTo}T23:59:59+09:00`);
+		} else {
+			end = new Date(maxMs);
+			end.setMonth(end.getMonth() + 2, 0);
+		}
 
 		return { start, end };
 	});
