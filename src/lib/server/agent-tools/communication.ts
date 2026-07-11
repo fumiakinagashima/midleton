@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 import type { Db } from '../db';
-import { sendEmail, getEmailSetup } from '../email';
+import { getEmailSetup } from '../email';
+import { sendEmailAndRecord } from '../email/history';
 import { recordActivity } from '../db/table-service';
 import { createReminder, listReminders, resolveChannelLabels, deleteSentReminders } from '../db/reminder-service';
 import { deleteReadNotifications, createNotification } from '../db/notification-service';
@@ -148,13 +149,12 @@ export async function handleSendEmail(db: Db, input: unknown, env?: ToolEnv) {
 		);
 	}
 	const body = setup.signature ? `${data.body}\n\n${setup.signature}` : data.body;
-	await sendEmail(setup.providerConfig, {
-		from: setup.from,
-		fromName: setup.fromName,
-		to: data.to,
-		subject: data.subject,
-		text: body
-	});
+	await sendEmailAndRecord(
+		db,
+		setup.providerConfig,
+		{ from: setup.from, fromName: setup.fromName, to: data.to, subject: data.subject, text: body },
+		{ customerId: data.customer_id, accountId: env?.accountId, source: 'chat' }
+	);
 	if (data.customer_id) {
 		await recordActivity(
 			db,

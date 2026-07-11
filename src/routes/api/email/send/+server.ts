@@ -1,10 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { sendEmail, getEmailSetup } from '$lib/server/email';
+import { getEmailSetup } from '$lib/server/email';
+import { sendEmailAndRecord } from '$lib/server/email/history';
 import { errors } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	if (!platform?.env?.DB) return errors.serviceUnavailable('DBが利用できません');
 	const db = createDb(platform.env.DB);
 	const setup = await getEmailSetup(db, platform?.env ?? {});
@@ -24,14 +25,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		if (!body.subject?.trim()) return errors.badRequest('件名は必須です');
 		if (!body.html && !body.text) return errors.badRequest('html または text の本文が必要です');
 
-		await sendEmail(setup.providerConfig, {
-			from: setup.from,
-			fromName: setup.fromName,
-			to: body.to,
-			subject: body.subject,
-			html: body.html,
-			text: body.text
-		});
+		await sendEmailAndRecord(
+			db,
+			setup.providerConfig,
+			{ from: setup.from, fromName: setup.fromName, to: body.to, subject: body.subject, html: body.html, text: body.text },
+			{ accountId: locals.account?.id, source: 'api' }
+		);
 
 		const toList = Array.isArray(body.to) ? body.to : [body.to];
 		return json({ success: true, message: `${toList.join(', ')} にメールを送信しました` });

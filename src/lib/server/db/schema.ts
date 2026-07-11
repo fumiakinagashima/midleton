@@ -217,6 +217,24 @@ export const chatMessages = sqliteTable('chat_messages', {
 		.default(sql`(unixepoch())`)
 });
 
+export const emailSends = sqliteTable('email_sends', {
+	id: text('id').primaryKey(),
+	to: text('to').notNull(),
+	subject: text('subject').notNull(),
+	body: text('body').notNull().default(''),
+	// 関連する顧客ID（send_email の customer_id 指定時のみ）
+	customerId: text('customer_id'),
+	// 送信を実行したアカウント（取得できない場合は null）
+	accountId: text('account_id'),
+	status: text('status', { enum: ['sent', 'failed'] }).notNull().default('sent'),
+	errorMessage: text('error_message'),
+	// 送信元（'chat' = send_email エージェントツール, 'api' = /api/email/send）
+	source: text('source').notNull().default('chat'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export const briefings = sqliteTable('briefings', {
 	id: text('id').primaryKey(),
 	// null = 全アカウント共通。通常はログイン中アカウントのIDを設定する
@@ -251,3 +269,5 @@ export type Reminder = typeof reminders.$inferSelect;
 export type NewReminder = typeof reminders.$inferInsert;
 export type Briefing = typeof briefings.$inferSelect;
 export type NewBriefing = typeof briefings.$inferInsert;
+export type EmailSend = typeof emailSends.$inferSelect;
+export type NewEmailSend = typeof emailSends.$inferInsert;
