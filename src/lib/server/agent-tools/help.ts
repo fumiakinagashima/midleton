@@ -131,3 +131,14 @@ export function handleGetHelp(input: unknown) {
 	const { topic } = getHelpInputSchema.parse(input ?? {});
 	return HELP[topic ?? 'overview'];
 }
+
+// システムプロンプトに常時埋め込む機能早見表。HELP を単一の情報源とすることで
+// プロンプト側への手動転記によるドキュメント乖離を防ぐ。
+export function buildFeatureIndexText(): string {
+	return Object.values(HELP)
+		.filter((v): v is { title: string; operations: { action: string }[] } =>
+			Array.isArray((v as { operations?: unknown }).operations)
+		)
+		.map((v) => `- ${v.title}: ${v.operations.map((o) => o.action).join(' / ')}`)
+		.join('\n');
+}
