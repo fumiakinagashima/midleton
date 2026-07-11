@@ -80,7 +80,7 @@
 						{@const isSelected = answers[field.key] === option.value}
 						<button
 							type="button"
-							class="chip"
+							class="form-btn"
 							class:selected={isSelected}
 							disabled={submitted}
 							onclick={() => {
@@ -93,7 +93,7 @@
 						>
 							{option.label}
 							{#if isSelected && !isInstantSingle}
-								<Check size={13} class="chip-check" />
+								<Check size={13} class="form-btn-check" />
 							{/if}
 						</button>
 					{/each}
@@ -177,21 +177,23 @@
 		color: var(--color-text-muted);
 	}
 
-	/* ---- single: chips ---- */
+	/* ---- single: form-btn ---- */
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
 	}
 
-	.chip {
+	.form-btn {
 		position: relative;
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
-		padding: 7px 14px;
+		width: 100%;
+		max-width: 420px;
+		padding: 14px;
 		border: 1px solid var(--color-border);
-		border-radius: 20px;
+		border-radius: 8px;
 		background: var(--color-surface);
 		color: var(--color-text);
 		font-size: 0.875rem;
@@ -218,7 +220,7 @@
 		}
 	}
 
-	:global(.chip-check) {
+	:global(.form-btn-check) {
 		color: var(--color-primary);
 	}
 
