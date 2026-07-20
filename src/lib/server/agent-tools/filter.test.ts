@@ -32,6 +32,12 @@ describe('buildFilterConditions', () => {
 		).toThrow(/未対応の絞り込み対象/);
 	});
 
+	it('rejects Object.prototype property names as fields', () => {
+		expect(() =>
+			buildFilterConditions([{ field: 'constructor', op: 'eq', value: 'x' }], FIELDS)
+		).toThrow(/未対応の絞り込み対象/);
+	});
+
 	it('rejects operators not allowed for the field type', () => {
 		// status is an enum column: gt has no ordering semantics for it
 		expect(() =>

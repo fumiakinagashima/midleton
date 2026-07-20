@@ -45,12 +45,12 @@ export function buildFilterConditions(
 	if (!filters?.length) return [];
 
 	return filters.map((f) => {
-		const def = fields[f.field];
-		if (!def) {
+		if (!Object.hasOwn(fields, f.field)) {
 			throw new Error(
 				`未対応の絞り込み対象です: ${f.field}（利用可能: ${Object.keys(fields).join(', ')}）`
 			);
 		}
+		const def = fields[f.field];
 		const allowedOps = OPS_BY_TYPE[def.type];
 		if (!allowedOps.includes(f.op)) {
 			throw new Error(
