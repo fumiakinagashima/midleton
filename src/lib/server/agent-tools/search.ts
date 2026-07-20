@@ -4,12 +4,67 @@ import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 import type { Db } from '../db';
 import { customers, deals, activities } from '../db/schema';
 import { parseJson, toDate } from './shared';
+import {
+	buildFilterConditions,
+	filterConditionSchema,
+	filterFieldsDescription,
+	type FilterableColumn
+} from './filter';
+
+// 個別パラメータを都度追加せずに任意カラムで絞り込むための汎用フィルター（filters）用の許可リスト。
+// field はここに定義したキーのみ受け付ける（生SQL・任意カラム名の注入を防ぐ）
+const CUSTOMER_FILTER_FIELDS: Record<string, FilterableColumn> = {
+	name: { column: customers.name, type: 'text' },
+	email: { column: customers.email, type: 'text' },
+	phone: { column: customers.phone, type: 'text' },
+	address: { column: customers.address, type: 'text' },
+	postal_code: { column: customers.postalCode, type: 'text' },
+	website: { column: customers.website, type: 'text' },
+	status: { column: customers.status, type: 'enum' },
+	notes: { column: customers.notes, type: 'text' },
+	created_at: { column: customers.createdAt, type: 'date' },
+	updated_at: { column: customers.updatedAt, type: 'date' }
+};
+
+const DEAL_FILTER_FIELDS: Record<string, FilterableColumn> = {
+	title: { column: deals.title, type: 'text' },
+	amount: { column: deals.amount, type: 'number' },
+	status: { column: deals.status, type: 'enum' },
+	notes: { column: deals.notes, type: 'text' },
+	created_at: { column: deals.createdAt, type: 'date' },
+	closed_at: { column: deals.closedAt, type: 'date' }
+};
+
+const ACTIVITY_FILTER_FIELDS: Record<string, FilterableColumn> = {
+	type: { column: activities.type, type: 'enum' },
+	content: { column: activities.content, type: 'text' },
+	created_at: { column: activities.createdAt, type: 'date' },
+	activity_date: { column: activities.activityDate, type: 'date' }
+};
+
+const FILTERS_PROPERTY = {
+	type: 'array' as const,
+	description:
+		'名前・ステータス等の専用パラメータでは表現できない絞り込み条件（例: 住所に「東京」を含む → {field:"address",op:"contains",value:"東京"}）。複数指定時はAND条件。',
+	items: {
+		type: 'object' as const,
+		properties: {
+			field: { type: 'string' as const, description: '絞り込み対象のフィールド名' },
+			op: {
+				type: 'string' as const,
+				enum: ['eq', 'not', 'contains', 'gt', 'gte', 'lt', 'lte']
+			},
+			value: { type: 'string' as const }
+		},
+		required: ['field', 'op', 'value']
+	}
+};
 
 export const tools: Tool[] = [
 	{
 		name: 'search_customers',
 		description:
-			'案件・活動のリレーション条件で顧客を検索する。「open案件を持つ顧客」「今月面談した顧客」など単純フィルタでは届かない絞り込みができる。',
+			'顧客一覧の取得・検索を行う唯一のツール（顧客一覧が欲しい場合は常にこれを使う）。名前・ステータスに加え、filters で住所・メール・電話番号等の任意カラムでも絞り込める。「open案件を持つ顧客」「今月面談した顧客」のような案件・活動のリレーション条件（単純フィルタでは届かない絞り込み）にも対応。',
 		input_schema: {
 			type: 'object',
 			properties: {
@@ -29,6 +84,10 @@ export const tools: Tool[] = [
 				},
 				activity_since: { type: 'string', description: '活動の対象期間・開始日（ISO 8601）' },
 				activity_until: { type: 'string', description: '活動の対象期間・終了日（ISO 8601）' },
+				filters: {
+					...FILTERS_PROPERTY,
+					description: `${FILTERS_PROPERTY.description} 対象フィールド: ${filterFieldsDescription(CUSTOMER_FILTER_FIELDS)}`
+				},
 				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
 			},
 			required: []
@@ -53,6 +112,10 @@ export const tools: Tool[] = [
 					enum: ['created_at', 'closed_at'],
 					description: '期間の基準日（デフォルト: created_at）'
 				},
+				filters: {
+					...FILTERS_PROPERTY,
+					description: `${FILTERS_PROPERTY.description} 対象フィールド: ${filterFieldsDescription(DEAL_FILTER_FIELDS)}`
+				},
 				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
 			},
 			required: []
@@ -73,6 +136,10 @@ export const tools: Tool[] = [
 				content: { type: 'string', description: '活動内容のキーワード（部分一致）' },
 				since: { type: 'string', description: '開始日（ISO 8601）' },
 				until: { type: 'string', description: '終了日（ISO 8601）' },
+				filters: {
+					...FILTERS_PROPERTY,
+					description: `${FILTERS_PROPERTY.description} 対象フィールド: ${filterFieldsDescription(ACTIVITY_FILTER_FIELDS)}`
+				},
 				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
 			},
 			required: []
@@ -143,12 +210,13 @@ const searchCustomersSchema = z.object({
 		.optional(),
 	activity_since: z.string().optional(),
 	activity_until: z.string().optional(),
+	filters: z.array(filterConditionSchema).optional(),
 	limit: z.number().int().positive().default(50)
 });
 
 export async function handleSearchCustomers(db: Db, input: unknown) {
 	const p = searchCustomersSchema.parse(input);
-
+	const filterConditions = buildFilterConditions(p.filters, CUSTOMER_FILTER_FIELDS);
 	const dealSub = p.has_deal_status
 		? db.selectDistinct({ id: deals.customerId }).from(deals).where(
 				and(
@@ -179,7 +247,8 @@ export async function handleSearchCustomers(db: Db, input: unknown) {
 				p.name ? like(customers.name, `%${p.name}%`) : undefined,
 				p.status ? eq(customers.status, p.status) : undefined,
 				dealSub ? inArray(customers.id, dealSub) : undefined,
-				actSub ? inArray(customers.id, actSub) : undefined
+				actSub ? inArray(customers.id, actSub) : undefined,
+				...filterConditions
 			)
 		)
 		.orderBy(desc(customers.createdAt))
@@ -197,12 +266,14 @@ const searchDealsSchema = z.object({
 	since: z.string().optional(),
 	until: z.string().optional(),
 	date_field: z.enum(['created_at', 'closed_at']).default('created_at'),
+	filters: z.array(filterConditionSchema).optional(),
 	limit: z.number().int().positive().default(50)
 });
 
 export async function handleSearchDeals(db: Db, input: unknown) {
 	const p = searchDealsSchema.parse(input);
 	const dateCol = p.date_field === 'closed_at' ? deals.closedAt : deals.createdAt;
+	const filterConditions = buildFilterConditions(p.filters, DEAL_FILTER_FIELDS);
 
 	const rows = await db
 		.select({
@@ -228,7 +299,8 @@ export async function handleSearchDeals(db: Db, input: unknown) {
 				p.amount_min !== undefined ? gte(deals.amount, p.amount_min) : undefined,
 				p.amount_max !== undefined ? lte(deals.amount, p.amount_max) : undefined,
 				p.since ? gte(dateCol, toDate(p.since)) : undefined,
-				p.until ? lte(dateCol, toDate(p.until)) : undefined
+				p.until ? lte(dateCol, toDate(p.until)) : undefined,
+				...filterConditions
 			)
 		)
 		.orderBy(desc(deals.createdAt))
@@ -243,11 +315,13 @@ const searchActivitiesSchema = z.object({
 	content: z.string().optional(),
 	since: z.string().optional(),
 	until: z.string().optional(),
+	filters: z.array(filterConditionSchema).optional(),
 	limit: z.number().int().positive().default(50)
 });
 
 export async function handleSearchActivities(db: Db, input: unknown) {
 	const p = searchActivitiesSchema.parse(input);
+	const filterConditions = buildFilterConditions(p.filters, ACTIVITY_FILTER_FIELDS);
 
 	return db
 		.select()
@@ -258,7 +332,8 @@ export async function handleSearchActivities(db: Db, input: unknown) {
 				p.type ? eq(activities.type, p.type) : undefined,
 				p.content ? like(activities.content, `%${p.content}%`) : undefined,
 				p.since ? gte(activities.createdAt, toDate(p.since)) : undefined,
-				p.until ? lte(activities.createdAt, toDate(p.until)) : undefined
+				p.until ? lte(activities.createdAt, toDate(p.until)) : undefined,
+				...filterConditions
 			)
 		)
 		.orderBy(desc(activities.createdAt))

@@ -399,7 +399,7 @@ get_customer_health_ranking の結果は table コンポーネントで表示す
 
 「Excelにまとめて」「営業会議資料を作って」「スライド用にデータを整理して」などの資料作成依頼には build_handoff_data を使う。Copilot / Canvas / ChatGPT 等の外部AIツールで仕上げるための素材ファイル（CSV/Markdown）を生成する方式。
 
-1. まず search_deals / get_customers / search_activities / get_customer_detail 等の既存ツールで必要なデータを取得・集計する
+1. まず search_deals / search_customers / search_activities / get_customer_detail 等の既存ツールで必要なデータを取得・集計する
 2. build_handoff_data を呼び出す
    - filename: 拡張子なし（例: "2026年6月_案件一覧"）
    - format: csv（表形式・Excelで開く場合）または markdown（文章・複数テーブル混在の場合）

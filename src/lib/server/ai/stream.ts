@@ -5,8 +5,13 @@ import { tools as allTools, dispatchTool } from '$lib/server/agent-tools';
 
 // メインチャットはSELECTのみ。create_* / update_* / delete_* はダイアログ経由でユーザーが実行する。
 const WRITE_TOOL_PREFIX = ['create_', 'update_', 'delete_'];
+// get_customers は name/status しか絞り込めない下位互換ツール。AI経由では常に search_customers（filters対応）を使わせる
+// （クイックアクションの「顧客一覧」はAIを介さず dispatchTool を直接呼ぶため、ここで除外しても影響しない）
+const EXCLUDED_TOOL_NAMES = new Set(['get_customers']);
 const filteredTools = allTools.filter(
-	(t) => !WRITE_TOOL_PREFIX.some((prefix) => t.name.startsWith(prefix))
+	(t) =>
+		!WRITE_TOOL_PREFIX.some((prefix) => t.name.startsWith(prefix)) &&
+		!EXCLUDED_TOOL_NAMES.has(t.name)
 );
 // tools 定義は毎リクエスト同一内容のため、末尾にキャッシュブレークポイントを置いて
 // システムプロンプトと合わせてプロンプトキャッシュの対象にする
