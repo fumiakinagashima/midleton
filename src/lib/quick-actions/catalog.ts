@@ -1,5 +1,6 @@
-// クイックアクション: チャット入力欄の「+」ボタンから AI を介さず直接呼び出せるエージェントツールのカタログ。
-// クライアント（チャット入力欄・設定画面）と共有するため、サーバー専用の依存（DB・dispatchTool 等）は持たない。
+// Quick actions: a catalog of agent tools that can be invoked directly from the "+" button
+// in the chat input, bypassing the AI. Shared with the client (chat input, settings screen),
+// so it must not have server-only dependencies (DB, dispatchTool, etc.).
 
 export type QuickActionId =
 	| 'get_customers'
@@ -21,16 +22,16 @@ export type QuickActionDef = {
 };
 
 export const quickActionCatalog: QuickActionDef[] = [
-	{ id: 'get_customers', label: '顧客一覧', description: '最新の顧客一覧を表示します', icon: '👥' },
-	{ id: 'search_deals', label: '案件一覧', description: '最新の案件一覧を表示します', icon: '💼' },
-	{ id: 'get_contacts', label: '担当者一覧', description: '最新の担当者一覧を表示します', icon: '🧑' },
-	{ id: 'summarize_deals', label: '案件サマリ', description: 'ステータス別の案件件数・金額を表示します', icon: '📊' },
-	{ id: 'summarize_customers', label: '顧客数サマリ', description: 'ステータス別の顧客数を表示します', icon: '📈' },
-	{ id: 'summarize_activities', label: '活動サマリ', description: '種別ごとの活動件数を表示します', icon: '📝' },
-	{ id: 'create_customer', label: '顧客登録', description: '顧客情報の登録フォームを表示します', icon: '➕' },
-	{ id: 'scan_bizcard', label: '名刺読取', description: '名刺をスキャンして顧客・担当者を登録します', icon: '📇' },
-	{ id: 'create_reminder', label: 'リマインダー設定', description: 'リマインダーの登録フォームを表示します', icon: '⏰' },
-	{ id: 'ai_briefing', label: 'AIブリーフィング', description: '今日のフォロー推奨案件とリマインダーをAIが要約します', icon: '✨' }
+	{ id: 'get_customers', label: 'Customer list', description: 'Shows the latest list of customers', icon: '👥' },
+	{ id: 'search_deals', label: 'Deal list', description: 'Shows the latest list of deals', icon: '💼' },
+	{ id: 'get_contacts', label: 'Contact list', description: 'Shows the latest list of contacts', icon: '🧑' },
+	{ id: 'summarize_deals', label: 'Deal summary', description: 'Shows deal counts and amounts by status', icon: '📊' },
+	{ id: 'summarize_customers', label: 'Customer summary', description: 'Shows customer counts by status', icon: '📈' },
+	{ id: 'summarize_activities', label: 'Activity summary', description: 'Shows activity counts by type', icon: '📝' },
+	{ id: 'create_customer', label: 'New customer', description: 'Shows the customer registration form', icon: '➕' },
+	{ id: 'scan_bizcard', label: 'Scan business card', description: 'Scans a business card to register a customer and contact', icon: '📇' },
+	{ id: 'create_reminder', label: 'Set reminder', description: 'Shows the reminder registration form', icon: '⏰' },
+	{ id: 'ai_briefing', label: 'AI briefing', description: 'AI summarizes deals recommended for follow-up today and reminders', icon: '✨' }
 ];
 
 export const DEFAULT_QUICK_ACTION_IDS: QuickActionId[] = [

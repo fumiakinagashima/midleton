@@ -2,7 +2,7 @@ import { MASKED_SECRET } from '$lib/types/integration';
 
 const SECRET_FIELDS = ['value', 'password'] as const;
 
-// 秘匿フィールド（トークン・パスワード）をクライアント向けにマスクする
+// Masks secret fields (tokens, passwords) for the client
 export function maskAuthConfig(authConfig: Record<string, string>): Record<string, string> {
 	const masked = { ...authConfig };
 	for (const key of SECRET_FIELDS) {
@@ -11,7 +11,7 @@ export function maskAuthConfig(authConfig: Record<string, string>): Record<strin
 	return masked;
 }
 
-// PATCH時、秘匿フィールドがマスク値（未変更）のままなら既存値を保持する
+// On PATCH, if a secret field is still the masked value (unchanged), keep the existing value
 export function mergeAuthConfig(
 	existing: Record<string, string>,
 	incoming: Record<string, string>

@@ -17,7 +17,7 @@
 	const type = $derived($page.params.type);
 	const info = $derived(data.info);
 
-	// 全テーブル（コア＋カスタム）の詳細/編集/登録をダイアログで開く
+	// Open detail/edit/create for all tables (core + custom) in a dialog
 	let dialog = $state<{ recordId: string | null; view: 'detail' | 'form' } | null>(null);
 
 	function openDetail(id: string) {
@@ -39,7 +39,7 @@
 	$effect(() => {
 		rows = data.rows;
 	});
-	// テーブル切り替え時はページ・検索・ソートをリセット
+	// Reset page/search/sort when switching tables
 	$effect(() => {
 		void type;
 		pageNum = 1;
@@ -62,12 +62,12 @@
 			return info_field.options?.find(o => o.value === String(val))?.label ?? String(val);
 		}
 		if (typeof val === 'number' && info_field?.type === 'number') {
-			return new Intl.NumberFormat('ja-JP').format(val);
+			return new Intl.NumberFormat('en-US').format(val);
 		}
 		return String(val);
 	}
 
-	// --- 検索 ---
+	// --- Search ---
 	let searchQuery = $state('');
 
 	const filteredRows = $derived.by(() => {
@@ -78,7 +78,7 @@
 		);
 	});
 
-	// --- ソート ---
+	// --- Sort ---
 	let sortKey = $state<string | null>(null);
 	let sortDir = $state<'asc' | 'desc'>('asc');
 
@@ -105,11 +105,11 @@
 			if (av == null) return dir;
 			if (bv == null) return -dir;
 			if (isNumber) return (Number(av) - Number(bv)) * dir;
-			return String(av).localeCompare(String(bv), 'ja') * dir;
+			return String(av).localeCompare(String(bv), 'en') * dir;
 		});
 	});
 
-	// 検索/ソートが変わったらページ先頭へ
+	// Reset to first page when search/sort changes
 	$effect(() => {
 		void searchQuery;
 		void sortKey;
@@ -132,15 +132,15 @@
 <div class="page">
 	<header class="page-header">
 		<div class="breadcrumb">
-			<a href="/database">データ管理</a>
+			<a href="/database">Data Management</a>
 			<span class="sep">/</span>
 			<span>{info?.label ?? type}</span>
 		</div>
 		<div class="header-actions">
 			{#if type === 'deals'}
-				<a href="/database/{type}/gantt" class="btn-schema">ガントチャート</a>
+				<a href="/database/{type}/gantt" class="btn-schema">Gantt Chart</a>
 			{/if}
-			<button class="btn-primary" onclick={openCreate}>+ 新規作成</button>
+			<button class="btn-primary" onclick={openCreate}>+ New</button>
 		</div>
 	</header>
 
@@ -150,28 +150,28 @@
 			<input
 				type="text"
 				class="search-input"
-				placeholder="検索..."
+				placeholder="Search..."
 				bind:value={searchQuery}
 			/>
 			{#if searchQuery}
-				<button class="search-clear" onclick={() => (searchQuery = '')} aria-label="検索をクリア">
+				<button class="search-clear" onclick={() => (searchQuery = '')} aria-label="Clear search">
 					<XIcon size={14} />
 				</button>
 			{/if}
 		</div>
 		{#if searchQuery}
-			<span class="hit-count">{sortedRows.length}件ヒット</span>
+			<span class="hit-count">{sortedRows.length} results</span>
 		{/if}
 	</div>
 
 	{#if rows.length === 0}
 		<div class="empty">
-			<p>レコードがありません。</p>
-			<button class="btn-primary" onclick={openCreate}>最初のレコードを作成</button>
+			<p>No records yet.</p>
+			<button class="btn-primary" onclick={openCreate}>Create first record</button>
 		</div>
 	{:else if sortedRows.length === 0}
 		<div class="empty">
-			<p>「{searchQuery}」に一致するレコードがありません。</p>
+			<p>No records match "{searchQuery}".</p>
 		</div>
 	{:else}
 		<div class="table-wrap">
@@ -204,7 +204,7 @@
 								<td>{displayValue(row, col.key)}</td>
 							{/each}
 							<td class="actions" onclick={(e) => e.stopPropagation()}>
-								<button class="action-link" onclick={() => openEdit(String(row.id))}>編集</button>
+								<button class="action-link" onclick={() => openEdit(String(row.id))}>Edit</button>
 							</td>
 						</tr>
 					{/each}
@@ -214,9 +214,9 @@
 		<div class="list-footer">
 			<span class="count">
 				{#if searchQuery}
-					{sortedRows.length} / {rows.length}件
+					{sortedRows.length} / {rows.length}
 				{:else}
-					{rows.length}件
+					{rows.length}
 				{/if}
 			</span>
 			{#if totalPages > 1}

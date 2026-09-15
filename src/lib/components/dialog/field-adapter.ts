@@ -2,10 +2,10 @@ import type { FieldDef } from '$lib/server/db/table-service';
 import type { FormField } from '$lib/types/chat';
 import { toJstDatetimeLocal } from '$lib/datetime';
 
-/** RecordDialog が扱うコアエンティティ種別 */
+/** Core entity types handled by RecordDialog */
 export type CoreType = 'customers' | 'contacts' | 'deals' | 'activities';
 
-/** 詳細から編集/新規フォームを開く際の指定。snake_case の FormContent ではなく camelCase の prefill を使う */
+/** Spec for opening an edit/create form from the detail view. Uses camelCase prefill rather than snake_case FormContent */
 export type RecordFormSpec = {
 	type: string;
 	recordId?: string;
@@ -13,9 +13,10 @@ export type RecordFormSpec = {
 };
 
 /**
- * getTableInfo の FieldDef（camelCase）を chat/Form.svelte の FormField に変換する。
- * - フォーム用の選択肢は formOptions を優先（活動の「案件登録」など、表示には残すがフォームでは選択させない値を除外するため）
- * - values は呼び出し側で各フィールドの value に注入する（編集時はレコード値、登録時は prefill）
+ * Converts a FieldDef (camelCase) from getTableInfo into a FormField for chat/Form.svelte.
+ * - Prefers formOptions for form choices (to exclude values that should remain visible in the
+ *   display but not be selectable in the form, e.g. "Deal created" for activities)
+ * - values is injected by the caller into each field's value (record value when editing, prefill when creating)
  */
 export function fieldDefToFormField(
 	field: FieldDef,
@@ -41,7 +42,7 @@ export function fieldDefsToFormFields(
 		let value = '';
 		if (raw != null && raw !== '') {
 			if (f.type === 'datetime-local' && typeof raw === 'number') {
-				// unix timestamp → JST datetime-local 文字列に変換
+				// Convert unix timestamp → JST datetime-local string
 				value = toJstDatetimeLocal(new Date(raw * 1000));
 			} else {
 				value = String(raw);

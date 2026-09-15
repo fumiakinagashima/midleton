@@ -6,7 +6,7 @@ export const CHAT_TITLE_MAX_LENGTH = 24;
 export const CHAT_TEXTAREA_MAX_HEIGHT_PX = 192;
 
 // ── Lists ──────────────────────────────────────────────────────────────────
-// 一覧表示の1ページあたり件数（チャットの Table・/database 一覧で共通）
+// Number of items per page in list views (shared by the chat Table and /database listings)
 export const LIST_PAGE_SIZE = 20;
 
 // ── Deal statuses ─────────────────────────────────────────────────────────
@@ -49,8 +49,8 @@ export const DEFAULT_ACTIVITY_LIST_LIMIT = 20;
 export const CUSTOMER_DETAIL_ACTIVITY_LIMIT = 10;
 export const HEALTH_RANKING_DEFAULT_LIMIT = 5;
 
-// ── ワークフロー ───────────────────────────────────────────────────────────
-/** foreachステップが1回の実行で処理する最大件数（暴走防止のセーフティキャップ） */
+// ── Workflows ─────────────────────────────────────────────────────────────
+/** Maximum number of items a foreach step processes in a single run (a safety cap against runaway execution) */
 export const WORKFLOW_FOREACH_MAX_ITEMS = 50;
-/** ネストしたforeachの組み合わせ爆発を防ぐため、1回の実行（cron/今すぐ実行）で許容するアクション実行回数の総量上限 */
+/** Overall cap on the number of action executions allowed in a single run (cron / run-now), to prevent combinatorial explosion from nested foreach steps */
 export const WORKFLOW_MAX_ACTIONS_PER_RUN = 500;

@@ -3,18 +3,19 @@ import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { buildSystemPrompt } from './prompt';
 import { tools as allTools, dispatchTool } from '$lib/server/agent-tools';
 
-// メインチャットはSELECTのみ。create_* / update_* / delete_* はダイアログ経由でユーザーが実行する。
+// The main chat is read-only (SELECT). create_* / update_* / delete_* are run by the user via a dialog.
 const WRITE_TOOL_PREFIX = ['create_', 'update_', 'delete_'];
-// get_customers は name/status しか絞り込めない下位互換ツール。AI経由では常に search_customers（filters対応）を使わせる
-// （クイックアクションの「顧客一覧」はAIを介さず dispatchTool を直接呼ぶため、ここで除外しても影響しない）
+// get_customers is a legacy tool that can only filter by name/status. Always steer the AI to
+// search_customers (which supports filters) instead. (The "customer list" quick action calls
+// dispatchTool directly rather than going through the AI, so excluding it here has no effect on that.)
 const EXCLUDED_TOOL_NAMES = new Set(['get_customers']);
 const filteredTools = allTools.filter(
 	(t) =>
 		!WRITE_TOOL_PREFIX.some((prefix) => t.name.startsWith(prefix)) &&
 		!EXCLUDED_TOOL_NAMES.has(t.name)
 );
-// tools 定義は毎リクエスト同一内容のため、末尾にキャッシュブレークポイントを置いて
-// システムプロンプトと合わせてプロンプトキャッシュの対象にする
+// The tools definition is identical on every request, so put a cache breakpoint at the end
+// to make it (along with the system prompt) eligible for prompt caching
 const tools = filteredTools.map((t, i) =>
 	i === filteredTools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' as const } } : t
 );
@@ -29,7 +30,7 @@ export type StreamEvent =
 	| { type: 'done' }
 	| { type: 'error'; message: string };
 
-// テキストストリームを処理し、<ui>ブロックをバッファリングしてdeltaとuiイベントに分離
+// Processes the text stream, buffering <ui> blocks and splitting it into delta and ui events
 export class TextStreamProcessor {
 	private buf = '';
 	private inUi = false;
@@ -77,8 +78,8 @@ export class TextStreamProcessor {
 	}
 }
 
-// レコード一覧を返す検索系ツール → 詳細ダイアログを開くためのテーブル種別（entity）。
-// AIが <ui type="table"> の body に entity を付け忘れても、直前に使った検索ツールから補完する。
+// Search tools that return a record list → the table entity type used to open the detail dialog.
+// If the AI forgets to set entity in a <ui type="table"> body, we backfill it from the search tool just used.
 const RECORD_LIST_TOOL_ENTITY: Record<string, string> = {
 	get_customers: 'customers',
 	search_customers: 'customers',
@@ -89,8 +90,8 @@ const RECORD_LIST_TOOL_ENTITY: Record<string, string> = {
 	search_activities: 'activities'
 };
 
-// entity 未指定のレコード一覧テーブルに、ヒント entity を補完する。
-// 行クリックで詳細ダイアログを開けるようにするためのフォールバック（rows に id がある場合のみ）。
+// Backfills a hinted entity onto a record-list table that didn't specify one.
+// A fallback so row clicks can still open the detail dialog (only when rows have an id).
 function applyEntityHint(events: StreamEvent[], entity: string | undefined): void {
 	if (!entity) return;
 	for (const e of events) {
@@ -176,11 +177,11 @@ export async function streamChat(
 	const anthropic = new Anthropic({ apiKey });
 	let messages: MessageParam[] = [...history];
 	let lastTurnEvents: StreamEvent[] = [];
-	// ターン単位で entity を追跡する。
-	// 「最後に単一エンティティ種別だけを使ったターン」の entity を記憶し、
-	// 最終ターンで entity 未指定テーブルへのフォールバックに使う。
-	// 複数エンティティを同一ターンで使った場合は undefined（どれかわからないため補完しない）。
-	// 例: search_customers → search_deals という2ターン構成では、後半ターンの 'deals' が残る。
+	// Tracks entity per turn.
+	// Remembers the entity of the most recent turn that used only a single entity type, and uses
+	// it as the fallback for entity-less tables on the final turn.
+	// If a turn used multiple entities, this becomes undefined (ambiguous, so no backfill).
+	// e.g. for a two-turn search_customers → search_deals sequence, the later turn's 'deals' sticks.
 	let hintEntity: string | undefined;
 
 	for (let turn = 0; turn < 10; turn++) {
@@ -217,13 +218,13 @@ export async function streamChat(
 		turnEvents.push(...processor.flush());
 		lastTurnEvents = turnEvents;
 
-		// このターンで使ったレコード一覧系ツールの entity を収集する
+		// Collect the entity of any record-list tools used in this turn
 		const turnEntities = new Set<string>();
 		for (const b of toolBlocks) {
 			const ent = RECORD_LIST_TOOL_ENTITY[b.name];
 			if (ent) turnEntities.add(ent);
 		}
-		// hintEntity を更新: 単一ならその entity、複数なら ambiguous で undefined、ゼロなら維持
+		// Update hintEntity: if exactly one, use it; if more than one, ambiguous (undefined); if zero, keep the previous value
 		if (turnEntities.size === 1) {
 			hintEntity = [...turnEntities][0];
 		} else if (turnEntities.size > 1) {
@@ -237,7 +238,7 @@ export async function streamChat(
 			return;
 		}
 
-		// ツール呼び出しを伴う中間ターンのテキスト・UIは進行状況の実況なのでユーザーには表示しない
+		// Text/UI from an intermediate turn that involves a tool call is just progress narration, so it's never shown to the user
 
 		const toolResults = await Promise.all(
 			toolBlocks.map(async (b) => {
@@ -249,7 +250,7 @@ export async function streamChat(
 					return {
 						type: 'tool_result' as const,
 						tool_use_id: b.id,
-						content: `エラー: ${e instanceof Error ? e.message : String(e)}`,
+						content: `Error: ${e instanceof Error ? e.message : String(e)}`,
 						is_error: true
 					};
 				}
@@ -263,7 +264,7 @@ export async function streamChat(
 		];
 	}
 
-	// ターン上限に達した場合は最後のターンの内容を表示する
+	// If the turn limit is reached, show the content of the last turn
 	applyEntityHint(lastTurnEvents, hintEntity);
 	for (const e of lastTurnEvents) emit(e);
 }

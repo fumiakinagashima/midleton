@@ -1,5 +1,5 @@
--- account_id IS NULL の通知（ログイン実装前のレガシーデータ）を削除してから NOT NULL 制約を追加する
--- SQLite は ALTER COLUMN をサポートしないためテーブル再作成で対応
+-- Delete notifications with account_id IS NULL (legacy data from before login was implemented), then add the NOT NULL constraint
+-- SQLite doesn't support ALTER COLUMN, so we recreate the table instead
 DELETE FROM notifications WHERE account_id IS NULL;
 CREATE TABLE `notifications_new` (
 	`id` text PRIMARY KEY NOT NULL,

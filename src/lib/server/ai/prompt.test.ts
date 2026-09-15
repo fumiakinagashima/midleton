@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { SYSTEM_PROMPT } from './prompt';
 
-// stream.ts の parseUITag が実際に解釈できる <ui type="..."> のうち、
-// メインチャットから到達可能なもの一覧。
-// ここに載っている種別は SYSTEM_PROMPT にも type="..." の使用例を必ず含めること。
-// 含めないと、実装済みなのにAIがその存在を知らず「その機能はありません」と
-// 誤答する（過去に gantt・timeline で実際に発生した不具合と同種）。
+// The <ui type="..."> values that parseUITag in stream.ts can actually parse and that are
+// reachable from the main chat.
+// Every type listed here must have a usage example with type="..." in SYSTEM_PROMPT.
+// Otherwise, even though the feature is implemented, the AI won't know it exists and will
+// incorrectly answer "that feature doesn't exist" (this actually happened for gantt and
+// timeline in the past).
 //
-// 'chart' は表示を一時的に無効化中（stream.ts 参照）、'document_job' は
-// build_handoff_data への移行によりメインチャットのツール一覧から除外済み
-// （どちらも意図的に到達不能なため対象外）。
+// 'chart' has its display temporarily disabled (see stream.ts), and 'document_job' has been
+// removed from the main chat's tool list in favor of build_handoff_data
+// (both are intentionally unreachable, so they're excluded here).
 const RENDERABLE_UI_TYPES = [
 	'form',
 	'table',

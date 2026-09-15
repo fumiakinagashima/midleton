@@ -17,12 +17,12 @@
 	let scanResetSignal = $state(0);
 
 	const fields: { key: keyof BizcardResult; label: string; icon: string }[] = [
-		{ key: 'name',    label: '氏名',     icon: 'M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z' },
-		{ key: 'company', label: '会社名',   icon: 'M4 4h16v2H4zm0 4h16v2H4zm0 4h10v2H4zm0 4h10v2H4zm12 0h4v6h-4zm1 1v4h2v-4z' },
-		{ key: 'title',   label: '役職',     icon: 'M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-9 8H5v-2h6v2zm4-4H5V9h10v2zm3 4h-2v-2h2v2z' },
-		{ key: 'email',   label: 'メール',   icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z' },
-		{ key: 'phone',   label: '電話',     icon: 'M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z' },
-		{ key: 'address', label: '住所',     icon: 'M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z' },
+		{ key: 'name',    label: 'Name',    icon: 'M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z' },
+		{ key: 'company', label: 'Company', icon: 'M4 4h16v2H4zm0 4h16v2H4zm0 4h10v2H4zm0 4h10v2H4zm12 0h4v6h-4zm1 1v4h2v-4z' },
+		{ key: 'title',   label: 'Title',   icon: 'M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-9 8H5v-2h6v2zm4-4H5V9h10v2zm3 4h-2v-2h2v2z' },
+		{ key: 'email',   label: 'Email',   icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z' },
+		{ key: 'phone',   label: 'Phone',   icon: 'M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z' },
+		{ key: 'address', label: 'Address', icon: 'M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z' },
 		{ key: 'website', label: 'Web',      icon: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 17.9c-3.9-.5-7-3.9-7-7.9 0-.6.1-1.2.2-1.8L9 15v1c0 1.1.9 2 2 2v1.9zm6.9-2.6c-.3-.8-1-1.3-1.9-1.3h-1v-3c0-.6-.4-1-1-1H8v-2h2c.6 0 1-.4 1-1V7h2c1.1 0 2-.9 2-2v-.4c2.9 1.2 5 4 5 7.4 0 2.1-.8 4-2.1 5.3z' }
 	];
 
@@ -43,7 +43,7 @@
 			const data = await res.json() as { results?: BizcardResult[]; error?: string };
 			if (!res.ok || data.error) {
 				scanState = 'error';
-				errorMsg = data.error ?? '抽出に失敗しました。';
+				errorMsg = data.error ?? 'Extraction failed.';
 			} else {
 				results = data.results ?? [];
 				scanState = 'done';
@@ -52,8 +52,8 @@
 			clearTimeout(timer);
 			scanState = 'error';
 			errorMsg = e instanceof Error && e.name === 'AbortError'
-				? 'タイムアウトしました。画像を小さくして再試行してください。'
-				: 'ネットワークエラーが発生しました。';
+				? 'Timed out. Please try again with a smaller image.'
+				: 'A network error occurred.';
 		}
 	}
 
@@ -80,7 +80,7 @@
 		if (r.address) p.set('address', r.address);
 		if (r.website) p.set('website', r.website);
 		const notes: string[] = [];
-		if (r.name) notes.push(`担当者: ${r.name}${r.title ? `（${r.title}）` : ''}`);
+		if (r.name) notes.push(`Contact: ${r.name}${r.title ? ` (${r.title})` : ''}`);
 		if (notes.length) p.set('notes', notes.join('\n'));
 		return `/database/customers/new?${p.toString()}`;
 	}
@@ -92,11 +92,11 @@
 			<CameraScanner onCapture={handleCameraCapture} resetSignal={scanResetSignal} />
 			{#if previewUrl}
 				<div class="capture-overlay">
-					<img src={previewUrl} alt="名刺プレビュー" class="preview-img" />
+					<img src={previewUrl} alt="Business card preview" class="preview-img" />
 					{#if scanState === 'loading'}
 						<div class="overlay">
 							<div class="spinner"></div>
-							<p>AIが情報を読み取っています…</p>
+							<p>AI is reading the information…</p>
 						</div>
 					{/if}
 				</div>
@@ -108,15 +108,15 @@
 	{#if scanState === 'done' && results.length > 0}
 		<div class="results-wrap">
 			<div class="result-header">
-				<span class="result-badge">{results.length}件 抽出完了</span>
-				<button class="reset-btn" onclick={reset}>再スキャンする</button>
+				<span class="result-badge">{results.length} extracted</span>
+				<button class="reset-btn" onclick={reset}>Scan again</button>
 			</div>
 
 			<div class="result-cards">
 				{#each results as r, i}
 					<div class="result-card">
 						{#if results.length > 1}
-							<p class="card-index">名刺 {i + 1}</p>
+							<p class="card-index">Card {i + 1}</p>
 						{/if}
 						<div class="fields">
 							{#each fields as f}
@@ -136,13 +136,13 @@
 						<div class="actions">
 							{#if onRegister}
 								<button type="button" class="action-btn primary" onclick={() => onRegister(r, 'both')}>
-									顧客・担当者を登録する
+									Register customer & contact
 								</button>
 								<button type="button" class="action-btn secondary" onclick={() => onRegister(r, 'existing')}>
-									顧客を選択して担当者を登録する
+									Select customer and register contact
 								</button>
 							{:else}
-								<a href={registerUrl(r)} class="action-btn primary">顧客として登録</a>
+								<a href={registerUrl(r)} class="action-btn primary">Register as customer</a>
 							{/if}
 						</div>
 					</div>
@@ -154,7 +154,7 @@
 	{#if scanState === 'error'}
 		<div class="error-box">
 			<p>{errorMsg}</p>
-			<button onclick={reset}>閉じる</button>
+			<button onclick={reset}>Close</button>
 		</div>
 	{/if}
 </div>

@@ -1,5 +1,5 @@
-// 顧客・担当者・案件のデモデータ生成。
-// ローカルD1への投入（seed-demo-data.ts）と本番D1向けSQL生成（generate-seed-sql.ts）の両方から利用する。
+// Generates demo data for customers, contacts, and deals.
+// Used both for loading into local D1 (seed-demo-data.ts) and generating SQL for production D1 (generate-seed-sql.ts).
 
 export type CustomerSeed = {
 	id: string;
@@ -80,7 +80,7 @@ function pickMany<T>(arr: T[], n: number): T[] {
 	return shuffled.slice(0, n);
 }
 
-// メール誤送信防止のため、メールアドレスには実在しないドメイン（RFC 2606）を使用する
+// Use a non-existent domain (RFC 2606) for email addresses to avoid accidental real sends
 function dummyEmailDomain(domain: string): string {
 	return `${domain.split('.')[0]}.example.test`;
 }
@@ -96,115 +96,115 @@ type CompanyDef = {
 };
 
 const companies: CompanyDef[] = [
-	{ name: '株式会社サンライズテック', domain: 'sunrise-tech.co.jp', phone: '03-5468-1201', address: '東京都渋谷区渋谷2-21-1', postalCode: '150-0002', status: 'active', notes: 'Webから問い合わせ。クラウド移行に積極的。' },
-	{ name: '西日本フードサービス株式会社', domain: 'west-food.co.jp', phone: '06-6451-2233', address: '大阪府大阪市北区梅田3-4-5', postalCode: '530-0001', status: 'active', notes: '関西エリアで飲食店を約50店舗展開。' },
-	{ name: '株式会社グリーンビルド', domain: 'green-build.co.jp', phone: '03-3344-5566', address: '東京都新宿区西新宿1-6-1', postalCode: '160-0023', status: 'active', notes: 'オフィスビル・商業施設の建築・改修を手掛ける。' },
-	{ name: '丸の内商事株式会社', domain: 'marunouchi-shoji.co.jp', phone: '03-3217-8800', address: '東京都千代田区丸の内1-9-2', postalCode: '100-0005', status: 'active', notes: '総合商社。海外取引が多い。' },
-	{ name: '株式会社メディカルパートナーズ', domain: 'medical-partners.co.jp', phone: '045-222-3344', address: '神奈川県横浜市西区みなとみらい4-4-5', postalCode: '220-0012', status: 'active', notes: '医療機関向けコンサルティングを展開。' },
-	{ name: '富士精密工業株式会社', domain: 'fuji-seimitsu.co.jp', phone: '053-455-7788', address: '静岡県浜松市中央区東伊場1-1-1', postalCode: '430-0928', status: 'active', notes: '自動車部品の精密加工を行う中堅メーカー。' },
-	{ name: '株式会社クラウドナイン', domain: 'cloud9.co.jp', phone: '03-6406-9911', address: '東京都港区六本木6-10-1', postalCode: '106-0032', status: 'active', notes: '急成長中のSaaSスタートアップ。' },
-	{ name: '横浜ロジスティクス株式会社', domain: 'yokohama-logi.co.jp', phone: '045-501-2200', address: '神奈川県横浜市鶴見区大黒ふ頭1-1', postalCode: '230-0054', status: 'active', notes: '国際物流・倉庫業を展開。' },
-	{ name: '株式会社さくら不動産', domain: 'sakura-estate.co.jp', phone: '06-6264-3300', address: '大阪府大阪市中央区本町2-3-4', postalCode: '541-0053', status: 'active', notes: '関西圏の商業用不動産を中心に取扱い。' },
-	{ name: '中央製薬株式会社', domain: 'chuo-pharma.co.jp', phone: '03-3270-4400', address: '東京都中央区日本橋本町3-8-2', postalCode: '103-0023', status: 'active', notes: '後発医薬品メーカー。' },
-	{ name: '株式会社フューチャーデザイン', domain: 'future-design.co.jp', phone: '03-6452-5500', address: '東京都渋谷区恵比寿1-19-19', postalCode: '150-0013', status: 'active', notes: 'ブランディング・広告制作を行うデザイン会社。' },
-	{ name: '名古屋自動車部品株式会社', domain: 'nagoya-autoparts.co.jp', phone: '052-587-6600', address: '愛知県名古屋市中村区名駅1-1-4', postalCode: '450-0002', status: 'active', notes: '大手自動車メーカーの一次サプライヤー。' },
-	{ name: '株式会社エデュテック', domain: 'edutech.co.jp', phone: '092-441-7700', address: '福岡県福岡市博多区博多駅前2-1-1', postalCode: '812-0011', status: 'active', notes: 'オンライン学習サービスを運営。' },
-	{ name: '関西電子工業株式会社', domain: 'kansai-electronics.co.jp', phone: '06-6789-8800', address: '大阪府東大阪市御厨栄町1-1-1', postalCode: '577-0034', status: 'active', notes: '産業用電子機器の製造を行う。' },
-	{ name: '株式会社ハーモニーホテルズ', domain: 'harmony-hotels.co.jp', phone: '075-371-9900', address: '京都府京都市下京区東塩小路町721-1', postalCode: '600-8216', status: 'active', notes: '京都・大阪でホテルを5施設運営。' },
-	{ name: '九州農産株式会社', domain: 'kyushu-nousan.co.jp', phone: '096-355-1100', address: '熊本県熊本市西区春日3-15-30', postalCode: '860-0047', status: 'inactive', notes: '農産物の生産・流通を行う。現在は取引休止中。' },
-	{ name: '株式会社ネクストリテイル', domain: 'next-retail.co.jp', phone: '03-5759-2200', address: '東京都品川区大崎1-2-2', postalCode: '141-0032', status: 'active', notes: 'アパレル・雑貨の店舗を全国展開。' },
-	{ name: '東京コンサルティンググループ株式会社', domain: 'tokyo-consulting.co.jp', phone: '03-3286-3300', address: '東京都千代田区大手町1-6-1', postalCode: '100-0004', status: 'active', notes: '経営戦略コンサルティングを提供。' },
-	{ name: '株式会社スマートファクトリー', domain: 'smart-factory.co.jp', phone: '0565-28-4400', address: '愛知県豊田市西山町3-15', postalCode: '471-8571', status: 'inactive', notes: '工場IoT・スマートファクトリー化を推進。長期休眠中。' },
-	{ name: '北海道水産株式会社', domain: 'hokkaido-suisan.co.jp', phone: '011-241-5500', address: '北海道札幌市中央区北一条西4-1', postalCode: '060-0001', status: 'active', notes: '水産加工品の製造・販売を行う。' }
+	{ name: 'Sunrise Tech Solutions Inc.', domain: 'sunrise-tech.com', phone: '(415) 555-0142', address: '455 Market St, San Francisco, CA', postalCode: '94105', status: 'active', notes: 'Inquired through the website. Eager to move to the cloud.' },
+	{ name: 'Westward Food Services LLC', domain: 'westward-foods.com', phone: '(312) 555-0199', address: '200 W Madison St, Chicago, IL', postalCode: '60601', status: 'active', notes: 'Operates roughly 50 restaurants across the Midwest.' },
+	{ name: 'Greenline Builders Inc.', domain: 'greenline-builders.com', phone: '(212) 555-0166', address: '350 5th Ave, New York, NY', postalCode: '10001', status: 'active', notes: 'Handles construction and renovation of office and commercial buildings.' },
+	{ name: 'Marlowe Trading Co.', domain: 'marlowe-trading.com', phone: '(212) 555-0120', address: '1 Wall Street Plaza, New York, NY', postalCode: '10005', status: 'active', notes: 'General trading company with significant overseas business.' },
+	{ name: 'MedPartners Consulting Inc.', domain: 'medpartners-consulting.com', phone: '(617) 555-0134', address: '100 Federal St, Boston, MA', postalCode: '02110', status: 'active', notes: 'Provides consulting services to healthcare organizations.' },
+	{ name: 'Forge Precision Manufacturing Inc.', domain: 'forge-precision.com', phone: '(313) 555-0177', address: '1400 Woodward Ave, Detroit, MI', postalCode: '48201', status: 'active', notes: 'Mid-sized manufacturer specializing in precision machining of auto parts.' },
+	{ name: 'Cloud Nine Software Inc.', domain: 'cloud9-software.com', phone: '(512) 555-0188', address: '301 Congress Ave, Austin, TX', postalCode: '78701', status: 'active', notes: 'Fast-growing SaaS startup.' },
+	{ name: 'Harborview Logistics Inc.', domain: 'harborview-logistics.com', phone: '(562) 555-0155', address: '200 Oceangate, Long Beach, CA', postalCode: '90802', status: 'active', notes: 'International logistics and warehousing operator.' },
+	{ name: 'Magnolia Realty Group', domain: 'magnolia-realty.com', phone: '(404) 555-0143', address: '191 Peachtree St NE, Atlanta, GA', postalCode: '30303', status: 'active', notes: 'Focuses on commercial real estate across the Southeast.' },
+	{ name: 'Meridian Pharmaceuticals Inc.', domain: 'meridian-pharma.com', phone: '(215) 555-0161', address: '1500 Market St, Philadelphia, PA', postalCode: '19102', status: 'active', notes: 'Generic drug manufacturer.' },
+	{ name: 'Futurescape Design Studio', domain: 'futurescape-design.com', phone: '(323) 555-0129', address: '800 W 6th St, Los Angeles, CA', postalCode: '90012', status: 'active', notes: 'Design agency specializing in branding and advertising.' },
+	{ name: 'Lakeside Auto Components Inc.', domain: 'lakeside-autoparts.com', phone: '(313) 555-0140', address: '2000 Michigan Ave, Detroit, MI', postalCode: '48226', status: 'active', notes: 'Tier-1 supplier to major automakers.' },
+	{ name: 'EduSpark Learning Inc.', domain: 'eduspark-learning.com', phone: '(303) 555-0117', address: '1550 Court Pl, Denver, CO', postalCode: '80202', status: 'active', notes: 'Runs an online learning service.' },
+	{ name: 'Summit Electronics Manufacturing', domain: 'summit-electronics.com', phone: '(602) 555-0173', address: '111 W Monroe St, Phoenix, AZ', postalCode: '85004', status: 'active', notes: 'Manufactures industrial electronic equipment.' },
+	{ name: 'Harmony Hotel Group', domain: 'harmony-hotels.com', phone: '(305) 555-0198', address: '800 Brickell Ave, Miami, FL', postalCode: '33131', status: 'active', notes: 'Operates five hotels across Florida.' },
+	{ name: 'Delta Harvest Co.', domain: 'delta-harvest.com', phone: '(901) 555-0111', address: '50 Peabody Pl, Memphis, TN', postalCode: '38103', status: 'inactive', notes: 'Produces and distributes agricultural products. Currently inactive.' },
+	{ name: 'Nextwave Retail Inc.', domain: 'nextwave-retail.com', phone: '(206) 555-0152', address: '400 Pine St, Seattle, WA', postalCode: '98101', status: 'active', notes: 'Operates apparel and lifestyle goods stores nationwide.' },
+	{ name: 'Beacon Consulting Group Inc.', domain: 'beacon-consulting.com', phone: '(202) 555-0136', address: '1200 K St NW, Washington, DC', postalCode: '20005', status: 'active', notes: 'Provides management strategy consulting.' },
+	{ name: 'SmartWorks Factory Systems', domain: 'smartworks-factory.com', phone: '(412) 555-0148', address: '301 Grant St, Pittsburgh, PA', postalCode: '15222', status: 'inactive', notes: 'Promotes factory IoT and smart-factory adoption. Long dormant.' },
+	{ name: 'Pacific Coast Seafood Co.', domain: 'pacific-seafood.com', phone: '(503) 555-0163', address: '111 SW 5th Ave, Portland, OR', postalCode: '97201', status: 'active', notes: 'Processes and sells seafood products.' }
 ];
 
 type PersonDef = { name: string; kana: string; romaji: string };
 
 const peoplePool: PersonDef[] = [
-	{ name: '佐藤 健一', kana: 'さとう けんいち', romaji: 'sato.k' },
-	{ name: '鈴木 美咲', kana: 'すずき みさき', romaji: 'suzuki.m' },
-	{ name: '高橋 大輔', kana: 'たかはし だいすけ', romaji: 'takahashi.d' },
-	{ name: '田中 由美子', kana: 'たなか ゆみこ', romaji: 'tanaka.y' },
-	{ name: '渡辺 翔太', kana: 'わたなべ しょうた', romaji: 'watanabe.s' },
-	{ name: '伊藤 香織', kana: 'いとう かおり', romaji: 'ito.k' },
-	{ name: '山本 浩二', kana: 'やまもと こうじ', romaji: 'yamamoto.k' },
-	{ name: '中村 真理', kana: 'なかむら まり', romaji: 'nakamura.m' },
-	{ name: '小林 直樹', kana: 'こばやし なおき', romaji: 'kobayashi.n' },
-	{ name: '加藤 麻衣', kana: 'かとう まい', romaji: 'kato.m' },
-	{ name: '吉田 拓也', kana: 'よしだ たくや', romaji: 'yoshida.t' },
-	{ name: '山田 恵子', kana: 'やまだ けいこ', romaji: 'yamada.k' },
-	{ name: '佐々木 健太', kana: 'ささき けんた', romaji: 'sasaki.k' },
-	{ name: '山口 智子', kana: 'やまぐち ともこ', romaji: 'yamaguchi.t' },
-	{ name: '松本 隆', kana: 'まつもと たかし', romaji: 'matsumoto.t' },
-	{ name: '井上 さくら', kana: 'いのうえ さくら', romaji: 'inoue.s' },
-	{ name: '木村 雄一', kana: 'きむら ゆういち', romaji: 'kimura.y' },
-	{ name: '林 優子', kana: 'はやし ゆうこ', romaji: 'hayashi.y' },
-	{ name: '斎藤 和也', kana: 'さいとう かずや', romaji: 'saito.k' },
-	{ name: '清水 久美子', kana: 'しみず くみこ', romaji: 'shimizu.k' },
-	{ name: '森田 達也', kana: 'もりた たつや', romaji: 'morita.t' },
-	{ name: '池田 千尋', kana: 'いけだ ちひろ', romaji: 'ikeda.c' },
-	{ name: '橋本 誠', kana: 'はしもと まこと', romaji: 'hashimoto.m' },
-	{ name: '阿部 美穂', kana: 'あべ みほ', romaji: 'abe.m' }
+	{ name: 'James Carter', kana: '', romaji: 'jcarter' },
+	{ name: 'Emily Johnson', kana: '', romaji: 'ejohnson' },
+	{ name: 'Michael Brooks', kana: '', romaji: 'mbrooks' },
+	{ name: 'Sarah Mitchell', kana: '', romaji: 'smitchell' },
+	{ name: 'David Chen', kana: '', romaji: 'dchen' },
+	{ name: 'Olivia Martinez', kana: '', romaji: 'omartinez' },
+	{ name: 'Robert Green', kana: '', romaji: 'rgreen' },
+	{ name: 'Jennifer Lee', kana: '', romaji: 'jlee' },
+	{ name: 'William Turner', kana: '', romaji: 'wturner' },
+	{ name: 'Amanda Foster', kana: '', romaji: 'afoster' },
+	{ name: 'Christopher Reed', kana: '', romaji: 'creed' },
+	{ name: 'Michelle Park', kana: '', romaji: 'mpark' },
+	{ name: 'Daniel Wright', kana: '', romaji: 'dwright' },
+	{ name: 'Laura Bennett', kana: '', romaji: 'lbennett' },
+	{ name: 'Kevin Patel', kana: '', romaji: 'kpatel' },
+	{ name: 'Sophia Nguyen', kana: '', romaji: 'snguyen' },
+	{ name: 'Andrew Collins', kana: '', romaji: 'acollins' },
+	{ name: 'Rachel Kim', kana: '', romaji: 'rkim' },
+	{ name: 'Brian Sullivan', kana: '', romaji: 'bsullivan' },
+	{ name: 'Jessica Ramirez', kana: '', romaji: 'jramirez' },
+	{ name: 'Thomas Walsh', kana: '', romaji: 'twalsh' },
+	{ name: 'Nicole Baker', kana: '', romaji: 'nbaker' },
+	{ name: 'Steven Cooper', kana: '', romaji: 'scooper' },
+	{ name: 'Karen Diaz', kana: '', romaji: 'kdiaz' }
 ];
 
 type RoleDef = { role: string; department: string };
 
 const rolePool: RoleDef[] = [
-	{ role: '代表取締役社長', department: '経営企画室' },
-	{ role: '取締役', department: '経営企画室' },
-	{ role: '営業部長', department: '営業部' },
-	{ role: '営業課長', department: '営業部' },
-	{ role: '営業担当', department: '営業部' },
-	{ role: 'マーケティング部長', department: 'マーケティング部' },
-	{ role: '購買担当', department: '購買部' },
-	{ role: '総務部長', department: '総務部' },
-	{ role: '情報システム部長', department: '情報システム部' },
-	{ role: 'システム担当', department: '情報システム部' },
-	{ role: '経理担当', department: '経理部' },
-	{ role: '人事担当', department: '人事部' },
-	{ role: '製造部長', department: '製造部' },
-	{ role: '商品企画担当', department: '商品企画部' },
-	{ role: '広報担当', department: '広報部' }
+	{ role: 'President & CEO', department: 'Executive Office' },
+	{ role: 'Director', department: 'Executive Office' },
+	{ role: 'Sales Director', department: 'Sales' },
+	{ role: 'Sales Manager', department: 'Sales' },
+	{ role: 'Sales Representative', department: 'Sales' },
+	{ role: 'Marketing Director', department: 'Marketing' },
+	{ role: 'Procurement Specialist', department: 'Procurement' },
+	{ role: 'General Affairs Manager', department: 'General Affairs' },
+	{ role: 'IT Director', department: 'IT' },
+	{ role: 'IT Specialist', department: 'IT' },
+	{ role: 'Accounting Specialist', department: 'Accounting' },
+	{ role: 'HR Specialist', department: 'Human Resources' },
+	{ role: 'Manufacturing Manager', department: 'Manufacturing' },
+	{ role: 'Product Planning Specialist', department: 'Product Planning' },
+	{ role: 'PR Specialist', department: 'Public Relations' }
 ];
 
 const dealTitles = [
-	'基幹システム導入',
-	'Webサイトリニューアル',
-	'営業支援システム(SFA)導入',
-	'年間保守契約更新',
-	'クラウド移行プロジェクト',
-	'在庫管理システム刷新',
-	'ECサイト構築',
-	'データ分析基盤構築',
-	'社内ポータル開発',
-	'セキュリティ強化対策',
-	'モバイルアプリ開発',
-	'RPA導入による業務自動化',
-	'顧客管理システム(CRM)導入',
-	'請求・経理システム連携',
-	'ネットワーク機器リプレース',
-	'BIツール導入',
-	'採用管理システム導入',
-	'ヘルプデスク業務委託'
+	'Core System Implementation',
+	'Website Renewal',
+	'Sales Force Automation (SFA) Implementation',
+	'Annual Maintenance Contract Renewal',
+	'Cloud Migration Project',
+	'Inventory Management System Overhaul',
+	'E-Commerce Site Build',
+	'Data Analytics Platform Build',
+	'Internal Portal Development',
+	'Security Hardening Initiative',
+	'Mobile App Development',
+	'Business Process Automation via RPA',
+	'CRM Implementation',
+	'Billing & Accounting System Integration',
+	'Network Equipment Replacement',
+	'BI Tool Implementation',
+	'Applicant Tracking System Implementation',
+	'Help Desk Outsourcing'
 ];
 
 const dealNotesByStatus: Record<'open' | 'won' | 'lost', string[]> = {
 	open: [
-		'提案書を提出済み、先方検討中。',
-		'次回打ち合わせを調整中。',
-		'予算承認待ち。',
-		'競合と比較検討中。',
-		'追加要件のヒアリングを実施予定。'
+		'Proposal submitted; client is reviewing.',
+		'Coordinating the next meeting.',
+		'Waiting on budget approval.',
+		'Comparing us against competitors.',
+		'Additional requirements gathering planned.'
 	],
 	won: [
-		'無事受注。来月よりキックオフ予定。',
-		'契約締結済み。納品準備中。',
-		'受注確定。担当者と詳細打ち合わせ中。'
+		'Deal won. Kickoff planned for next month.',
+		'Contract signed. Preparing for delivery.',
+		'Order confirmed. Working out details with the contact.'
 	],
 	lost: [
-		'予算の都合により見送りとなった。',
-		'競合他社に決定。',
-		'社内方針変更により見送りとなった。'
+		'Passed due to budget constraints.',
+		'Went with a competitor.',
+		'Passed due to an internal policy change.'
 	]
 };
 
@@ -213,55 +213,55 @@ type ActivityTemplate = {
 	content: string;
 };
 
-// 顧客との商談進捗に沿った活動履歴テンプレート（時系列順）
+// Activity history templates following a customer's deal progress (in chronological order)
 const activitySequences: ActivityTemplate[][] = [
-	// パターンA: メール → 架電 → 訪問 → 提案 → フォロー
+	// Pattern A: Email → Call → Visit → Proposal → Follow-up
 	[
-		{ type: 'email', content: '問い合わせへの返信メールを送付。サービス概要資料を添付。' },
-		{ type: 'call', content: '担当者と電話。現状の課題と導入時期の意向を確認。来週のオンライン打ち合わせを設定。' },
-		{ type: 'meeting', content: 'オンラインデモ実施。操作性について高評価をいただいた。詳細要件のヒアリングを次回実施予定。' },
-		{ type: 'email', content: '提案書・見積書を送付。2週間以内に社内検討の上、回答いただく予定。' },
-		{ type: 'call', content: '進捗確認の架電。担当者より「上長に確認中」との回答。来月上旬に再度連絡もらう予定。' },
+		{ type: 'email', content: 'Replied to the inquiry by email with a service overview attached.' },
+		{ type: 'call', content: 'Called the contact to confirm current challenges and desired rollout timing. Scheduled an online meeting for next week.' },
+		{ type: 'meeting', content: 'Ran an online demo. Contact praised the usability. Detailed requirements gathering planned for next time.' },
+		{ type: 'email', content: 'Sent the proposal and quote. Expecting a response after internal review within two weeks.' },
+		{ type: 'call', content: 'Follow-up call. Contact said it is "still with management for approval." Expected to hear back in early next month.' },
 	],
-	// パターンB: 訪問 → 資料送付 → 再訪問 → 価格交渉 → メモ
+	// Pattern B: Visit → Materials sent → Second visit → Price negotiation → Note
 	[
-		{ type: 'meeting', content: '初回訪問。担当部長・システム担当と面談。現行システムの課題を詳しくヒアリングできた。' },
-		{ type: 'email', content: 'ヒアリング内容をまとめた課題整理シートと提案書の第一稿を送付。' },
-		{ type: 'meeting', content: '提案説明の訪問。導入効果のシミュレーション資料を使って説明。競合との比較質問あり。' },
-		{ type: 'call', content: '価格交渉の連絡。初期費用の削減希望あり。社内で検討の上、修正見積もりを提出予定。' },
-		{ type: 'note', content: '先方の決裁権限は部長まで。金額が500万円を超える場合は取締役承認が必要とのこと。' },
+		{ type: 'meeting', content: 'Initial visit. Met with the department head and the IT lead. Got a detailed picture of issues with their current system.' },
+		{ type: 'email', content: 'Sent a summary of findings and a first-draft proposal.' },
+		{ type: 'meeting', content: 'Visited to walk through the proposal using an ROI simulation. Fielded questions comparing us to competitors.' },
+		{ type: 'call', content: 'Price negotiation call. They want the initial cost reduced. Will review internally and submit a revised quote.' },
+		{ type: 'note', content: "Approval authority on their side tops out at the department head. Amounts over $50,000 require board sign-off." },
 	],
-	// パターンC: 架電 → メール → 会議 → ノート → 架電
+	// Pattern C: Call → Email → Meeting → Note → Call
 	[
-		{ type: 'call', content: '新規開拓の架電。担当者不在のため折り返し依頼。名刺交換済みの紹介経由。' },
-		{ type: 'email', content: '後日改めてサービス紹介メールを送付。資料ダウンロードリンクを案内。' },
-		{ type: 'meeting', content: '要件ヒアリング実施。現在Excelで管理している工程表のデジタル化ニーズが強い。カスタムテーブルでの対応可否を持ち帰り。' },
-		{ type: 'note', content: '競合はkintoneを検討中とのこと。価格よりも使い勝手・サポート体制が重視される傾向。' },
-		{ type: 'call', content: 'カスタマイズ可否の確認電話。対応可能な旨を伝え、詳細仕様書を来週中に送付予定。' },
+		{ type: 'call', content: 'Cold call for new business. Contact was out; left a message. Came in through a referral after exchanging business cards.' },
+		{ type: 'email', content: 'Sent a follow-up introducing the service, with a link to download materials.' },
+		{ type: 'meeting', content: 'Held a requirements meeting. Strong need to digitize a schedule currently managed in spreadsheets. Taking the custom-table feasibility question back internally.' },
+		{ type: 'note', content: 'Contact says they are also evaluating a competing no-code database tool. Usability and support seem to matter more to them than price.' },
+		{ type: 'call', content: 'Called to confirm customization feasibility. Told them it is doable and will send a detailed spec sheet next week.' },
 	],
-	// パターンD: 会議 → ノート → メール → 架電 → 会議
+	// Pattern D: Meeting → Note → Email → Call → Meeting
 	[
-		{ type: 'meeting', content: '展示会で名刺交換後のフォローアップ訪問。担当者の課題感が明確で、早期導入意向あり。' },
-		{ type: 'note', content: '年度末（3月）までの導入を希望。予算は既に確保済みとのこと。スピード重視で進める。' },
-		{ type: 'email', content: '標準導入スケジュール案と初期設定サポートの概要を送付。' },
-		{ type: 'call', content: 'スケジュール確認の架電。来月中旬の契約を目処に進めることで合意。' },
-		{ type: 'meeting', content: '契約前の最終確認MTG。追加要望として既存CSVデータの移行支援を依頼された。対応方針を検討中。' },
+		{ type: 'meeting', content: 'Follow-up visit after exchanging business cards at a trade show. Contact has a clear sense of their pain points and wants to move fast.' },
+		{ type: 'note', content: 'Wants to go live before fiscal year end (March). Budget is already secured. Prioritizing speed.' },
+		{ type: 'email', content: 'Sent a standard rollout schedule and an overview of initial setup support.' },
+		{ type: 'call', content: 'Call to confirm timeline. Agreed to aim for signing by the middle of next month.' },
+		{ type: 'meeting', content: 'Final review meeting before signing. They asked for help migrating existing CSV data as an add-on. Working out our approach.' },
 	],
-	// パターンE: メール → ノート → 架電 → メール → ノート
+	// Pattern E: Email → Note → Call → Email → Note
 	[
-		{ type: 'email', content: 'Webお問い合わせフォームからの反応に返信。資料一式を送付。' },
-		{ type: 'note', content: '問い合わせ内容：「現在のCRMが使いにくく、AIで自動化できる部分を増やしたい」。ニーズ合致度が高い。' },
-		{ type: 'call', content: '担当者と初回通話。AIチャットでの操作方法に強い興味。来週のデモ日程を調整。' },
-		{ type: 'email', content: 'デモ前の事前アンケートを送付。業種・規模・現状ツールを確認予定。' },
-		{ type: 'note', content: 'アンケート回答確認。ユーザー数15名、Excelと別システムを併用中。移行コストの懸念あり。' },
+		{ type: 'email', content: 'Replied to a submission from the web contact form with a full set of materials.' },
+		{ type: 'note', content: 'Inquiry: "Our current CRM is hard to use and we want to automate more with AI." Strong fit with their needs.' },
+		{ type: 'call', content: 'First call with the contact. Very interested in AI chat-based operation. Scheduling a demo for next week.' },
+		{ type: 'email', content: 'Sent a pre-demo questionnaire to confirm industry, company size, and current tools.' },
+		{ type: 'note', content: 'Reviewed questionnaire responses. 15 users, currently running spreadsheets alongside another system. Concerned about migration cost.' },
 	],
-	// パターンF: 架電 → 会議 → ノート → 架電 → メール
+	// Pattern F: Call → Meeting → Note → Call → Email
 	[
-		{ type: 'call', content: '既存顧客からの紹介で架電。担当者は以前別会社でSFA導入経験あり、話が早かった。' },
-		{ type: 'meeting', content: '対面デモ実施。AIがフォームを動的生成するデモに驚いていた。その場で上長への社内展開を約束。' },
-		{ type: 'note', content: '意思決定者：情報システム部長（野村氏）。部長は来月まで海外出張中のため判断は来月以降。' },
-		{ type: 'call', content: '部長帰国後のフォロー架電。デモ資料を部長と共有済みとのこと。来週回答予定。' },
-		{ type: 'email', content: '改めてROI計算シートと導入事例資料を送付。部長向けの説明補足として。' },
+		{ type: 'call', content: 'Called on a referral from an existing customer. Contact had previously rolled out an SFA at another company, so the conversation moved fast.' },
+		{ type: 'meeting', content: 'Ran an in-person demo. They were impressed by the AI dynamically generating forms. Committed on the spot to pitching it internally to leadership.' },
+		{ type: 'note', content: 'Decision maker: IT Director (Sanders). Out of the country on business until next month, so no decision until then.' },
+		{ type: 'call', content: 'Follow-up call after the director returned. Demo materials have been shared with the director. Expecting an answer next week.' },
+		{ type: 'email', content: 'Sent an ROI worksheet and case studies again, as supporting material for the director.' },
 	],
 ];
 

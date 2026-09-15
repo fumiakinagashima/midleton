@@ -37,7 +37,7 @@ export type FormContent = {
 	title?: string;
 	fields: FormField[];
 	tool: string;
-	entity?: string; // カスタムテーブル等を RecordDialog で開く場合にテーブル種別を指定
+	entity?: string; // Specifies the table type when opening a custom table, etc. in RecordDialog
 	submitLabel?: string;
 	completed?: boolean;
 };
@@ -46,8 +46,8 @@ export type TableContent = {
 	type: 'table';
 	columns: TableColumn[];
 	rows: Record<string, unknown>[];
-	// 行がレコードを表すテーブルの場合、そのテーブル種別（customers/contacts/deals/activities やカスタムテーブル名）。
-	// 設定されていると行クリックで詳細ダイアログを開ける（rows に id が必要）
+	// When rows represent records, the table type (customers/contacts/deals/activities, or a custom table name).
+	// When set, clicking a row opens the detail dialog (rows must include id)
 	entity?: string;
 };
 
@@ -91,7 +91,7 @@ export type TimelineContent = {
 	title?: string;
 	filter?: {
 		customerId?: string;
-		// 活動種別（note/call/email/meeting/deal_created）で絞り込む
+		// Filters by activity type (note/call/email/meeting/deal_created)
 		type?: string[];
 	};
 };
@@ -187,7 +187,7 @@ export type CustomerDetailCustomer = {
 	website?: string | null;
 	status?: string | null;
 	notes?: string | null;
-	// キャッシュ済みAIヘルススコア（get_customer_detail の customer 行に含まれる）
+	// Cached AI health score (included in the customer row returned by get_customer_detail)
 	healthScore?: number | null;
 	healthScoreLevel?: 'good' | 'warning' | 'risk' | null;
 	healthScoreSummary?: string | null;
@@ -233,8 +233,8 @@ export type CustomerDetailContent = {
 export type WorkflowResultType = 'boolean' | 'number' | 'string';
 
 /**
- * パラメータ・条件のオペランド値。文字列リテラルそのもの、または `@step:<id>` 形式で
- * 同じワークフロー内の先行ステップ（WorkflowActionStep）の結果を参照する。
+ * An operand value for parameters/conditions. Either a literal string, or a reference in
+ * `@step:<id>` form to the result of a preceding step (WorkflowActionStep) in the same workflow.
  */
 export type WorkflowOperand = string;
 
@@ -244,9 +244,9 @@ export type WorkflowActionStep = {
 	label: string;
 	tool: string;
 	params?: Record<string, WorkflowOperand>;
-	/** エディタの「カテゴリ→対象」選択で選んだカテゴリキー（例: 'search' / 'summarize'）。
-	 *  toolが複数カテゴリから参照される場合に、再読込時どちらのカテゴリで表示するかを覚えておくため。
-	 *  未設定（AI生成・旧データ）の場合は findWorkflowActionCategory による逆引きにフォールバックする。 */
+	/** The category key chosen via the editor's "category → target" selector (e.g. 'search' / 'summarize').
+	 *  Remembers which category to display under on reload when a tool is referenced from multiple categories.
+	 *  Falls back to a reverse lookup via findWorkflowActionCategory when unset (AI-generated or legacy data). */
 	category?: string;
 };
 
@@ -263,9 +263,9 @@ export type WorkflowConditionStep = {
 };
 
 /**
- * 配列型の結果（resultListを持つアクション）を1件ずつ処理する。無限ループ回避のため
- * while相当の仕組みは提供しない。body内では現在の項目を `@item:<field>` で参照できる
- * （body専用スコープ。外からは参照不可）。
+ * Processes an array-typed result (an action with resultList) one item at a time. To avoid
+ * infinite loops, no while-equivalent construct is provided. Within body, the current item
+ * can be referenced as `@item:<field>` (a body-only scope, not accessible from outside).
  */
 export type WorkflowForeachStep = {
 	id: string;

@@ -3,8 +3,8 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { getTableInfo } from '$lib/server/db/table-service';
 
-// テーブルのフィールド定義（getTableInfo）のみを返す軽量エンドポイント。
-// RecordDialog がフォーム・汎用詳細のフィールド定義を取得するのに使う（rows は取得しない）。
+// Lightweight endpoint that returns only the table's field definitions (getTableInfo).
+// Used by RecordDialog to fetch field definitions for forms/generic detail views (does not fetch rows).
 export const GET: RequestHandler = async ({ params, platform }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
 	const db = createDb(platform.env.DB);

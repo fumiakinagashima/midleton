@@ -12,13 +12,13 @@
 	let { form, onsubmit, oncancel }: Props = $props();
 
 	let fields = $state<FormField[]>(form.fields);
-	let title = $state(form.title ?? '入力');
+	let title = $state(form.title ?? 'Input');
 	let loading = $state(true);
 	let formKey = $state(0);
 
 	$effect(() => {
 		const tool = form.tool;
-		// AIが提供した値（内容・日時など）をプリフィルとして抽出
+		// Extract AI-provided values (content, date/time, etc.) as prefill
 		const prefill: Record<string, string> = {};
 		for (const f of form.fields) {
 			if (f.value != null && f.value !== '') prefill[f.key] = f.value;
@@ -31,20 +31,20 @@
 			.then((data) => {
 				if (cancelled) return;
 				if (data?.fields) {
-					// サーバー定義のフィールド構造にAIプリフィル値を適用
+					// Apply the AI prefill values onto the server-defined field structure
 					fields = data.fields.map((f) => ({ ...f, value: prefill[f.key] ?? f.value }));
 					if (data.title) title = data.title;
 				} else {
-					// 未登録ツールはAI提供フィールドをそのまま使用
+					// For unregistered tools, use the AI-provided fields as-is
 					fields = form.fields;
-					title = form.title ?? '入力';
+					title = form.title ?? 'Input';
 				}
 				formKey += 1;
 			})
 			.catch(() => {
 				if (cancelled) return;
 				fields = form.fields;
-				title = form.title ?? '入力';
+				title = form.title ?? 'Input';
 				formKey += 1;
 			})
 			.finally(() => {
@@ -59,10 +59,10 @@
 
 <div class="panel-backdrop" role="presentation" onclick={oncancel}></div>
 
-<aside class="panel" aria-label="入力フォーム">
+<aside class="panel" aria-label="Input form">
 	<div class="panel-header">
 		<span class="panel-title">{title}</span>
-		<button class="panel-close" onclick={oncancel} aria-label="閉じる">
+		<button class="panel-close" onclick={oncancel} aria-label="Close">
 			<X size={16} />
 		</button>
 	</div>

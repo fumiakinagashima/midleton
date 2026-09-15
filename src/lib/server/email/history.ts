@@ -27,8 +27,8 @@ export async function recordEmailSend(db: Db, input: RecordEmailSendInput): Prom
 	});
 }
 
-// メール送信を実行し、成否によらず email_sends に履歴を記録する。
-// 送信自体が失敗した場合は履歴記録後にエラーを再スローする（呼び出し元の既存のエラー処理を変えない）。
+// Sends an email and records the result in email_sends regardless of success or failure.
+// If the send itself fails, the error is rethrown after the history is recorded (so callers' existing error handling is unaffected).
 export async function sendEmailAndRecord(
 	db: Db,
 	providerConfig: EmailProviderConfig,

@@ -92,7 +92,7 @@
 				body: JSON.stringify({ title })
 			});
 		} catch {
-			// 失敗時もUI上は変更後のタイトルを維持する
+			// Keep the updated title in the UI even if the request fails
 		}
 	}
 
@@ -113,7 +113,7 @@
 		try {
 			await fetch(`/api/chats/${item.id}`, { method: 'DELETE' });
 		} catch {
-			// ローカル一覧からは削除済み。失敗時はリロードで復活する
+			// Already removed from the local list; if this fails it will reappear on reload
 		}
 	}
 
@@ -201,24 +201,24 @@
 
 		<a href="/database" class="settings-row">
 			<Database size={15} />
-			データ管理
+			Data Management
 		</a>
 
 		{#if account.permission === 'admin'}
 			<a href="/database/accounts" class="settings-row">
 				<Users size={15} />
-				アカウント
+				Accounts
 			</a>
 		{/if}
 
 		<a href="/reminder" class="settings-row">
 			<Clock size={15} />
-			リマインダー
+			Reminders
 		</a>
 
 		<a href="/bizcard" class="settings-row">
 			<CreditCard size={15} />
-			名刺取り込み
+			Business Card Import
 		</a>
 
 		<a href="/settings" class="settings-row">

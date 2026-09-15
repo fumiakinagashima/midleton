@@ -11,7 +11,7 @@ export type FilterableColumn = {
 	type: FilterFieldType;
 };
 
-// フィールドの型ごとに許可する演算子（ステータス等のenumに gt/lt のような意味不明な条件を許さないため）
+// Operators allowed per field type (prevents nonsensical conditions like gt/lt on an enum such as status)
 const OPS_BY_TYPE: Record<FilterFieldType, FilterOp[]> = {
 	text: ['eq', 'not', 'contains'],
 	enum: ['eq', 'not', 'contains'],
@@ -30,14 +30,14 @@ export type FilterCondition = z.infer<typeof filterConditionSchema>;
 function coerceValue(type: FilterFieldType, raw: string): string | number | Date {
 	if (type === 'number') {
 		const n = Number(raw);
-		if (isNaN(n)) throw new Error(`数値として解釈できない値です: ${raw}`);
+		if (isNaN(n)) throw new Error(`Value cannot be interpreted as a number: ${raw}`);
 		return n;
 	}
 	if (type === 'date') return toDate(raw);
 	return raw;
 }
 
-// field は fields（呼び出し側の許可リスト）に存在するキーのみ受け付ける（生SQL・任意カラム名の注入を防ぐため）
+// Only accept a field that exists in fields (the caller's allowlist), to prevent raw SQL / arbitrary column name injection
 export function buildFilterConditions(
 	filters: FilterCondition[] | undefined,
 	fields: Record<string, FilterableColumn>
@@ -47,14 +47,14 @@ export function buildFilterConditions(
 	return filters.map((f) => {
 		if (!Object.hasOwn(fields, f.field)) {
 			throw new Error(
-				`未対応の絞り込み対象です: ${f.field}（利用可能: ${Object.keys(fields).join(', ')}）`
+				`Unsupported filter field: ${f.field} (available: ${Object.keys(fields).join(', ')})`
 			);
 		}
 		const def = fields[f.field];
 		const allowedOps = OPS_BY_TYPE[def.type];
 		if (!allowedOps.includes(f.op)) {
 			throw new Error(
-				`${f.field} には ${f.op} は使用できません（利用可能な演算子: ${allowedOps.join(', ')}）`
+				`${f.field} does not support ${f.op} (available operators: ${allowedOps.join(', ')})`
 			);
 		}
 

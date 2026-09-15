@@ -3,7 +3,7 @@
 	import RecordDialog from '$lib/components/dialog/RecordDialog.svelte';
 	import type { BizcardResult } from '../api/bizcard/+server';
 
-	// 現在開いているダイアログ
+	// Currently open dialog
 	type DialogState =
 		| { kind: 'customer'; prefill: Record<string, string>; bizcard: BizcardResult }
 		| { kind: 'contact'; prefill: Record<string, string> }
@@ -19,10 +19,10 @@
 		if (r.phone) p.phone = r.phone;
 		if (r.address) p.address = r.address;
 		if (r.website) p.website = r.website;
-		// 担当者名を備考に残す
+		// Keep the contact's name in the notes field
 		if (r.name && r.company) {
-			const label = r.title ? `${r.name}（${r.title}）` : r.name;
-			p.notes = `担当者: ${label}`;
+			const label = r.title ? `${r.name} (${r.title})` : r.name;
+			p.notes = `Contact: ${label}`;
 		}
 		return p;
 	}
@@ -62,8 +62,8 @@
 
 <div class="page">
 	<div class="header">
-		<h1>名刺取り込み</h1>
-		<p>名刺画像をアップロードすると、Claude が情報を自動抽出します</p>
+		<h1>Business Card Import</h1>
+		<p>Upload a business card image and Claude will automatically extract the information</p>
 	</div>
 
 	<BizcardScanner onRegister={handleRegister} />

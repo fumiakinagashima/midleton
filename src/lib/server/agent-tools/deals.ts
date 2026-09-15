@@ -9,53 +9,53 @@ import { parseJson, mergeCustom, now, type ToolEnv } from './shared';
 export const tools: Tool[] = [
 	{
 		name: 'get_deals',
-		description: '案件一覧を取得する。顧客IDやステータスで絞り込みができる。',
+		description: 'Fetches the deal list. Can be filtered by customer ID or status.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '顧客IDで絞り込む' },
+				customer_id: { type: 'string', description: 'Filter by customer ID' },
 				status: {
 					type: 'string',
 					enum: ['open', 'won', 'lost'],
-					description: 'ステータスで絞り込む'
+					description: 'Filter by status'
 				},
-				limit: { type: 'number', description: '取得件数の上限（デフォルト: 50）' }
+				limit: { type: 'number', description: 'Maximum number of results to return (default: 50)' }
 			},
 			required: []
 		}
 	},
 	{
 		name: 'create_deal',
-		description: '案件を登録する。顧客IDは必須。',
+		description: 'Registers a deal. Customer ID is required.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '顧客のID（必須）' },
-				title: { type: 'string', description: '案件タイトル（必須）' },
-				amount: { type: 'number', description: '金額（円）' },
+				customer_id: { type: 'string', description: 'Customer ID (required)' },
+				title: { type: 'string', description: 'Deal title (required)' },
+				amount: { type: 'number', description: 'Amount (JPY)' },
 				status: {
 					type: 'string',
 					enum: ['open', 'won', 'lost'],
-					description: 'ステータス（デフォルト: open）'
+					description: 'Status (default: open)'
 				},
-				notes: { type: 'string', description: '備考' },
-				custom: { type: 'object', description: 'カスタムフィールド' }
+				notes: { type: 'string', description: 'Notes' },
+				custom: { type: 'object', description: 'Custom fields' }
 			},
 			required: ['customer_id', 'title']
 		}
 	},
 	{
 		name: 'update_deal',
-		description: '案件情報を更新する。ステータスの変更（受注・失注など）にも使う。',
+		description: 'Updates deal information. Also used to change status (won, lost, etc.).',
 		input_schema: {
 			type: 'object',
 			properties: {
-				id: { type: 'string', description: '案件ID（必須）' },
-				title: { type: 'string', description: '案件タイトル' },
-				amount: { type: 'number', description: '金額（円）' },
-				status: { type: 'string', enum: ['open', 'won', 'lost'], description: 'ステータス' },
-				notes: { type: 'string', description: '備考' },
-				custom: { type: 'object', description: 'カスタムフィールド（既存データとマージ）' }
+				id: { type: 'string', description: 'Deal ID (required)' },
+				title: { type: 'string', description: 'Deal title' },
+				amount: { type: 'number', description: 'Amount (JPY)' },
+				status: { type: 'string', enum: ['open', 'won', 'lost'], description: 'Status' },
+				notes: { type: 'string', description: 'Notes' },
+				custom: { type: 'object', description: 'Custom fields (merged with existing data)' }
 			},
 			required: ['id']
 		}
@@ -124,7 +124,7 @@ export async function handleCreateDeal(db: Db, input: unknown, env?: ToolEnv) {
 export async function handleUpdateDeal(db: Db, input: unknown) {
 	const data = updateDealSchema.parse(input);
 	const [existing] = await db.select().from(deals).where(eq(deals.id, data.id));
-	if (!existing) throw new Error(`案件が見つかりません: ${data.id}`);
+	if (!existing) throw new Error(`Deal not found: ${data.id}`);
 
 	const closedAt =
 		data.status === 'won' || data.status === 'lost'

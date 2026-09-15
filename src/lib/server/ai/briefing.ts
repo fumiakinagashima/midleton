@@ -20,8 +20,8 @@ function getJstDateString(now: Date): string {
 
 function parseJson<T>(text: string): T {
 	const m = text.match(/\{[\s\S]*\}/);
-	if (!m) throw new Error('ブリーフィングの解析に失敗しました。');
-	try { return JSON.parse(m[0]); } catch { throw new Error('ブリーフィングの解析に失敗しました。'); }
+	if (!m) throw new Error('Failed to parse the briefing.');
+	try { return JSON.parse(m[0]); } catch { throw new Error('Failed to parse the briefing.'); }
 }
 
 type BriefingResult = {
@@ -69,11 +69,11 @@ export async function computeBriefing(
 	const now = new Date();
 	const todayJst = getJstDateString(now);
 
-	// 今日のJST始端・終端（UTC）
+	// Start and end of today in JST (as UTC)
 	const todayStart = new Date(`${todayJst}T00:00:00+09:00`);
 	const todayEnd = new Date(`${todayJst}T23:59:59+09:00`);
 
-	// 進行中案件 + 顧客名
+	// Open deals + customer name
 	const openDealsRaw = await db
 		.select({
 			id: deals.id,
@@ -86,7 +86,7 @@ export async function computeBriefing(
 		.leftJoin(customers, eq(deals.customerId, customers.id))
 		.where(eq(deals.status, 'open'));
 
-	// 各顧客の最終活動日（一括取得）
+	// Last activity date per customer (fetched in bulk)
 	const customerIds = [...new Set(openDealsRaw.map((d) => d.customerId))];
 	const lastActivities =
 		customerIds.length > 0
@@ -112,13 +112,13 @@ export async function computeBriefing(
 		return {
 			id: d.id,
 			title: d.title,
-			customerName: d.customerName ?? '（顧客不明）',
+			customerName: d.customerName ?? '(Unknown customer)',
 			amount: d.amount,
 			lastActivityDays
 		};
 	});
 
-	// 今日のリマインダー（このアカウント分）
+	// Today's reminders (for this account)
 	const todayRemindersRaw = await db
 		.select()
 		.from(reminders)
@@ -138,7 +138,7 @@ export async function computeBriefing(
 		timeLabel: r.remindAt ? formatJstDateTime(r.remindAt).split(' ')[1] : ''
 	}));
 
-	// Claude でブリーフィング生成
+	// Generate the briefing with Claude
 	const anthropic = new Anthropic({ apiKey, timeout: 30000 });
 	const message = await anthropic.messages.create({
 		model: 'claude-haiku-4-5-20251001',
@@ -155,60 +155,60 @@ export async function computeBriefing(
 	const text = message.content[0]?.type === 'text' ? message.content[0].text.trim() : '';
 	const result = parseJson<BriefingResult>(text);
 
-	// MessageContent[] を構築
+	// Build MessageContent[]
 	const contents: MessageContent[] = [];
 
-	// サマリーテキスト
+	// Summary text
 	contents.push({ type: 'text', text: result.summary ?? '' });
 
-	// サマリー数値
+	// Summary figures
 	const followupCount = result.followupDeals?.length ?? 0;
 	contents.push({
 		type: 'values',
-		title: `${todayJst} のサマリー`,
+		title: `Summary for ${todayJst}`,
 		items: [
-			{ label: '進行中案件', value: openDeals.length, format: 'number' },
-			{ label: 'フォロー推奨', value: followupCount, format: 'number' },
-			{ label: '今日のリマインダー', value: todayReminders.length, format: 'number' }
+			{ label: 'Open deals', value: openDeals.length, format: 'number' },
+			{ label: 'Recommended follow-ups', value: followupCount, format: 'number' },
+			{ label: 'Today\'s reminders', value: todayReminders.length, format: 'number' }
 		]
 	});
 
-	// フォロー推奨案件テーブル
+	// Recommended follow-up deals table
 	if (result.followupDeals && result.followupDeals.length > 0) {
 		contents.push({
 			type: 'table',
 			entity: 'deals',
 			columns: [
-				{ key: 'customerName', label: '顧客' },
-				{ key: 'title', label: '案件名' },
-				{ key: 'amount', label: '金額' },
-				{ key: 'lastActivityDays', label: '最終活動' },
-				{ key: 'nextAction', label: '推奨アクション' }
+				{ key: 'customerName', label: 'Customer' },
+				{ key: 'title', label: 'Deal name' },
+				{ key: 'amount', label: 'Amount' },
+				{ key: 'lastActivityDays', label: 'Last activity' },
+				{ key: 'nextAction', label: 'Recommended action' }
 			],
 			rows: result.followupDeals.map((d) => ({
 				id: d.id,
 				customerName: d.customerName,
 				title: d.title,
 				amount: d.amount != null ? `¥${d.amount.toLocaleString()}` : '—',
-				lastActivityDays: d.lastActivityDays != null ? `${d.lastActivityDays}日前` : '記録なし',
+				lastActivityDays: d.lastActivityDays != null ? `${d.lastActivityDays} days ago` : 'No record',
 				nextAction: d.nextAction
 			}))
 		});
 	}
 
-	// 今日のリマインダーテーブル
+	// Today's reminders table
 	if (todayReminders.length > 0) {
 		contents.push({
 			type: 'table',
 			columns: [
-				{ key: 'timeLabel', label: '時刻' },
-				{ key: 'content', label: '内容' }
+				{ key: 'timeLabel', label: 'Time' },
+				{ key: 'content', label: 'Content' }
 			],
 			rows: todayReminders.map((r) => ({ timeLabel: r.timeLabel, content: r.content }))
 		});
 	}
 
-	// DBにキャッシュ保存（同日の既存キャッシュは上書き）
+	// Save to the DB cache (overwrites any existing cache for the same day)
 	await db
 		.delete(briefings)
 		.where(

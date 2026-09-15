@@ -1,8 +1,10 @@
 import { tools } from '$lib/server/agent-tools';
 
-// 情報取得のみ許可するツール名のセット。フォーム入力サポート・ワークフロー構築サポートなど、
-// データの登録・更新・削除を行わせたくない補助チャットで共有する。
-// get_customers は含めない（name/status しか絞り込めない下位互換ツール。顧客一覧・検索は search_customers に一本化する）
+// Set of tool names that are allowed for read-only access. Shared by auxiliary chats (e.g. form
+// input assistance, workflow-building assistance) where we don't want to allow creating, updating,
+// or deleting data.
+// get_customers is intentionally excluded (a legacy tool that can only filter by name/status;
+// customer listing/search is consolidated into search_customers)
 export const READONLY_TOOL_NAMES = new Set([
 	'list_integrations',
 	'search_customers',

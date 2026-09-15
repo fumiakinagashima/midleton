@@ -36,8 +36,8 @@ export async function createReminder(
 export async function resolveChannelLabels(db: Db, channels: string[]): Promise<string[]> {
 	return Promise.all(
 		channels.map(async (c) => {
-			if (c === 'notification') return '通知センター';
-			if (c === 'email') return 'メール';
+			if (c === 'notification') return 'Notification Center';
+			if (c === 'email') return 'Email';
 			if (c.startsWith('slack:')) {
 				const integration = await getSlackIntegration(db, c.slice('slack:'.length));
 				return integration?.name ?? 'Slack';
@@ -122,8 +122,8 @@ export async function deleteSentReminders(db: Db, accountId: string): Promise<nu
 }
 
 export async function getReminderChannelOptions(db: Db, env?: EmailEnv): Promise<ChannelOption[]> {
-	const options: ChannelOption[] = [{ label: '通知センター', value: 'notification' }];
-	if (await getEmailSetup(db, env)) options.push({ label: 'メール', value: 'email' });
+	const options: ChannelOption[] = [{ label: 'Notification Center', value: 'notification' }];
+	if (await getEmailSetup(db, env)) options.push({ label: 'Email', value: 'email' });
 	for (const s of await listSlackIntegrations(db)) {
 		options.push({ label: s.name, value: `slack:${s.id}` });
 	}

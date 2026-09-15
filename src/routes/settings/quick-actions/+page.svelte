@@ -43,10 +43,10 @@
 </script>
 
 <div class="page">
-	<h1>設定</h1>
+	<h1>Settings</h1>
 
 	<nav class="subnav">
-		<a href="/settings">一般</a>
+		<a href="/settings">General</a>
 		{#if data.account.permission === 'admin'}
 			<a href="/settings/integrations">{m.integrations()}</a>
 		{/if}
@@ -62,9 +62,9 @@
 	<section>
 		<h2>{m.quick_actions()}</h2>
 		<p class="desc">
-			チャット入力欄の「+」ボタンから呼び出せる機能を選択します。AIを介さず直接実行されるため、応答が高速でトークンも消費しません。
+			Choose the features available from the "+" button in the chat input. They run directly without going through the AI, so responses are fast and no tokens are consumed.
 		</p>
-		<p class="count">{selectedIds.length} / {MAX_QUICK_ACTIONS} 選択中</p>
+		<p class="count">{selectedIds.length} / {MAX_QUICK_ACTIONS} selected</p>
 
 		<div class="list">
 			{#each quickActionCatalog as action}

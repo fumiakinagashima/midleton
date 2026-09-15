@@ -10,28 +10,29 @@ export const tools: Tool[] = [
 	{
 		name: 'suggest_customer_followup',
 		description:
-			'顧客の案件・活動履歴をAIが分析し、フォローアップアクションを提案する。' +
-			'顧客名またはIDを指定すると特定顧客の詳細提案、指定しない場合はフォローアップが必要な顧客一覧を返す。' +
-			'「今週フォローアップが必要な企業は？」「〇〇社の次のアクションを提案して」などに使う。',
+			'Has AI analyze a customer\'s deals and activity history to suggest follow-up actions. ' +
+			'If a customer name or ID is given, returns detailed suggestions for that customer; otherwise returns a list of customers who need follow-up. ' +
+			'Used for requests like "Which companies need follow-up this week?" or "Suggest the next action for Acme Corp".',
 		input_schema: {
 			type: 'object',
 			properties: {
 				customer_id: {
 					type: 'string',
-					description: '顧客ID（id か name のどちらか一方、または両方省略で全顧客一覧モード）'
+					description:
+						'Customer ID (specify either id or name, or omit both for the full-customer-list mode)'
 				},
 				customer_name: {
 					type: 'string',
-					description: '顧客名（部分一致）'
+					description: 'Customer name (partial match)'
 				},
 				period: {
 					type: 'string',
 					enum: ['this_week', 'next_week', 'this_month'],
-					description: '全顧客一覧モード時の対象期間（デフォルト: this_week）'
+					description: 'Target period for the full-customer-list mode (default: this_week)'
 				},
 				limit: {
 					type: 'number',
-					description: '全顧客一覧モード時の上限件数（デフォルト: 10）'
+					description: 'Maximum number of results for the full-customer-list mode (default: 10)'
 				}
 			},
 			required: []
@@ -50,9 +51,9 @@ export async function handleSuggestCustomerFollowup(db: Db, input: unknown, env?
 	const { customer_id, customer_name, period, limit } = inputSchema.parse(input);
 
 	const apiKey = env?.ANTHROPIC_API_KEY;
-	if (!apiKey) throw new Error('ANTHROPIC_API_KEY が設定されていません。');
+	if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set.');
 
-	// 顧客指定あり → 単一顧客モード
+	// Customer specified -> single-customer mode
 	if (customer_id || customer_name) {
 		let customer;
 		if (customer_id) {
@@ -63,10 +64,10 @@ export async function handleSuggestCustomerFollowup(db: Db, input: unknown, env?
 				.where(like(customers.name, `%${customer_name}%`));
 			customer = rows[0];
 		}
-		if (!customer) throw new Error(`顧客が見つかりません: ${customer_id ?? customer_name}`);
+		if (!customer) throw new Error(`Customer not found: ${customer_id ?? customer_name}`);
 		return computeCustomerFollowupSingle(db, customer, apiKey);
 	}
 
-	// 顧客指定なし → 全顧客一覧モード
+	// No customer specified -> full-customer-list mode
 	return computeCustomerFollowupList(db, period, limit, apiKey);
 }

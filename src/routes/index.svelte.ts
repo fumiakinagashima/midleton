@@ -69,7 +69,7 @@ function seedMessagesFromChat(
 
 type PanelRecord = { type: string; recordId: string | null; view: 'detail' | 'form'; prefill?: Record<string, string> } | null;
 
-// コアエンティティのCRUDツールフォームは FormDialog ではなく RecordDialog（REST + getTableInfo）で開く
+// CRUD tool forms for core entities are opened in RecordDialog (REST + getTableInfo), not FormDialog
 const CORE_TOOL_TYPE: Record<string, CoreType> = {
 	create_customer: 'customers', update_customer: 'customers',
 	create_contact: 'contacts', update_contact: 'contacts',
@@ -81,9 +81,9 @@ const SNAKE_TO_CAMEL: Record<string, string> = {
 	planned_start: 'plannedStart', planned_end: 'plannedEnd'
 };
 
-// コアCRUDフォームを RecordDialog のパネル指定に変換。対象外（リマインダー等）は null。
+// Converts a core CRUD form into a RecordDialog panel spec. Returns null for anything out of scope (reminders, etc.).
 function coreToolToPanel(form: FormContent): PanelRecord {
-	// entity 属性が指定されている場合は RecordDialog で直接開く（カスタムテーブル含む）
+	// If the entity attribute is set, open it directly in RecordDialog (custom tables included)
 	if (form.entity) {
 		const prefill: Record<string, string> = {};
 		for (const f of form.fields) {
@@ -96,7 +96,7 @@ function coreToolToPanel(form: FormContent): PanelRecord {
 	if (!type) return null;
 	if (form.tool.startsWith('update_')) {
 		const recordId = form.fields.find((f) => f.key === 'id')?.value ?? null;
-		if (!recordId) return null; // id 不明なら FormDialog にフォールバック
+		if (!recordId) return null; // Fall back to FormDialog if the id is unknown
 		return { type, recordId: String(recordId), view: 'form' };
 	}
 	const prefill: Record<string, string> = {};
@@ -123,8 +123,9 @@ export function createChatState(getData: () => PageData) {
 		const d = getData();
 		return !!d.seedNotification || (!!d.seedChat && d.seedChat.messages.length > 0);
 	}));
-	// 未開始（空のチャット）の入力欄はCSSで中央配置するため初回からそのまま表示（フェードなし）。
-	// 既存チャットを開いた場合（seeded）だけ、JSが下部に配置するまで一瞬隠す。
+	// Before the chat starts (an empty chat), the input is centered by CSS, so it's shown as-is
+	// from the start (no fade). Only when opening an existing chat (seeded) is it briefly hidden
+	// until JS positions it at the bottom.
 	let inputReady = $state(untrack(() => !hasStarted));
 	let currentChatId: string | null = untrack(() => getData().seedChat?.id ?? null);
 	let quickActions = $state(loadQuickActions());
@@ -132,8 +133,8 @@ export function createChatState(getData: () => PageData) {
 	let panelForm = $state<FormContent | null>(null);
 	let panelRecord = $state<PanelRecord>(null);
 
-	// テーブル・ガントチャートは既定で --chat-width の中央カラムに収まる縮小表示にする。
-	// ユーザーがコンポーネント上のボタンで個別に拡張表示にしたメッセージIDだけここに記録する。
+	// Tables and Gantt charts default to a compact display that fits the --chat-width center column.
+	// Only message IDs the user expanded individually via the component's button are recorded here.
 	let expandedMessageIds = $state<Set<string>>(new Set());
 
 	function isMessageWide(msg: Message): boolean {
@@ -163,9 +164,10 @@ export function createChatState(getData: () => PageData) {
 		return () => window.removeEventListener('storage', handler);
 	});
 
-	// 通知一覧から ?notification=<id> 付きで遷移してきた場合、その内容をチャットの最初のメッセージとして表示する
-	// 初回ロード時は +page.server.ts の load が SSR でシードするため messages/hasStarted の初期値に直接反映済み（ちらつき防止）。
-	// この effect は同一ルート内でのクライアントサイド遷移（通知ドロワーから別の通知をクリック）時の追加反映を担う。
+	// When navigated to from the notification list with ?notification=<id>, show that content as the chat's first message.
+	// On initial load, +page.server.ts's load function seeds this via SSR, so it's already reflected directly in the
+	// initial values of messages/hasStarted (to avoid flicker). This effect handles subsequent updates from client-side
+	// navigation within the same route (e.g. clicking another notification from the notification drawer).
 	let seededNotificationId: string | null = untrack(() => getData().seedNotification?.id ?? null);
 
 	$effect(() => {
@@ -179,8 +181,8 @@ export function createChatState(getData: () => PageData) {
 		];
 	});
 
-	// サイドバー履歴クリック等で `?id=` が変わった場合、その会話を復元する。
-	// assignChatId() が発行した自分自身のURL変更（currentChatId と一致）では何もしない。
+	// Restores the conversation when `?id=` changes, e.g. from clicking sidebar history.
+	// Does nothing for our own URL change issued by assignChatId() (where it matches currentChatId).
 	$effect(() => {
 		const urlChatId = page.url.searchParams.get('id');
 		if (urlChatId === currentChatId) return;
@@ -193,9 +195,10 @@ export function createChatState(getData: () => PageData) {
 		input = '';
 	});
 
-	// サイドバーの「新しいチャット」クリック時にチャット状態をリセットする
-	// （"/" への遷移はコンポーネントインスタンスを再利用するため自動では戻らない）
-	// マウント時点の値を基準に差分を検出する（絶対値チェックだと再マウント時に誤クリアされる）
+	// Resets the chat state when "New chat" is clicked in the sidebar
+	// (navigating to "/" reuses the component instance, so it doesn't reset automatically)
+	// Detects changes relative to the value at mount time (checking the absolute value would
+	// incorrectly clear it on remount)
 	let mountedResetToken = chatSession.resetToken;
 	$effect(() => {
 		const token = chatSession.resetToken;
@@ -209,8 +212,8 @@ export function createChatState(getData: () => PageData) {
 		input = '';
 	});
 
-	// 開いている間だけ document クリックを監視し、メニュー外クリックで閉じる
-	// （setTimeout で開いた瞬間のクリックイベントを取りこぼす）
+	// Watch document clicks only while open, and close on a click outside the menu
+	// (use setTimeout to avoid catching the click event from the moment it opened)
 	$effect(() => {
 		if (!quickActionMenuOpen) return;
 		const close = () => (quickActionMenuOpen = false);
@@ -225,7 +228,7 @@ export function createChatState(getData: () => PageData) {
 	function repositionInput(animate: boolean) {
 		if (!inputWrapEl) return;
 		if (!hasStarted) {
-			// 未開始時はCSS（top:50% + translateY(-50%)）で中央寄せ。インラインを消してCSSに委ねる。
+			// Before the chat starts, CSS (top:50% + translateY(-50%)) centers it. Clear inline styles and defer to CSS.
 			inputWrapEl.style.transition = '';
 			inputWrapEl.style.top = '';
 			inputWrapEl.style.bottom = '';
@@ -235,7 +238,7 @@ export function createChatState(getData: () => PageData) {
 		if (!chatEl) return;
 		const containerH = chatEl.offsetHeight;
 		const inputH = inputWrapEl.offsetHeight;
-		// 中央→下部のスライドは top と transform を同時にアニメーションさせて滑らかにする
+		// For a smooth center-to-bottom slide, animate top and transform simultaneously
 		inputWrapEl.style.transition = animate
 			? 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
 			: 'none';
@@ -299,8 +302,8 @@ export function createChatState(getData: () => PageData) {
 		persistMessage(message, isFirst ? text : undefined);
 	}
 
-	// 新規チャット（URLにidも notification も無い状態）で最初のメッセージを送る際、
-	// Copilot/Claude.aiのようにチャットIDをURLへ付与する（履歴からの再アクセスを想定）
+	// When sending the first message in a new chat (URL has neither id nor notification),
+	// append the chat ID to the URL like Copilot/Claude.ai does (to support revisiting from history)
 	function assignChatId() {
 		const url = new URL(window.location.href);
 		if (url.searchParams.has('id') || url.searchParams.has('notification')) return;
@@ -330,7 +333,7 @@ export function createChatState(getData: () => PageData) {
 				})
 			});
 		} catch {
-			// 保存失敗時もチャット表示は継続する
+			// Keep showing the chat even if saving fails
 		}
 		if (firstMessageText) {
 			chatHistory.prepend({ id: chatId, title: chatTitleFrom(firstMessageText), updatedAt: new Date().toISOString() });
@@ -349,7 +352,7 @@ export function createChatState(getData: () => PageData) {
 			const { title } = (await res.json()) as { title: string };
 			if (title) chatHistory.updateTitle(chatId, title);
 		} catch {
-			// 失敗時は切り詰めタイトルのまま
+			// Keep the truncated title on failure
 		}
 	}
 
@@ -405,7 +408,7 @@ export function createChatState(getData: () => PageData) {
 		}
 	}
 
-	// 案件のステータス（進行中/受注/失注）をそのまま列にしたカンバン。ドラッグ&ドロップで status を更新できる。
+	// A kanban board whose columns are directly the deal statuses (open/won/lost). Drag & drop updates status.
 	function isDealStatusKanban(content: KanbanContent): boolean {
 		const ids = content.columns.map((c) => c.id);
 		return DEAL_STATUS_IDS.length === ids.length && DEAL_STATUS_IDS.every((id) => ids.includes(id));
@@ -426,7 +429,7 @@ export function createChatState(getData: () => PageData) {
 		}
 	}
 
-	// 削除されたレコードを、同じテーブル種別の一覧テーブルから取り除く
+	// Removes a deleted record from any list table of the same table type
 	function removeRecordRow(entity: string, recordId: string) {
 		for (const msg of messages) {
 			let changed = false;
@@ -449,12 +452,12 @@ export function createChatState(getData: () => PageData) {
 				body: JSON.stringify({ status })
 			});
 			if (!res.ok) {
-				toast.error('ステータスの更新に失敗しました');
+				toast.error('Failed to update status');
 				return false;
 			}
 			return true;
 		} catch {
-			toast.error('ステータスの更新に失敗しました');
+			toast.error('Failed to update status');
 			return false;
 		}
 	}

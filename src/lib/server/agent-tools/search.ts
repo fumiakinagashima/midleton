@@ -11,8 +11,9 @@ import {
 	type FilterableColumn
 } from './filter';
 
-// 個別パラメータを都度追加せずに任意カラムで絞り込むための汎用フィルター（filters）用の許可リスト。
-// field はここに定義したキーのみ受け付ける（生SQL・任意カラム名の注入を防ぐ）
+// Allowlist for the generic filter parameter (filters), which lets callers filter by an arbitrary
+// column without adding a dedicated parameter for each one.
+// field only accepts the keys defined here (prevents raw SQL / arbitrary column name injection)
 const CUSTOMER_FILTER_FIELDS: Record<string, FilterableColumn> = {
 	name: { column: customers.name, type: 'text' },
 	email: { column: customers.email, type: 'text' },
@@ -45,11 +46,11 @@ const ACTIVITY_FILTER_FIELDS: Record<string, FilterableColumn> = {
 const FILTERS_PROPERTY = {
 	type: 'array' as const,
 	description:
-		'名前・ステータス等の専用パラメータでは表現できない絞り込み条件（例: 住所に「東京」を含む → {field:"address",op:"contains",value:"東京"}）。複数指定時はAND条件。',
+		'Filter conditions that cannot be expressed via the dedicated parameters like name or status (e.g. address contains "Tokyo" -> {field:"address",op:"contains",value:"Tokyo"}). When multiple are given, they are combined with AND.',
 	items: {
 		type: 'object' as const,
 		properties: {
-			field: { type: 'string' as const, description: '絞り込み対象のフィールド名' },
+			field: { type: 'string' as const, description: 'Name of the field to filter on' },
 			op: {
 				type: 'string' as const,
 				enum: ['eq', 'not', 'contains', 'gt', 'gte', 'lt', 'lte']
@@ -64,31 +65,31 @@ export const tools: Tool[] = [
 	{
 		name: 'search_customers',
 		description:
-			'顧客一覧の取得・検索を行う唯一のツール（顧客一覧が欲しい場合は常にこれを使う）。名前・ステータスに加え、filters で住所・メール・電話番号等の任意カラムでも絞り込める。「open案件を持つ顧客」「今月面談した顧客」のような案件・活動のリレーション条件（単純フィルタでは届かない絞り込み）にも対応。',
+			'The one tool for listing/searching customers (always use this whenever you need a customer list). In addition to name and status, filters lets you filter on arbitrary columns such as address, email, or phone number. Also supports deal/activity relationship conditions that a simple filter cannot express, such as "customers with an open deal" or "customers met with this month".',
 		input_schema: {
 			type: 'object',
 			properties: {
-				name: { type: 'string', description: '顧客名（部分一致）' },
+				name: { type: 'string', description: 'Customer name (partial match)' },
 				status: { type: 'string', enum: ['active', 'inactive'] },
 				has_deal_status: {
 					type: 'string',
 					enum: ['open', 'won', 'lost'],
-					description: '指定ステータスの案件を持つ顧客に絞り込む'
+					description: 'Restrict to customers with a deal in the given status'
 				},
-				deal_since: { type: 'string', description: '案件の対象期間・開始日（ISO 8601）' },
-				deal_until: { type: 'string', description: '案件の対象期間・終了日（ISO 8601）' },
+				deal_since: { type: 'string', description: 'Deal date range start (ISO 8601)' },
+				deal_until: { type: 'string', description: 'Deal date range end (ISO 8601)' },
 				has_activity_type: {
 					type: 'string',
 					enum: ['note', 'call', 'email', 'meeting', 'deal_created'],
-					description: '指定種別の活動を持つ顧客に絞り込む'
+					description: 'Restrict to customers with an activity of the given type'
 				},
-				activity_since: { type: 'string', description: '活動の対象期間・開始日（ISO 8601）' },
-				activity_until: { type: 'string', description: '活動の対象期間・終了日（ISO 8601）' },
+				activity_since: { type: 'string', description: 'Activity date range start (ISO 8601)' },
+				activity_until: { type: 'string', description: 'Activity date range end (ISO 8601)' },
 				filters: {
 					...FILTERS_PROPERTY,
-					description: `${FILTERS_PROPERTY.description} 対象フィールド: ${filterFieldsDescription(CUSTOMER_FILTER_FIELDS)}`
+					description: `${FILTERS_PROPERTY.description} Available fields: ${filterFieldsDescription(CUSTOMER_FILTER_FIELDS)}`
 				},
-				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
+				limit: { type: 'number', description: 'Number of results to return (default: 50)' }
 			},
 			required: []
 		}
@@ -96,27 +97,27 @@ export const tools: Tool[] = [
 	{
 		name: 'search_deals',
 		description:
-			'案件を複合条件で検索する。顧客ID・顧客名（JOIN）・金額範囲・期間など get_deals より柔軟な絞り込みができる。',
+			'Searches deals with composite conditions. Offers more flexible filtering than get_deals, including customer ID, customer name (via JOIN), amount range, and date range.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '顧客のIDで絞り込む' },
-				customer_name: { type: 'string', description: '顧客名（部分一致）' },
+				customer_id: { type: 'string', description: 'Filter by customer ID' },
+				customer_name: { type: 'string', description: 'Customer name (partial match)' },
 				status: { type: 'string', enum: ['open', 'won', 'lost'] },
-				amount_min: { type: 'number', description: '金額の下限（円）' },
-				amount_max: { type: 'number', description: '金額の上限（円）' },
-				since: { type: 'string', description: '開始日（ISO 8601）' },
-				until: { type: 'string', description: '終了日（ISO 8601）' },
+				amount_min: { type: 'number', description: 'Minimum amount (JPY)' },
+				amount_max: { type: 'number', description: 'Maximum amount (JPY)' },
+				since: { type: 'string', description: 'Start date (ISO 8601)' },
+				until: { type: 'string', description: 'End date (ISO 8601)' },
 				date_field: {
 					type: 'string',
 					enum: ['created_at', 'closed_at'],
-					description: '期間の基準日（デフォルト: created_at）'
+					description: 'Date field used for the date range (default: created_at)'
 				},
 				filters: {
 					...FILTERS_PROPERTY,
-					description: `${FILTERS_PROPERTY.description} 対象フィールド: ${filterFieldsDescription(DEAL_FILTER_FIELDS)}`
+					description: `${FILTERS_PROPERTY.description} Available fields: ${filterFieldsDescription(DEAL_FILTER_FIELDS)}`
 				},
-				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
+				limit: { type: 'number', description: 'Number of results to return (default: 50)' }
 			},
 			required: []
 		}
@@ -124,23 +125,23 @@ export const tools: Tool[] = [
 	{
 		name: 'search_activities',
 		description:
-			'活動履歴を複合条件で検索する。customer_id で顧客に絞り込める。content のキーワード検索も可能。',
+			'Searches activity history with composite conditions. Can be filtered by customer_id. Also supports keyword search on content.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '顧客のIDで絞り込む' },
+				customer_id: { type: 'string', description: 'Filter by customer ID' },
 				type: {
 					type: 'string',
 					enum: ['note', 'call', 'email', 'meeting', 'deal_created']
 				},
-				content: { type: 'string', description: '活動内容のキーワード（部分一致）' },
-				since: { type: 'string', description: '開始日（ISO 8601）' },
-				until: { type: 'string', description: '終了日（ISO 8601）' },
+				content: { type: 'string', description: 'Keyword to search for in activity content (partial match)' },
+				since: { type: 'string', description: 'Start date (ISO 8601)' },
+				until: { type: 'string', description: 'End date (ISO 8601)' },
 				filters: {
 					...FILTERS_PROPERTY,
-					description: `${FILTERS_PROPERTY.description} 対象フィールド: ${filterFieldsDescription(ACTIVITY_FILTER_FIELDS)}`
+					description: `${FILTERS_PROPERTY.description} Available fields: ${filterFieldsDescription(ACTIVITY_FILTER_FIELDS)}`
 				},
-				limit: { type: 'number', description: '取得件数（デフォルト: 50）' }
+				limit: { type: 'number', description: 'Number of results to return (default: 50)' }
 			},
 			required: []
 		}
@@ -148,23 +149,23 @@ export const tools: Tool[] = [
 	{
 		name: 'summarize_deals',
 		description:
-			'案件を件数・金額でステータス別に集計する。「今月の受注合計は？」「open案件の総額は？」などの質問に使う。期間・顧客で絞り込み可能。',
+			'Aggregates deals by status, with count and amount totals. Used for questions like "What is the total won this month?" or "What is the total value of open deals?". Can be filtered by date range and customer.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '特定の顧客に絞り込む' },
+				customer_id: { type: 'string', description: 'Restrict to a specific customer' },
 				since: {
 					type: 'string',
-					description: '集計開始日（ISO 8601 形式 例: 2025-01-01）'
+					description: 'Aggregation start date (ISO 8601 format, e.g. 2025-01-01)'
 				},
 				until: {
 					type: 'string',
-					description: '集計終了日（ISO 8601 形式 例: 2025-12-31）'
+					description: 'Aggregation end date (ISO 8601 format, e.g. 2025-12-31)'
 				},
 				date_field: {
 					type: 'string',
 					enum: ['created_at', 'closed_at'],
-					description: '期間絞り込みの基準日（デフォルト: created_at）'
+					description: 'Date field used for the date range filter (default: created_at)'
 				}
 			},
 			required: []
@@ -173,12 +174,12 @@ export const tools: Tool[] = [
 	{
 		name: 'summarize_customers',
 		description:
-			'顧客数をステータス別（active/inactive）に集計する。「顧客数は何社？」「有効な顧客は？」などに使う。',
+			'Aggregates customer counts by status (active/inactive). Used for questions like "How many customers do we have?" or "How many active customers are there?".',
 		input_schema: {
 			type: 'object',
 			properties: {
-				since: { type: 'string', description: '登録日の開始日（ISO 8601 形式）' },
-				until: { type: 'string', description: '登録日の終了日（ISO 8601 形式）' }
+				since: { type: 'string', description: 'Registration date range start (ISO 8601 format)' },
+				until: { type: 'string', description: 'Registration date range end (ISO 8601 format)' }
 			},
 			required: []
 		}
@@ -186,13 +187,13 @@ export const tools: Tool[] = [
 	{
 		name: 'summarize_activities',
 		description:
-			'活動履歴を種別（note/call/email/meeting/deal_created）ごとに件数集計する。「今月の商談数は？」「電話した件数は？」などに使う。期間・顧客で絞り込み可能。',
+			'Counts activity history entries by type (note/call/email/meeting/deal_created). Used for questions like "How many meetings this month?" or "How many calls were made?". Can be filtered by date range and customer.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '特定の顧客に絞り込む' },
-				since: { type: 'string', description: '集計開始日（ISO 8601 形式）' },
-				until: { type: 'string', description: '集計終了日（ISO 8601 形式）' }
+				customer_id: { type: 'string', description: 'Restrict to a specific customer' },
+				since: { type: 'string', description: 'Aggregation start date (ISO 8601 format)' },
+				until: { type: 'string', description: 'Aggregation end date (ISO 8601 format)' }
 			},
 			required: []
 		}

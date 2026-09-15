@@ -3,19 +3,19 @@ import { generateWordDocument } from './word';
 import { extractZipText } from './test-utils';
 
 describe('generateWordDocument', () => {
-	it('generates a valid docx with Japanese content', async () => {
+	it('generates a valid docx with content', async () => {
 		const buffer = await generateWordDocument({
-			title: '会議資料',
+			title: 'Meeting Materials',
 			blocks: [
-				{ type: 'heading', level: 1, text: '進捗概要' },
-				{ type: 'paragraph', text: '今月の商談数は前月比で増加しました。' },
+				{ type: 'heading', level: 1, text: 'Progress Overview' },
+				{ type: 'paragraph', text: 'The number of deals this month increased compared to last month.' },
 				{
 					type: 'table',
 					columns: [
-						{ key: 'name', label: '案件名' },
-						{ key: 'status', label: '状態' }
+						{ key: 'name', label: 'Deal Name' },
+						{ key: 'status', label: 'Status' }
 					],
-					rows: [{ name: '新規導入案件', status: '商談中' }]
+					rows: [{ name: 'New Adoption Deal', status: 'In Negotiation' }]
 				}
 			]
 		});
@@ -25,8 +25,8 @@ describe('generateWordDocument', () => {
 		expect(bytes[1]).toBe(0x4b);
 
 		const text = await extractZipText(buffer);
-		expect(text).toContain('会議資料');
-		expect(text).toContain('進捗概要');
-		expect(text).toContain('案件名');
+		expect(text).toContain('Meeting Materials');
+		expect(text).toContain('Progress Overview');
+		expect(text).toContain('Deal Name');
 	});
 });

@@ -5,21 +5,21 @@ import { getCachedBriefing, computeBriefing } from '../ai/briefing';
 import type { MessageContent } from '$lib/types/chat';
 import type { QuickActionId } from '$lib/quick-actions/catalog';
 
-const DEAL_STATUS_LABEL: Record<string, string> = { open: '進行中', won: '受注', lost: '失注' };
-const CUSTOMER_STATUS_LABEL: Record<string, string> = { active: '有効', inactive: '無効' };
+const DEAL_STATUS_LABEL: Record<string, string> = { open: 'In Progress', won: 'Won', lost: 'Lost' };
+const CUSTOMER_STATUS_LABEL: Record<string, string> = { active: 'Active', inactive: 'Inactive' };
 const ACTIVITY_TYPE_LABEL: Record<string, string> = {
-	note: 'メモ',
-	call: '通話',
-	email: 'メール',
-	meeting: '面談',
-	deal_created: '案件登録'
+	note: 'Note',
+	call: 'Call',
+	email: 'Email',
+	meeting: 'Meeting',
+	deal_created: 'Deal Registered'
 };
 
 function yen(amount: unknown): string {
 	if (amount === null || amount === undefined || amount === '') return '—';
 	const num = typeof amount === 'string' ? Number(amount) : (amount as number);
 	if (Number.isNaN(num)) return '—';
-	return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(num);
+	return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'JPY' }).format(num);
 }
 
 type ToolQuickActionHandler = {
@@ -52,16 +52,16 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 		input: { limit: 100 },
 		format: (result) => {
 			const rows = result as Record<string, unknown>[];
-			if (rows.length === 0) return [{ type: 'text', text: '顧客が登録されていません。' }];
+			if (rows.length === 0) return [{ type: 'text', text: 'No customers are registered.' }];
 			return [
 				{
 					type: 'table',
 					entity: 'customers',
 					columns: [
-						{ key: 'name', label: '会社名' },
-						{ key: 'email', label: 'メール' },
-						{ key: 'phone', label: '電話番号' },
-						{ key: 'statusLabel', label: 'ステータス' }
+						{ key: 'name', label: 'Company Name' },
+						{ key: 'email', label: 'Email' },
+						{ key: 'phone', label: 'Phone' },
+						{ key: 'statusLabel', label: 'Status' }
 					],
 					rows: rows.map((r) => ({ ...r, statusLabel: CUSTOMER_STATUS_LABEL[r.status as string] ?? r.status }))
 				}
@@ -74,16 +74,16 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 		input: { limit: 100 },
 		format: (result) => {
 			const rows = result as Record<string, unknown>[];
-			if (rows.length === 0) return [{ type: 'text', text: '案件が登録されていません。' }];
+			if (rows.length === 0) return [{ type: 'text', text: 'No deals are registered.' }];
 			return [
 				{
 					type: 'table',
 					entity: 'deals',
 					columns: [
-						{ key: 'title', label: '案件名' },
-						{ key: 'customerName', label: '顧客' },
-						{ key: 'amountLabel', label: '金額' },
-						{ key: 'statusLabel', label: 'ステータス' }
+						{ key: 'title', label: 'Deal Name' },
+						{ key: 'customerName', label: 'Customer' },
+						{ key: 'amountLabel', label: 'Amount' },
+						{ key: 'statusLabel', label: 'Status' }
 					],
 					rows: rows.map((r) => ({
 						...r,
@@ -100,16 +100,16 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 		input: { limit: 100 },
 		format: (result) => {
 			const rows = result as Record<string, unknown>[];
-			if (rows.length === 0) return [{ type: 'text', text: '担当者が登録されていません。' }];
+			if (rows.length === 0) return [{ type: 'text', text: 'No contacts are registered.' }];
 			return [
 				{
 					type: 'table',
 					entity: 'contacts',
 					columns: [
-						{ key: 'name', label: '氏名' },
-						{ key: 'role', label: '役職' },
-						{ key: 'department', label: '部署' },
-						{ key: 'email', label: 'メール' }
+						{ key: 'name', label: 'Name' },
+						{ key: 'role', label: 'Title' },
+						{ key: 'department', label: 'Department' },
+						{ key: 'email', label: 'Email' }
 					],
 					rows
 				}
@@ -125,17 +125,17 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 				by_status: Record<string, { count: number; total_amount: number; avg_amount: number }>;
 			};
 			const entries = Object.entries(by_status);
-			if (entries.length === 0) return [{ type: 'text', text: '案件が登録されていません。' }];
+			if (entries.length === 0) return [{ type: 'text', text: 'No deals are registered.' }];
 			return [
 				{
 					type: 'chart',
 					chartType: 'bar',
-					title: 'ステータス別 案件金額',
+					title: 'Deal Amount by Status',
 					data: entries.map(([status, v]) => ({ label: DEAL_STATUS_LABEL[status] ?? status, value: v.total_amount }))
 				},
 				{
 					type: 'values',
-					title: '案件件数',
+					title: 'Deal Count',
 					items: entries.map(([status, v]) => ({
 						label: DEAL_STATUS_LABEL[status] ?? status,
 						value: v.count,
@@ -152,13 +152,13 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 		format: (result) => {
 			const { total, by_status } = result as { total: number; by_status: Record<string, number> };
 			const entries = Object.entries(by_status);
-			if (entries.length === 0) return [{ type: 'text', text: '顧客が登録されていません。' }];
+			if (entries.length === 0) return [{ type: 'text', text: 'No customers are registered.' }];
 			return [
 				{
 					type: 'values',
-					title: '顧客数',
+					title: 'Customer Count',
 					items: [
-						{ label: '合計', value: total, format: 'number' },
+						{ label: 'Total', value: total, format: 'number' },
 						...entries.map(([status, count]) => ({
 							label: CUSTOMER_STATUS_LABEL[status] ?? status,
 							value: count,
@@ -176,12 +176,12 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 		format: (result) => {
 			const { by_type } = result as { total: number; by_type: Record<string, number> };
 			const entries = Object.entries(by_type);
-			if (entries.length === 0) return [{ type: 'text', text: '活動履歴がありません。' }];
+			if (entries.length === 0) return [{ type: 'text', text: 'No activity history.' }];
 			return [
 				{
 					type: 'chart',
 					chartType: 'bar',
-					title: '種別ごとの活動件数',
+					title: 'Activity Count by Type',
 					data: entries.map(([type, count]) => ({ label: ACTIVITY_TYPE_LABEL[type] ?? type, value: count }))
 				}
 			];
@@ -192,33 +192,33 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 		contents: [
 			{
 				type: 'form',
-				title: '顧客情報登録',
+				title: 'Register Customer Information',
 				tool: 'create_customer',
 				fields: [
-					{ key: 'name', label: '会社名', type: 'text', required: true },
-					{ key: 'email', label: 'メールアドレス', type: 'email' },
-					{ key: 'phone', label: '電話番号', type: 'tel' },
-					{ key: 'postal_code', label: '郵便番号', type: 'text' },
-					{ key: 'address', label: '住所', type: 'text' },
-					{ key: 'website', label: 'ホームページ', type: 'text' },
+					{ key: 'name', label: 'Company Name', type: 'text', required: true },
+					{ key: 'email', label: 'Email Address', type: 'email' },
+					{ key: 'phone', label: 'Phone', type: 'tel' },
+					{ key: 'postal_code', label: 'Postal Code', type: 'text' },
+					{ key: 'address', label: 'Address', type: 'text' },
+					{ key: 'website', label: 'Website', type: 'text' },
 					{
 						key: 'status',
-						label: 'ステータス',
+						label: 'Status',
 						type: 'select',
 						value: 'active',
 						options: [
-							{ label: '有効', value: 'active' },
-							{ label: '無効', value: 'inactive' }
+							{ label: 'Active', value: 'active' },
+							{ label: 'Inactive', value: 'inactive' }
 						]
 					},
-					{ key: 'notes', label: '備考', type: 'textarea' }
+					{ key: 'notes', label: 'Notes', type: 'textarea' }
 				]
 			}
 		]
 	},
 
 	scan_bizcard: {
-		contents: [{ type: 'bizcard', title: '名刺を読み取ってください' }]
+		contents: [{ type: 'bizcard', title: 'Please scan a business card' }]
 	},
 
 	create_reminder: {
@@ -227,19 +227,19 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 			return [
 				{
 					type: 'form',
-					title: 'リマインダー設定',
+					title: 'Set a Reminder',
 					tool: 'create_reminder',
 					fields: [
-						{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true },
+						{ key: 'remind_at', label: 'Date/Time', type: 'datetime-local', required: true },
 						{
 							key: 'channels',
-							label: '通知先',
+							label: 'Notify Via',
 							type: 'multiselect',
 							required: true,
 							value: 'notification',
 							options
 						},
-						{ key: 'content', label: '内容', type: 'textarea', required: true }
+						{ key: 'content', label: 'Content', type: 'textarea', required: true }
 					]
 				}
 			];
@@ -252,7 +252,7 @@ const handlers: Record<QuickActionId, QuickActionHandler> = {
 			const cached = await getCachedBriefing(db, accountId);
 			if (cached) return cached;
 			const apiKey = env?.ANTHROPIC_API_KEY ?? '';
-			if (!apiKey) return [{ type: 'text', text: 'ANTHROPIC_API_KEY が設定されていません。' }];
+			if (!apiKey) return [{ type: 'text', text: 'ANTHROPIC_API_KEY is not configured.' }];
 			return computeBriefing(db, accountId, apiKey);
 		}
 	}

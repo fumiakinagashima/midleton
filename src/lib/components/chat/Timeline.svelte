@@ -22,11 +22,11 @@
 	};
 
 	const TYPE_LABELS: Record<string, string> = {
-		note: 'メモ',
-		call: '電話',
-		email: 'メール',
-		meeting: '面談',
-		deal_created: '案件登録'
+		note: 'Note',
+		call: 'Call',
+		email: 'Email',
+		meeting: 'Meeting',
+		deal_created: 'Deal created'
 	};
 
 	let activities = $state<Activity[]>([]);
@@ -87,9 +87,9 @@
 		<div class="card-title">{title}</div>
 	{/if}
 	{#if loading}
-		<p class="state">読み込み中...</p>
+		<p class="state">Loading...</p>
 	{:else if displayActivities.length === 0}
-		<p class="state">表示できる活動履歴がありません。</p>
+		<p class="state">No activity history to display.</p>
 	{:else}
 		<ol class="timeline">
 			{#each displayActivities as a (a.id)}

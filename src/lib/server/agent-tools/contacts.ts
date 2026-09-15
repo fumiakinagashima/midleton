@@ -8,50 +8,50 @@ import { parseJson, mergeCustom, now } from './shared';
 export const tools: Tool[] = [
 	{
 		name: 'get_contacts',
-		description: '担当者一覧を取得する。顧客IDで絞り込みができる。',
+		description: 'Fetches the contact list. Can be filtered by customer ID.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '顧客IDで絞り込む' },
-				limit: { type: 'number', description: '取得件数の上限（デフォルト: 50）' }
+				customer_id: { type: 'string', description: 'Filter by customer ID' },
+				limit: { type: 'number', description: 'Maximum number of results to return (default: 50)' }
 			},
 			required: []
 		}
 	},
 	{
 		name: 'create_contact',
-		description: '担当者を登録する。顧客IDは必須。',
+		description: 'Registers a contact. Customer ID is required.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '紐付ける顧客のID（必須）' },
-				name: { type: 'string', description: '担当者名（必須）' },
-				name_kana: { type: 'string', description: '担当者名のフリガナ（カナ）' },
-				email: { type: 'string', description: 'メールアドレス' },
-				phone: { type: 'string', description: '電話番号' },
-				role: { type: 'string', description: '役職' },
-				department: { type: 'string', description: '部署' },
-				notes: { type: 'string', description: '備考' },
-				custom: { type: 'object', description: 'カスタムフィールド' }
+				customer_id: { type: 'string', description: 'ID of the customer to link this contact to (required)' },
+				name: { type: 'string', description: 'Contact name (required)' },
+				name_kana: { type: 'string', description: 'Contact name reading (kana)' },
+				email: { type: 'string', description: 'Email address' },
+				phone: { type: 'string', description: 'Phone number' },
+				role: { type: 'string', description: 'Job title' },
+				department: { type: 'string', description: 'Department' },
+				notes: { type: 'string', description: 'Notes' },
+				custom: { type: 'object', description: 'Custom fields' }
 			},
 			required: ['customer_id', 'name']
 		}
 	},
 	{
 		name: 'update_contact',
-		description: '担当者情報を更新する。',
+		description: 'Updates contact information.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				id: { type: 'string', description: '担当者ID（必須）' },
-				name: { type: 'string', description: '担当者名' },
-				name_kana: { type: 'string', description: '担当者名のフリガナ（カナ）' },
-				email: { type: 'string', description: 'メールアドレス' },
-				phone: { type: 'string', description: '電話番号' },
-				role: { type: 'string', description: '役職' },
-				department: { type: 'string', description: '部署' },
-				notes: { type: 'string', description: '備考' },
-				custom: { type: 'object', description: 'カスタムフィールド（既存データとマージ）' }
+				id: { type: 'string', description: 'Contact ID (required)' },
+				name: { type: 'string', description: 'Contact name' },
+				name_kana: { type: 'string', description: 'Contact name reading (kana)' },
+				email: { type: 'string', description: 'Email address' },
+				phone: { type: 'string', description: 'Phone number' },
+				role: { type: 'string', description: 'Job title' },
+				department: { type: 'string', description: 'Department' },
+				notes: { type: 'string', description: 'Notes' },
+				custom: { type: 'object', description: 'Custom fields (merged with existing data)' }
 			},
 			required: ['id']
 		}
@@ -120,7 +120,7 @@ export async function handleCreateContact(db: Db, input: unknown) {
 export async function handleUpdateContact(db: Db, input: unknown) {
 	const data = updateContactSchema.parse(input);
 	const [existing] = await db.select().from(contacts).where(eq(contacts.id, data.id));
-	if (!existing) throw new Error(`担当者が見つかりません: ${data.id}`);
+	if (!existing) throw new Error(`Contact not found: ${data.id}`);
 
 	await db
 		.update(contacts)

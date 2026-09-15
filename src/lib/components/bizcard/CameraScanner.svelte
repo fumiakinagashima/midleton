@@ -19,7 +19,7 @@
 
 	let stream: MediaStream | null = null;
 
-	const LIVE_STATUS_MSG = 'シャッターボタン（または Space キー）で撮影してください。';
+	const LIVE_STATUS_MSG = 'Press the shutter button (or the Space key) to capture.';
 
 	/** Computes the source rect of `videoEl` visible under `object-fit: cover` for a `containerW x containerH` box. */
 	function getCoverCrop(
@@ -108,7 +108,7 @@
 
 	async function startCamera() {
 		scanState = 'starting';
-		statusMsg = 'カメラを起動しています…';
+		statusMsg = 'Starting the camera…';
 		errorMsg = '';
 		await tick();
 
@@ -125,11 +125,11 @@
 			scanState = 'error';
 			const name = e instanceof Error ? e.name : '';
 			if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-				errorMsg = 'カメラの使用が許可されていません。';
+				errorMsg = 'Camera access was not granted.';
 			} else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-				errorMsg = 'カメラが見つかりません。';
+				errorMsg = 'No camera was found.';
 			} else {
-				errorMsg = 'カメラの起動に失敗しました。';
+				errorMsg = 'Failed to start the camera.';
 			}
 			return;
 		}
@@ -169,12 +169,12 @@
 <div class="scanner">
 	{#if scanState === 'init'}
 		<div class="placeholder">
-			<button class="primary-btn" onclick={startCamera}>カメラで読み取る</button>
+			<button class="primary-btn" onclick={startCamera}>Scan with camera</button>
 		</div>
 	{:else if scanState === 'error'}
 		<div class="placeholder">
 			<p class="error-text">{errorMsg}</p>
-			<button class="primary-btn" onclick={startCamera}>再試行</button>
+			<button class="primary-btn" onclick={startCamera}>Retry</button>
 		</div>
 	{/if}
 
@@ -184,7 +184,7 @@
 		{#if statusMsg}
 			<p class="status">{statusMsg}</p>
 		{/if}
-		<button class="shutter" onclick={manualCapture} disabled={scanState !== 'live'} aria-label="撮影"></button>
+		<button class="shutter" onclick={manualCapture} disabled={scanState !== 'live'} aria-label="Capture"></button>
 	</div>
 </div>
 

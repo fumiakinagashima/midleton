@@ -1,231 +1,231 @@
 # Midleton
 
-AIファーストなチャットベースの CRM/SFA。ユーザーはチャットで業務指示を出し、Claude AI がエージェントツールを介して動的にフォームやテーブル・チャートなどを生成して操作を完結させる。
+An AI-first, chat-based CRM/SFA. Users give business instructions in chat, and Claude AI uses agent tools to dynamically generate forms, tables, and charts, and to drive the workflow to completion.
 
-## 主な機能
+## Key features
 
-- **チャットAI**（`/`）— Claude API + エージェントツールによる顧客・商談・タスク等の検索・集計・分析、ノーコードUI（フォーム・テーブル・チャート・ガント・カンバン・タイムライン等）生成、資料データ素材生成（CSV/Markdown）
-- **クイックアクション** — チャット入力欄の「+」から、AIを介さず一覧・集計系ツールを即時実行（トークン消費なし）
-- **データ管理**（`/database`）— コアエンティティ（顧客・担当者・案件・活動履歴）のCRUD・カスタムフィールド定義、アカウント管理、リマインダー管理
-- **名刺取り込み**（`/bizcard`）— カメラで撮影した名刺から顧客情報をAIで抽出し登録
-- **設定**（`/settings`）— 外部API連携、メール送信設定、クイックアクション選択、自身のプロフィール編集
-- **通知・リマインダー** — 通知センターと、Cron Triggerによるリマインダー自動配信（通知センター／メール／Slack）
-- **認証・権限** — ログイン必須（全ルートガード）、`general`/`admin` 権限による管理画面・APIのアクセス制御
+- **Chat AI** (`/`) — search, aggregate, and analyze customers, deals, and tasks via the Claude API + agent tools; generates no-code UI (forms, tables, charts, Gantt charts, kanban boards, timelines, etc.) and source material for documents (CSV/Markdown)
+- **Quick actions** — run read-only/aggregate tools instantly from the "+" button in the chat input, without going through the AI (no token cost)
+- **Data management** (`/database`) — CRUD and custom field definitions for the core entities (customers, contacts, deals, activity history), account management, reminder management
+- **Business card capture** (`/bizcard`) — extracts customer information from a business card photo using AI and registers it
+- **Settings** (`/settings`) — external API integrations, email sending configuration, quick action selection, profile editing
+- **Notifications & reminders** — a notification center, plus automated reminder delivery via a Cron Trigger (notification center / email / Slack)
+- **Auth & permissions** — login required everywhere (full route guarding), with `general`/`admin` permission levels controlling access to admin pages and APIs
 
-## 技術スタック
+## Tech stack
 
-| 分類 | 技術 |
+| Category | Technology |
 |------|------|
-| パッケージマネージャー | Bun |
-| フロントエンド | SvelteKit, TypeScript |
-| バリデーション | Zod |
+| Package manager | Bun |
+| Frontend | SvelteKit, TypeScript |
+| Validation | Zod |
 | ORM | DrizzleORM |
-| インフラ | Cloudflare (Wrangler, D1, R2, KV, Queue) |
-| AI | Claude API (Anthropic)、ツール呼び出しはアプリ内関数として実装 |
+| Infrastructure | Cloudflare (Wrangler, D1, R2, KV, Queue) |
+| AI | Claude API (Anthropic); tool calling is implemented as in-app functions |
 | i18n | Paraglide-JS |
-| テスト | Vitest（ユニット）, Playwright（E2E） |
+| Testing | Vitest (unit), Playwright (E2E) |
 
-## 開発環境のセットアップ
+## Development setup
 
-### 必要なもの
+### Prerequisites
 
-- [Bun](https://bun.sh/) v1.x 以上
+- [Bun](https://bun.sh/) v1.x or later
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm install -g wrangler`)
 
-### 1. インストール
+### 1. Install
 
 ```sh
-git clone https://github.com/your-org/midleton.git
+git clone https://github.com/fumiakinagashima/midleton.git
 cd midleton
 bun install
 ```
 
-### 2. 環境変数の設定
+### 2. Configure environment variables
 
-`.dev.vars.example` をコピーして `.dev.vars` を作成し、必要な値を入力する:
+Copy `.dev.vars.example` to `.dev.vars` and fill in the values you need:
 
 ```sh
 cp .dev.vars.example .dev.vars
 ```
 
-最低限必要な設定:
+The minimum required setup:
 
 ```sh
-ANTHROPIC_API_KEY="sk-ant-..."  # Anthropic API キー
-MOCK_AI="false"                 # true にするとAPI不要でモックレスポンスで動作確認できる
+ANTHROPIC_API_KEY="sk-ant-..."  # Your Anthropic API key
+MOCK_AI="false"                 # Set to true to try the app with mock responses, no API key needed
 ```
 
-メール機能を使う場合は `EMAIL_PROVIDER` と対応するキーも設定する（`resend` / `ses` / `smtp`）。
+To use email features, also set `EMAIL_PROVIDER` and the corresponding keys (`resend` / `ses` / `smtp`).
 
-### 3. データベースのマイグレーション
+### 3. Run database migrations
 
-D1 ローカルデータベースにマイグレーションを適用する（`.wrangler/state/` にSQLiteが作成される）:
+Apply migrations to the local D1 database (creates a SQLite file under `.wrangler/state/`):
 
 ```sh
 bunx wrangler d1 migrations apply midleton --local
 ```
 
-マイグレーション完了時にテスト用アカウント5件と管理者アカウントが自動で作成される:
+Once migrations finish, 5 test accounts and an admin account are created automatically:
 
-| メールアドレス | パスワード | 権限 |
+| Email | Password | Permission |
 |---|---|---|
-| `info@alcogy.com` | `password` | admin |
-| `user1@example.com` ～ `user5@example.com` | `password` | general |
+| `admin@example.com` | `password` | admin |
+| `user1@example.com` – `user5@example.com` | `password` | general |
 
-### 4. デモデータの投入（任意）
+### 4. Seed demo data (optional)
 
-顧客・担当者・商談・活動のサンプルデータを投入する場合:
+To load sample customers, contacts, deals, and activities:
 
 ```sh
 bun run db:seed:demo
 ```
 
-### 5. 開発サーバーの起動
+### 5. Start the dev server
 
 ```sh
-bun dev   # Vite + platformProxy で HMR 付き起動
+bun dev   # Vite + platformProxy, with HMR
 ```
 
-ブラウザで `http://localhost:5173` を開き、`/signin` からログインする。
+Open `http://localhost:5173` in your browser and sign in from `/signin`.
 
-KV・R2 はローカルでは `.wrangler/state/` に自動作成されるため、追加設定は不要。
+KV and R2 are created automatically under `.wrangler/state/` for local development, so no extra setup is required.
 
-> **メール送信（SMTP）の注意**: `/settings/email` のSMTPプロバイダーは `cloudflare:sockets`（workerdランタイム専用API）を使うため、`bun dev`（Node.js上のVite）では動作しない。ローカルで確認する場合は Resend または AWS SES を使用すること。
+> **Note on sending email (SMTP)**: the SMTP provider under `/settings/email` uses `cloudflare:sockets` (a workerd-runtime-only API), so it doesn't work under `bun dev` (Vite on Node.js). Use Resend or AWS SES if you need to test email locally.
 
-### その他のコマンド
+### Other commands
 
 ```sh
-bun run check          # 型チェック（svelte-check）
-bun run test:unit      # ユニットテスト（Vitest）
-bun run test:e2e       # E2Eテスト（Playwright）
-bun run db:studio      # Drizzle Studio でローカルDBを確認
+bun run check          # Type-check (svelte-check)
+bun run test:unit      # Unit tests (Vitest)
+bun run test:e2e       # E2E tests (Playwright)
+bun run db:studio      # Inspect the local DB with Drizzle Studio
 ```
 
-## UIコンポーネント
+## UI components
 
-コンポーネントは2種類に分類される。
+Components fall into two categories:
 
-- **`src/lib/components/ui/`** — アプリ UI（デザインシステム）
-- **`src/lib/components/chat/`** — AI がノーコードとしてレスポンスに返すコンポーネント
+- **`src/lib/components/ui/`** — the app's UI (design system)
+- **`src/lib/components/chat/`** — components the AI returns as no-code UI in chat responses
 
-ライブデモは `/ui` ルートで確認できる。
+A live demo is available at the `/ui` route.
 
 ---
 
-### アプリ UI コンポーネント
+### App UI components
 
 #### Textbox
 
-テキスト入力フィールド。
+A text input field.
 
 ```svelte
-<Textbox label="会社名" bind:value={name} placeholder="株式会社..." required />
-<Textbox label="メール" bind:value={email} type="email" error="正しいメールアドレスを入力してください" />
+<Textbox label="Company name" bind:value={name} placeholder="Acme Inc..." required />
+<Textbox label="Email" bind:value={email} type="email" error="Please enter a valid email address" />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `label` | `string?` | ラベルテキスト |
-| `value` | `string` (bindable) | 入力値 |
-| `type` | `string?` | input の type 属性（デフォルト `text`） |
-| `placeholder` | `string?` | プレースホルダー |
-| `required` | `boolean?` | 必須マーク表示 |
-| `disabled` | `boolean?` | 無効状態 |
-| `error` | `string?` | エラーメッセージ |
+| `label` | `string?` | Label text |
+| `value` | `string` (bindable) | Input value |
+| `type` | `string?` | The input's `type` attribute (default `text`) |
+| `placeholder` | `string?` | Placeholder text |
+| `required` | `boolean?` | Shows a required marker |
+| `disabled` | `boolean?` | Disabled state |
+| `error` | `string?` | Error message |
 
 ---
 
 #### Textarea
 
-複数行テキスト入力。
+A multi-line text input.
 
 ```svelte
-<Textarea label="メモ" bind:value={memo} rows={4} placeholder="自由記述..." />
+<Textarea label="Notes" bind:value={memo} rows={4} placeholder="Free text..." />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `rows` | `number?` | 行数（デフォルト `3`） |
-| その他 | — | Textbox と同様 |
+| `rows` | `number?` | Number of rows (default `3`) |
+| others | — | Same as Textbox |
 
 ---
 
 #### Select
 
-ネイティブ select（カスタム矢印付き）。
+A native select (with a custom arrow).
 
 ```svelte
-<Select label="ステータス" bind:value={status} options={[
-  { value: 'active', label: 'アクティブ' },
-  { value: 'inactive', label: '非アクティブ' }
+<Select label="Status" bind:value={status} options={[
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' }
 ]} />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `options` | `{ value: string; label: string }[]` | 選択肢 |
-| `placeholder` | `string?` | 未選択時の表示テキスト |
+| `options` | `{ value: string; label: string }[]` | Options |
+| `placeholder` | `string?` | Text shown when nothing is selected |
 
 ---
 
 #### SearchSelect
 
-検索機能付きの Combobox。キーボードナビゲーション（↑↓ Enter Esc）対応。
+A combobox with search. Supports keyboard navigation (↑↓ Enter Esc).
 
 ```svelte
-<SearchSelect label="国" bind:value={country} options={countryOptions} placeholder="検索または選択..." />
+<SearchSelect label="Country" bind:value={country} options={countryOptions} placeholder="Search or select..." />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `options` | `{ value: string; label: string }[]` | 選択肢 |
-| `placeholder` | `string?` | プレースホルダー |
+| `options` | `{ value: string; label: string }[]` | Options |
+| `placeholder` | `string?` | Placeholder text |
 
 ---
 
 #### Toggle
 
-オン/オフ切り替えスイッチ。
+An on/off switch.
 
 ```svelte
-<Toggle label="メール通知を受け取る" bind:checked={enabled} />
+<Toggle label="Receive email notifications" bind:checked={enabled} />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `label` | `string?` | ラベルテキスト |
-| `checked` | `boolean` (bindable) | 状態 |
-| `disabled` | `boolean?` | 無効状態 |
+| `label` | `string?` | Label text |
+| `checked` | `boolean` (bindable) | State |
+| `disabled` | `boolean?` | Disabled state |
 
 ---
 
 #### MultiSelect
 
-複数選択ボタン（チェックボックスの代替）。値は `string[]`。
+Multi-select buttons (an alternative to checkboxes). The value is `string[]`.
 
 ```svelte
-<MultiSelect label="タグ" bind:value={tags} options={[
+<MultiSelect label="Tags" bind:value={tags} options={[
   { value: 'vip', label: 'VIP' },
-  { value: 'partner', label: 'パートナー' }
+  { value: 'partner', label: 'Partner' }
 ]} />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `value` | `string[]` (bindable) | 選択中の値の配列 |
-| `options` | `{ value: string; label: string }[]` | 選択肢 |
+| `value` | `string[]` (bindable) | Array of selected values |
+| `options` | `{ value: string; label: string }[]` | Options |
 
 ---
 
 #### SingleSelect
 
-単一選択ボタン（ラジオボタンの代替）。セグメントコントロール風。
+Single-select buttons (an alternative to radio buttons). A segmented-control look.
 
 ```svelte
-<SingleSelect label="優先度" bind:value={priority} options={[
-  { value: 'low', label: '低' },
-  { value: 'medium', label: '中' },
-  { value: 'high', label: '高' }
+<SingleSelect label="Priority" bind:value={priority} options={[
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' }
 ]} />
 ```
 
@@ -233,122 +233,122 @@ bun run db:studio      # Drizzle Studio でローカルDBを確認
 
 #### DatePicker
 
-日付入力（ネイティブ `<input type="date">`）。
+A date input (native `<input type="date">`).
 
 ```svelte
-<DatePicker label="契約日" bind:value={date} min="2024-01-01" />
+<DatePicker label="Contract date" bind:value={date} min="2024-01-01" />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `value` | `string` (bindable) | ISO 8601 形式の日付文字列 |
-| `min` / `max` | `string?` | 入力範囲 |
+| `value` | `string` (bindable) | An ISO 8601 date string |
+| `min` / `max` | `string?` | Allowed range |
 
 ---
 
 #### TimePicker
 
-時刻入力（ネイティブ `<input type="time">`）。
+A time input (native `<input type="time">`).
 
 ```svelte
-<TimePicker label="開始時刻" bind:value={time} />
+<TimePicker label="Start time" bind:value={time} />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `value` | `string` (bindable) | `HH:MM` 形式 |
+| `value` | `string` (bindable) | `HH:MM` format |
 
 ---
 
 #### DateTimePicker
 
-日時入力（ネイティブ `<input type="datetime-local">`）。
+A date/time input (native `<input type="datetime-local">`).
 
 ```svelte
-<DateTimePicker label="予定日時" bind:value={datetime} />
+<DateTimePicker label="Scheduled date/time" bind:value={datetime} />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `value` | `string` (bindable) | `YYYY-MM-DDTHH:MM` 形式 |
-| `min` / `max` | `string?` | 入力範囲 |
+| `value` | `string` (bindable) | `YYYY-MM-DDTHH:MM` format |
+| `min` / `max` | `string?` | Allowed range |
 
 ---
 
 #### NumberInput
 
-数値入力（−/＋ ステッパーボタン付き）。ブラウザのスピンボタンは非表示。
+A numeric input (with -/+ stepper buttons). The browser's native spin buttons are hidden.
 
 ```svelte
-<NumberInput label="数量" bind:value={qty} min={0} max={100} step={5} suffix="個" />
-<NumberInput label="金額" bind:value={amount} prefix="¥" step={1000} />
+<NumberInput label="Quantity" bind:value={qty} min={0} max={100} step={5} suffix="pcs" />
+<NumberInput label="Amount" bind:value={amount} prefix="$" step={1000} />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `value` | `number` (bindable) | 数値 |
-| `min` / `max` | `number?` | 範囲（上下限でボタン無効化） |
-| `step` | `number?` | ステップ量（デフォルト `1`） |
-| `prefix` / `suffix` | `string?` | 前後の単位表示 |
+| `value` | `number` (bindable) | The numeric value |
+| `min` / `max` | `number?` | Range (disables the stepper buttons at the bounds) |
+| `step` | `number?` | Step size (default `1`) |
+| `prefix` / `suffix` | `string?` | A unit shown before/after the value |
 
 ---
 
 #### FileUpload
 
-ドラッグ&ドロップ対応のファイル選択エリア。
+A drag-and-drop file picker.
 
 ```svelte
-<FileUpload label="添付ファイル" accept=".pdf,.xlsx" multiple />
+<FileUpload label="Attachment" accept=".pdf,.xlsx" multiple />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `accept` | `string?` | 許可する拡張子 |
-| `multiple` | `boolean?` | 複数ファイル選択 |
+| `accept` | `string?` | Allowed file extensions |
+| `multiple` | `boolean?` | Allow selecting multiple files |
 
 ---
 
 #### Table
 
-ソート・ページネーション付きのデータテーブル。
+A data table with sorting and pagination.
 
 ```svelte
 <Table
   columns={[
-    { key: 'name', label: '会社名', sortable: true },
-    { key: 'status', label: 'ステータス' }
+    { key: 'name', label: 'Company name', sortable: true },
+    { key: 'status', label: 'Status' }
   ]}
   rows={tableData}
   pageSize={10}
 />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `columns` | `{ key, label, sortable? }[]` | カラム定義 |
-| `rows` | `Record<string, unknown>[]` | データ |
-| `pageSize` | `number?` | 1ページの行数（デフォルト `10`） |
+| `columns` | `{ key, label, sortable? }[]` | Column definitions |
+| `rows` | `Record<string, unknown>[]` | Data |
+| `pageSize` | `number?` | Rows per page (default `10`) |
 
 ---
 
 #### Pagination
 
-ページネーションコントロール（Table 内でも使用）。
+Pagination controls (also used inside Table).
 
 ```svelte
 <Pagination bind:page={currentPage} totalPages={20} />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `page` | `number` (bindable) | 現在のページ（1始まり） |
-| `totalPages` | `number` | 総ページ数 |
+| `page` | `number` (bindable) | Current page (1-indexed) |
+| `totalPages` | `number` | Total number of pages |
 
 ---
 
 #### List
 
-カード表示のリスト。ジェネリクス対応で型安全なスニペットを受け取る。
+A card-based list. Generic, so it accepts a type-safe snippet.
 
 ```svelte
 <List items={customers} columns={3}>
@@ -359,67 +359,67 @@ bun run db:studio      # Drizzle Studio でローカルDBを確認
 </List>
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `items` | `T[]` | データ配列 |
-| `columns` | `number?` | グリッド列数（デフォルト `2`） |
-| `card` | `Snippet<[T]>` | カードのレンダリングスニペット |
+| `items` | `T[]` | The data array |
+| `columns` | `number?` | Number of grid columns (default `2`) |
+| `card` | `Snippet<[T]>` | The snippet used to render each card |
 
 ---
 
 #### DataGrid
 
-スプレッドシート型のグリッド入力。Tab/Enter キーでセル移動。
+A spreadsheet-style grid input. Move between cells with Tab/Enter.
 
 ```svelte
 <DataGrid
   bind:rows={gridRows}
   columns={[
-    { key: 'name', label: '氏名', width: 160 },
-    { key: 'dept', label: '部署', type: 'select', options: [
-      { value: 'sales', label: '営業' },
-      { value: 'eng', label: 'エンジニア' }
+    { key: 'name', label: 'Name', width: 160 },
+    { key: 'dept', label: 'Department', type: 'select', options: [
+      { value: 'sales', label: 'Sales' },
+      { value: 'eng', label: 'Engineering' }
     ]},
-    { key: 'age', label: '年齢', type: 'number', width: 90 },
-    { key: 'note', label: '備考', readonly: true }
+    { key: 'age', label: 'Age', type: 'number', width: 90 },
+    { key: 'note', label: 'Notes', readonly: true }
   ]}
   onchange={(rows) => console.log(rows)}
 />
 ```
 
-| prop | 型 | 説明 |
+| prop | type | description |
 |------|----|------|
-| `columns` | `GridColumn[]` | カラム定義 |
-| `rows` | `GridRow[]` (bindable) | データ（`Record<string, string\|number\|null>`） |
-| `addable` | `boolean?` | 行追加ボタン表示（デフォルト `true`） |
-| `deletable` | `boolean?` | 行削除ボタン表示（デフォルト `true`） |
-| `onchange` | `(rows) => void?` | 変更コールバック |
+| `columns` | `GridColumn[]` | Column definitions |
+| `rows` | `GridRow[]` (bindable) | Data (`Record<string, string\|number\|null>`) |
+| `addable` | `boolean?` | Show the "add row" button (default `true`) |
+| `deletable` | `boolean?` | Show the "delete row" button (default `true`) |
+| `onchange` | `(rows) => void?` | Change callback |
 
-**GridColumn のフィールド:**
+**GridColumn fields:**
 
-| フィールド | 型 | 説明 |
+| field | type | description |
 |----------|----|------|
-| `key` | `string` | データキー |
-| `label` | `string` | ヘッダーテキスト |
-| `type` | `'text'\|'number'\|'select'?` | セルの入力タイプ |
-| `options` | `{ value, label }[]?` | type が `select` のときの選択肢 |
-| `width` | `number?` | 列幅（px） |
-| `readonly` | `boolean?` | 編集不可 |
+| `key` | `string` | The data key |
+| `label` | `string` | Header text |
+| `type` | `'text'\|'number'\|'select'?` | The cell's input type |
+| `options` | `{ value, label }[]?` | Options, when type is `select` |
+| `width` | `number?` | Column width (px) |
+| `readonly` | `boolean?` | Not editable |
 
-**キーボード操作:**
+**Keyboard controls:**
 
-| キー | 動作 |
+| key | action |
 |------|------|
-| Tab / Shift+Tab | 次/前のセルへ移動 |
-| Enter | 下のセルへ移動 |
-| Esc | 編集を終了 |
+| Tab / Shift+Tab | Move to the next/previous cell |
+| Enter | Move to the cell below |
+| Esc | Stop editing |
 
 ---
 
 
 #### TypingIndicator
 
-AIのタイピング中アニメーション（3点ドット）。
+An animated "AI is typing" indicator (three dots).
 
 ```svelte
 {#if isLoading}
@@ -429,116 +429,118 @@ AIのタイピング中アニメーション（3点ドット）。
 
 ---
 
-### チャット UI コンポーネント（`src/lib/components/chat/`）
+### Chat UI components (`src/lib/components/chat/`)
 
-AI がレスポンスとして返す動的UIコンポーネント。システムプロンプトの仕様に従って AI が `<ui type="...">` タグを出力し、クライアント側でパースされて描画される。詳細な仕様は `src/lib/server/ai/` のシステムプロンプトで一元管理している。
+Dynamic UI components the AI returns as part of its response. Per the system prompt's spec, the AI outputs `<ui type="...">` tags, which are parsed and rendered client-side. The full spec is centrally managed in the system prompts under `src/lib/server/ai/`.
 
-#### Form（チャット用）
+#### Form (chat)
 
 ```
-<ui type="form" title="顧客登録">
-[{"key":"name","label":"会社名","type":"text","required":true},{"key":"industry","label":"業種","type":"select","options":[...]}]
+<ui type="form" title="Register customer">
+[{"key":"name","label":"Company name","type":"text","required":true},{"key":"industry","label":"Industry","type":"select","options":[...]}]
 </ui>
 ```
 
-フィールドタイプ: `text` / `email` / `number` / `textarea` / `select` / `date` / `datetime-local` / `recordSelect`（リレーション先を検索選択）/ `hidden`
+Field types: `text` / `email` / `number` / `textarea` / `select` / `date` / `datetime-local` / `recordSelect` (a search-select for a related record) / `hidden`
 
-#### Table（チャット用）
+#### Table (chat)
 
 ```
-<ui type="table" title="顧客一覧">
-{"columns":[{"key":"name","label":"会社名"},...],"rows":[...]}
+<ui type="table" title="Customer list">
+{"columns":[{"key":"name","label":"Company name"},...],"rows":[...]}
 </ui>
 ```
 
 #### ActionSelector
 
 ```
-<ui type="actions" title="どうしますか？">
-[{"id":"create","label":"顧客を登録する","description":"新規顧客情報をフォームで入力します"}]
+<ui type="actions" title="What would you like to do?">
+[{"id":"create","label":"Register a customer","description":"Enter new customer information in a form"}]
 </ui>
 ```
 
-ユーザーがアクションを選択すると、そのラベルがチャット入力として送信される。
+When the user picks an action, its label is sent as a chat message.
 
-#### その他のコンポーネント
+#### Other components
 
-| コンポーネント | 用途 |
+| component | purpose |
 |------|------|
-| `Values` | キー・バリュー形式のサマリー表示（健全性スコア等） |
-| `Gantt` | プロジェクト・タスクのガントチャート表示 |
-| `Timeline` | 活動履歴の時系列ビジュアル表示 |
-| `Kanban` | 商談ステータス等のカンバンボード表示 |
-| `Link` | レコードへのリンク。`newTab="true"` で別タブ表示（会話を中断させない） |
-| `Reply` | AIが質問・選択肢を提示する際のインライン回答UI（単一選択・複数選択・テキスト入力） |
-| `Bizcard` | 名刺画像のスキャン・読取結果表示 |
-| `DocHandoff` | 資料データファイル（CSV/Markdown）のDLリンクと外部AIツール向けプロンプト表示 |
-| `DocumentJob` | 非同期資料生成ジョブの進行状況・完了通知表示（`DocHandoff` 移行後は非推奨） |
+| `Values` | A key/value summary view (e.g. a health score) |
+| `Gantt` | A Gantt chart of project/deal schedules |
+| `Timeline` | A chronological visualization of activity history |
+| `Kanban` | A kanban board (e.g. deal pipeline by stage) |
+| `Link` | A link to a record. `newTab="true"` opens it in a new tab (without interrupting the conversation) |
+| `Reply` | An inline reply UI for the AI to ask a question or offer choices (single-select, multi-select, or text input) |
+| `Bizcard` | Business card scanning and extraction result display |
+| `DocHandoff` | A download link for a document source file (CSV/Markdown) plus a prompt for an external AI tool |
+| `DocumentJob` | Progress/completion status for an async document-generation job (deprecated in favor of `DocHandoff`) |
 
 ---
 
-## ディレクトリ構成
+## Directory structure
 
 ```
 midleton/
 ├── src/
 │   ├── routes/
-│   │   ├── +layout.svelte    # サイドバー・テーマ切り替え
-│   │   ├── +page.svelte      # チャット画面（/）
-│   │   ├── signin/           # ログイン・パスワードリセット
-│   │   ├── ui/               # UIコンポーネントデモ（/ui）
-│   │   ├── bizcard/          # 名刺取り込み（/bizcard）
-│   │   ├── settings/         # 設定画面（/settings, /settings/integrations, /settings/quick-actions, /settings/email, /settings/account）
-│   │   ├── database/         # データ管理（/database, /database/[type], /database/accounts, /database/reminders 等）
+│   │   ├── +layout.svelte    # Sidebar, theme switching
+│   │   ├── +page.svelte      # Chat screen (/)
+│   │   ├── signin/           # Sign in, password reset
+│   │   ├── ui/               # UI component demo (/ui)
+│   │   ├── bizcard/          # Business card capture (/bizcard)
+│   │   ├── settings/         # Settings (/settings, /settings/integrations, /settings/quick-actions, /settings/email, /settings/account)
+│   │   ├── database/         # Data management (/database, /database/[type], /database/accounts, /database/reminders, etc.)
 │   │   └── api/
-│   │       ├── chat/         # チャット API エンドポイント
-│   │       ├── auth/         # ログイン・サインアウト・パスワードリセット
-│   │       ├── bizcard/      # 名刺画像 → Claude vision → JSON 抽出
-│   │       ├── integrations/ # 外部API連携 CRUD
-│   │       ├── quick-actions/# クイックアクション実行
-│   │       ├── database/     # データ管理 REST API（tables, records CRUD）
-│   │       ├── documents/    # 資料生成ジョブ
-│   │       ├── reminders/    # リマインダー配信
-│   │       ├── notifications/# 通知センター
-│   │       └── email/        # メール送信・設定
+│   │       ├── chat/         # Chat API endpoint
+│   │       ├── auth/         # Sign in, sign out, password reset
+│   │       ├── bizcard/      # Business card image → Claude vision → JSON extraction
+│   │       ├── integrations/ # External API integration CRUD
+│   │       ├── quick-actions/# Quick action execution
+│   │       ├── database/     # Data management REST API (table info, record CRUD)
+│   │       ├── documents/    # Document generation jobs
+│   │       ├── reminders/    # Reminder delivery
+│   │       ├── notifications/# Notification center
+│   │       └── email/        # Sending email, email settings
 │   └── lib/
 │       ├── components/
-│       │   ├── ui/           # アプリUIコンポーネント（デザインシステム）
-│       │   ├── chat/         # AI がレスポンスとして返すコンポーネント
-│       │   ├── dialog/       # 詳細・編集・登録の中央ダイアログ群（チャットと/databaseで共有）
-│       │   ├── database/     # データ管理画面専用コンポーネント
-│       │   ├── icon/         # SVGアイコンコンポーネント
-│       │   └── bizcard/      # 名刺スキャン専用コンポーネント
-│       ├── quick-actions/    # クイックアクションのカタログ定義
+│       │   ├── ui/           # App UI components (design system)
+│       │   ├── chat/         # Components the AI returns as a response
+│       │   ├── dialog/       # The central detail/edit/create dialogs (shared between chat and /database)
+│       │   ├── database/     # Components specific to the data management pages
+│       │   ├── icon/         # SVG icon components
+│       │   └── bizcard/      # Business card scanning components
+│       ├── quick-actions/    # Quick action catalog definitions
 │       ├── server/
-│       │   ├── db/           # DrizzleORM スキーマ・クエリ
-│       │   ├── agent-tools/  # エージェントツール定義
-│       │   ├── ai/           # Claude API 連携・システムプロンプト
-│       │   ├── auth/         # セッション・パスワードハッシュ
-│       │   ├── documents/    # 資料データファイル生成・R2保存
-│       │   ├── reminders/    # リマインダー配信
-│       │   ├── email/        # システムメール送信
-│       │   ├── slack/        # Slack Incoming Webhook 送信
-│       │   └── quick-actions/# クイックアクションの実行・整形
-│       ├── styles/           # グローバルスタイル・テーマ
-│       └── types/            # 共通型定義
-├── messages/                 # i18n リソース（ja.json）
-├── drizzle/                  # マイグレーションファイル
+│       │   ├── db/           # DrizzleORM schema and queries
+│       │   ├── agent-tools/  # Agent tool definitions
+│       │   ├── ai/           # Claude API integration and system prompts
+│       │   ├── auth/         # Session and password hashing
+│       │   ├── documents/    # Document source file generation, R2 storage
+│       │   ├── reminders/    # Reminder delivery
+│       │   ├── email/        # System email sending
+│       │   ├── slack/        # Slack Incoming Webhook sending
+│       │   └── quick-actions/# Quick action execution and formatting
+│       ├── styles/           # Global styles, theme
+│       └── types/            # Shared types
+├── messages/                 # i18n resources (en.json, ja.json)
+├── drizzle/                  # Migration files
 ├── docs/
-│   └── ROADMAP.md
-├── worker.ts                 # Cloudflare Workers エントリポイント（Cron Trigger対応）
+│   └── DEPLOYMENT.md
+├── worker.ts                 # Cloudflare Workers entry point (with Cron Trigger support)
 ├── wrangler.toml
 └── wrangler.build.jsonc
 ```
 
-## テーマ
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for a deeper look at how the pieces fit together, and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development conventions this project follows.
 
-ダーク / ライト / システム（OS 設定追従）の3択。サイドバー下部のスイッチで切り替え。CSS カスタムプロパティ（`--color-*`）でトークンを定義し `data-theme` 属性で切り替える。
+## Theme
+
+Light, dark, or system (follows the OS setting) — toggle with the switch at the bottom of the sidebar. Tokens are defined as CSS custom properties (`--color-*`) and switched via the `data-theme` attribute.
 
 ## i18n
 
-`messages/ja.json` に日本語リソースを定義し `m.key()` 形式で参照する（Paraglide-JS）。
+English (`messages/en.json`) is the default language; a Japanese translation (`messages/ja.json`) is also included. Strings are referenced in code via `m.key()` (Paraglide-JS).
 
-## ロードマップ
+## Deployment
 
-開発の進行状況は [`docs/ROADMAP.md`](docs/ROADMAP.md) を参照。v1（コア機能）は完了済みで、残課題は同ファイル末尾の「v2 TODO」にまとめている。
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for deploying to Cloudflare via GitHub integration.

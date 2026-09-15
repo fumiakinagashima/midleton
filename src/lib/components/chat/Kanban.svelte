@@ -19,7 +19,7 @@
 	}
 
 	function formatAmount(amount: number): string {
-		return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(amount);
+		return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(amount);
 	}
 
 	function columnTotal(columnId: string): number {
@@ -41,7 +41,7 @@
 	}
 
 	function handleDragLeave(e: DragEvent, colId: string) {
-		// relatedTarget が同じ列内の子要素なら無視
+		// Ignore if relatedTarget is a child element within the same column
 		const col = (e.currentTarget as HTMLElement);
 		if (col.contains(e.relatedTarget as Node)) return;
 		if (dragOverColId === colId) dragOverColId = null;

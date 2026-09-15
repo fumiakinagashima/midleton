@@ -18,7 +18,7 @@
 	} from '$lib/types/chat';
 
 	type Props = {
-		// テーブル種別。コア4種に限らずカスタム(entity)テーブル名も受け付ける
+		// Table type. Accepts custom (entity) table names as well, not just the 4 core types
 		type: string;
 		recordId?: string | null;
 		initialView?: 'detail' | 'form';
@@ -37,7 +37,7 @@
 	let viewStack = $state<View[]>([]);
 	let currentView = $derived(viewStack[viewStack.length - 1] ?? { kind: 'detail' });
 
-	// 詳細 state
+	// Detail state
 	type CustomerDetailData = {
 		customer: CustomerDetailCustomer;
 		contacts: CustomerDetailContact[];
@@ -48,19 +48,19 @@
 	let genericFields = $state<FieldDef[]>([]);
 	let genericRecord = $state<Record<string, unknown> | null>(null);
 	let detailLoading = $state(true);
-	// テーブル表示名（カスタムテーブルは info から解決）
+	// Table display name (resolved from info for custom tables)
 	let tableLabel = $state('');
 
-	// フォーム state
+	// Form state
 	let formFields = $state<FormField[]>([]);
 	let formLabel = $state('');
 	let formLoading = $state(false);
 	let formRef = $state<HTMLFormElement | null>(null);
 	let formKey = $state(0);
 
-	// コアテーブル表示名（カスタムは info.label で解決）
+	// Core table display names (custom tables are resolved via info.label)
 	const CORE_LABELS: Record<string, string> = {
-		customers: '顧客', contacts: '担当者', deals: '案件', activities: '活動履歴'
+		customers: 'Customer', contacts: 'Contact', deals: 'Deal', activities: 'Activity'
 	};
 	function labelFor(t: string): string {
 		return CORE_LABELS[t] ?? ((t === type ? tableLabel : '') || t);
@@ -94,7 +94,7 @@
 		}
 	}
 
-	// props 変化（別レコードを開いた）でスタックを初期化
+	// Reset the stack when props change (a different record was opened)
 	$effect(() => {
 		void type;
 		void recordId;
@@ -107,7 +107,7 @@
 		}
 	});
 
-	// フォームビューに入ったらフィールド定義を取得し、値を注入
+	// When entering the form view, fetch the field definitions and inject the values
 	$effect(() => {
 		const view = currentView;
 		if (view.kind !== 'form') return;
@@ -125,7 +125,7 @@
 					if (recRes.ok) values = (await recRes.json()) as Record<string, unknown>;
 				}
 				if (view.mode === 'create') {
-					// datetime-local フィールドにデフォルト値がなければ現在日時を設定
+					// Set the current date/time if a datetime-local field has no default value
 					for (const f of info.fields) {
 						if (f.type === 'datetime-local' && (values[f.key] == null || values[f.key] === '')) {
 							values = { ...values, [f.key]: toJstDatetimeLocal(new Date()) };
@@ -168,67 +168,67 @@
 				body: JSON.stringify(data)
 			});
 			if (!res.ok) {
-				toast.error('保存に失敗しました');
+				toast.error('Failed to save');
 				return;
 			}
 			const record = (await res.json()) as Record<string, unknown>;
 			if (viewStack.length > 1) {
-				// 詳細の上に重ねたフォーム → 詳細へ戻って再取得
+				// Form was stacked on top of the detail view → go back to detail and refetch
 				goBack();
 				await loadDetail();
 			} else {
 				onSaved?.(record);
 			}
 		} catch {
-			toast.error('保存に失敗しました');
+			toast.error('Failed to save');
 		}
 	}
 
 	async function handleDelete(targetType: string, targetId: string) {
-		if (!confirm('このレコードを削除しますか？')) return;
+		if (!confirm('Delete this record?')) return;
 		try {
 			const res = await fetch(`/api/database/${targetType}/records/${targetId}`, { method: 'DELETE' });
 			if (!res.ok) {
-				toast.error('削除に失敗しました');
+				toast.error('Failed to delete');
 				return;
 			}
 			onDeleted?.(targetId);
 		} catch {
-			toast.error('削除に失敗しました');
+			toast.error('Failed to delete');
 		}
 	}
 
 	const dialogTitle = $derived.by(() => {
 		if (currentView.kind === 'form') {
 			const label = currentView.type === type ? formLabel || labelFor(currentView.type) : labelFor(currentView.type);
-			return currentView.mode === 'edit' ? `${label}を編集` : `${label}を登録`;
+			return currentView.mode === 'edit' ? `Edit ${label}` : `Add ${label}`;
 		}
-		if (type === 'customers') return customerDetail?.customer.name ?? '顧客詳細';
+		if (type === 'customers') return customerDetail?.customer.name ?? 'Customer Detail';
 		const r = genericRecord;
-		return (r?.name as string) ?? (r?.title as string) ?? `${labelFor(type)}詳細`;
+		return (r?.name as string) ?? (r?.title as string) ?? `${labelFor(type)} Detail`;
 	});
 
 	const chatContextFields = $derived(
 		currentView.kind === 'form' ? formFields.map((f) => ({ key: f.key, label: f.label })) : []
 	);
 
-	// 詳細表示中のレコードを AI アシスタントに渡し、「この顧客」等の指示語を解決できるようにする
+	// Pass the record currently shown in detail to the AI assistant so referring expressions like "this customer" can be resolved
 	const chatRecordContext = $derived.by(() => {
 		if (currentView.kind !== 'detail') return null;
 		if (type === 'customers' && customerDetail) {
 			const c = customerDetail.customer;
 			return {
 				type: 'customers',
-				typeLabel: '顧客',
+				typeLabel: 'Customer',
 				id: c.id,
 				label: c.name,
 				data: {
-					会社名: c.name,
-					メール: c.email,
-					電話: c.phone,
-					住所: c.address,
-					ステータス: c.status,
-					メモ: c.notes
+					'Company Name': c.name,
+					Email: c.email,
+					Phone: c.phone,
+					Address: c.address,
+					Status: c.status,
+					Notes: c.notes
 				} as Record<string, unknown>
 			};
 		}
@@ -254,12 +254,12 @@
 <div class="dialog" role="dialog" aria-modal="true" aria-label={dialogTitle}>
 	<div class="dialog-header">
 		{#if viewStack.length > 1}
-			<button class="back-btn" onclick={goBack} aria-label="戻る">
+			<button class="back-btn" onclick={goBack} aria-label="Back">
 				<ChevronLeft size={16} />
 			</button>
 		{/if}
 		<span class="dialog-title">{dialogTitle}</span>
-		<button class="close-btn" onclick={onclose} aria-label="閉じる">
+		<button class="close-btn" onclick={onclose} aria-label="Close">
 			<X size={16} />
 		</button>
 	</div>
@@ -273,7 +273,7 @@
 					<div class="loading-wrap"><span class="spinner"></span></div>
 				{:else if type === 'customers'}
 					{#if !customerDetail}
-						<p class="error-text">顧客情報を取得できませんでした。</p>
+						<p class="error-text">Failed to retrieve customer information.</p>
 					{:else}
 						<CustomerDetail
 							customer={customerDetail.customer}
@@ -285,7 +285,7 @@
 						/>
 					{/if}
 				{:else if !genericRecord}
-					<p class="error-text">レコードを取得できませんでした。</p>
+					<p class="error-text">Failed to retrieve the record.</p>
 				{:else}
 					<RecordDetail
 						fields={genericFields}

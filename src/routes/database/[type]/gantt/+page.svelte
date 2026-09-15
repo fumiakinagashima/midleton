@@ -19,7 +19,7 @@
 		deals = data.deals;
 	});
 
-	// 案件詳細は一覧と同じくダイアログで開く（別ページへの遷移はしない）
+	// Deal details open in a dialog, same as the list (no navigation to a separate page)
 	let dialogRecordId = $state<string | null>(null);
 	function openDetail(id: string) {
 		dialogRecordId = id;
@@ -29,11 +29,11 @@
 		await invalidateAll();
 	}
 
-	// ── フィルタ ──────────────────────────────────────────────────────────
+	// ── Filters ──────────────────────────────────────────────────────────
 	const STATUS_OPTIONS = [
-		{ value: 'open', label: '商談中' },
-		{ value: 'won', label: '受注' },
-		{ value: 'lost', label: '失注' }
+		{ value: 'open', label: 'Open' },
+		{ value: 'won', label: 'Won' },
+		{ value: 'lost', label: 'Lost' }
 	];
 
 	const customerOptions = $derived(customers.map((c) => ({ value: c.id, label: c.name })));
@@ -50,8 +50,9 @@
 		filterStatuses = next;
 	}
 
-	// 表示期間の指定は、期間未設定（plannedStart/End が空）の案件には適用しない
-	// （ドラッグでバーを新規作成できる行として常に表示するため）
+	// The display period filter does not apply to deals with no period set
+	// (plannedStart/End empty) — they always stay visible as rows where a bar
+	// can be created by dragging.
 	function inPeriod(deal: (typeof deals)[number]): boolean {
 		if (!filterFrom && !filterTo) return true;
 		if (!deal.plannedStart || !deal.plannedEnd) return true;
@@ -88,27 +89,27 @@
 <div class="page">
 	<header class="page-header">
 		<div class="breadcrumb">
-			<a href="/database">データ管理</a>
+			<a href="/database">Data Management</a>
 			<span class="sep">/</span>
 			<a href="/database/{type}">{tableLabel}</a>
 			<span class="sep">/</span>
-			<span>ガントチャート</span>
+			<span>Gantt Chart</span>
 		</div>
-		<a href="/database/{type}" class="btn-list">リスト表示</a>
+		<a href="/database/{type}" class="btn-list">List View</a>
 	</header>
 
 	{#if deals.length === 0}
 		<div class="empty">
-			<p>案件データがありません。</p>
-			<a href="/database/deals/new" class="btn-primary">案件を作成</a>
+			<p>No deal data available.</p>
+			<a href="/database/deals/new" class="btn-primary">Create Deal</a>
 		</div>
 	{:else}
 		<div class="filters">
 			<div class="filter-item customer">
-				<Select label="顧客" bind:value={filterCustomerId} options={customerOptions} placeholder="すべて" />
+				<Select label="Customer" bind:value={filterCustomerId} options={customerOptions} placeholder="All" />
 			</div>
 			<div class="filter-item status">
-				<span class="filter-label">状況</span>
+				<span class="filter-label">Status</span>
 				<div class="status-checks">
 					{#each STATUS_OPTIONS as opt}
 						<label class="status-check">
@@ -123,17 +124,17 @@
 				</div>
 			</div>
 			<div class="filter-item period">
-				<span class="filter-label">表示期間</span>
+				<span class="filter-label">Display Period</span>
 				<div class="period-inputs">
 					<DatePicker bind:value={filterFrom} max={filterTo || undefined} />
-					<span class="period-sep">〜</span>
+					<span class="period-sep">–</span>
 					<DatePicker bind:value={filterTo} min={filterFrom || undefined} />
 				</div>
 			</div>
 		</div>
 
 		{#if filteredDeals.length === 0}
-			<p class="no-match">フィルタ条件に一致する案件がありません。</p>
+			<p class="no-match">No deals match the filter conditions.</p>
 		{:else}
 			<div class="chart-wrap">
 				<GanttChart

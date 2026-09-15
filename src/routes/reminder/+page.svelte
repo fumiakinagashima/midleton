@@ -29,11 +29,11 @@
 	function buildFormFields(): FormField[] {
 		const row = editingRow;
 		return [
-			{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true,
+			{ key: 'remind_at', label: 'Date & Time', type: 'datetime-local', required: true,
 				value: row ? toJstDatetimeLocal(new Date(row.remindAt)) : nowJstDatetimeLocal() },
-			{ key: 'channels', label: '通知先', type: 'multiselect', required: true,
+			{ key: 'channels', label: 'Notify Via', type: 'multiselect', required: true,
 				value: row ? row.channels.join(',') : 'notification', options: data.channelOptions },
-			{ key: 'content', label: '内容', type: 'textarea', required: true,
+			{ key: 'content', label: 'Content', type: 'textarea', required: true,
 				value: row ? row.content : '' }
 		];
 	}
@@ -64,7 +64,7 @@
 				});
 				if (!res.ok) {
 					const err = (await res.json()) as { error?: string };
-					formError = err.error ?? '更新に失敗しました。';
+					formError = err.error ?? 'Update failed.';
 					return;
 				}
 				const updated = (await res.json()) as ReminderListRow;
@@ -80,7 +80,7 @@
 				});
 				if (!res.ok) {
 					const err = (await res.json()) as { error?: string };
-					formError = err.error ?? '登録に失敗しました。';
+					formError = err.error ?? 'Registration failed.';
 					return;
 				}
 				const row = (await res.json()) as ReminderListRow;
@@ -93,7 +93,7 @@
 	}
 
 	async function deleteRow(id: string) {
-		if (!confirm('このリマインダーを削除しますか？')) return;
+		if (!confirm('Delete this reminder?')) return;
 		await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
 		rows = rows.filter(r => r.id !== id);
 	}
@@ -105,7 +105,7 @@
 		try {
 			const res = await fetch('/api/reminders/run', { method: 'POST' });
 			if (!res.ok) {
-				toast.error('配信の実行に失敗しました。');
+				toast.error('Failed to run delivery.');
 				return;
 			}
 			const { results } = (await res.json()) as { results: ReminderDeliveryResult[] };
@@ -128,7 +128,7 @@
 
 <div class="page">
 	<header class="page-header">
-		<h1>リマインダー</h1>
+		<h1>Reminders</h1>
 		<button class="btn-primary" onclick={runDelivery} disabled={running}>
 			{running ? m.reminder_run_running() : m.reminder_run_button()}
 		</button>
@@ -137,9 +137,9 @@
 	<section class="form-section">
 		{#key formKey}
 			<Form
-				title={editingRow ? 'リマインダーを編集' : 'リマインダーを登録'}
+				title={editingRow ? 'Edit Reminder' : 'Create Reminder'}
 				fields={buildFormFields()}
-				submitLabel={editingRow ? '更新' : '登録'}
+				submitLabel={editingRow ? 'Update' : 'Create'}
 				onsubmit={handleSubmit}
 				oncancel={editingRow ? cancelEdit : undefined}
 			/>
@@ -151,17 +151,17 @@
 
 	{#if rows.length === 0}
 		<div class="empty">
-			<p>リマインダーが登録されていません。</p>
+			<p>No reminders registered.</p>
 		</div>
 	{:else}
 		<div class="table-wrap">
 			<table>
 				<thead>
 					<tr>
-						<th>日時</th>
-						<th>内容</th>
-						<th>通知先</th>
-						<th>ステータス</th>
+						<th>Date & Time</th>
+						<th>Content</th>
+						<th>Notify Via</th>
+						<th>Status</th>
 						<th></th>
 					</tr>
 				</thead>
@@ -178,9 +178,9 @@
 							</td>
 							<td class="actions">
 								{#if row.status === 'pending'}
-									<button class="action-edit" onclick={() => startEdit(row)}>編集</button>
+									<button class="action-edit" onclick={() => startEdit(row)}>Edit</button>
 								{/if}
-								<button class="action-del" onclick={() => deleteRow(row.id)}>削除</button>
+								<button class="action-del" onclick={() => deleteRow(row.id)}>Delete</button>
 							</td>
 						</tr>
 					{/each}

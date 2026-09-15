@@ -22,7 +22,7 @@
 	import Kanban from '$lib/components/chat/Kanban.svelte';
 	import Chart from '$lib/components/chat/Chart.svelte';
 	import TypingIndicator from '$lib/components/ui/TypingIndicator.svelte';
-	
+
 	let text = $state('');
 	let memo = $state('');
 	let status = $state('');
@@ -52,12 +52,12 @@
 			});
 			if (!res.ok) {
 				const body = (await res.json().catch(() => null)) as { error?: string } | null;
-				throw new Error(body?.error ?? '生成に失敗しました');
+				throw new Error(body?.error ?? 'Failed to generate document');
 			}
 			const { href } = (await res.json()) as { href: string };
 			window.location.href = href;
 		} catch (e) {
-			docError = e instanceof Error ? e.message : '生成に失敗しました';
+			docError = e instanceof Error ? e.message : 'Failed to generate document';
 		} finally {
 			generatingDoc = '';
 		}
@@ -65,80 +65,80 @@
 
 	type GridRow = Record<string, string | number | null>;
 	let gridRows = $state<GridRow[]>([
-		{ name: '山田 太郎', dept: 'sales', age: 32, joined: '2022-04-01' },
-		{ name: '鈴木 花子', dept: 'eng', age: 28, joined: '2023-09-15' }
+		{ name: 'Taro Yamada', dept: 'sales', age: 32, joined: '2022-04-01' },
+		{ name: 'Hanako Suzuki', dept: 'eng', age: 28, joined: '2023-09-15' }
 	]);
 
 	const searchOptions = [
-		{ value: 'jp', label: '日本' },
-		{ value: 'us', label: 'アメリカ' },
-		{ value: 'gb', label: 'イギリス' },
-		{ value: 'de', label: 'ドイツ' },
-		{ value: 'fr', label: 'フランス' },
-		{ value: 'cn', label: '中国' },
-		{ value: 'kr', label: '韓国' },
-		{ value: 'au', label: 'オーストラリア' }
+		{ value: 'jp', label: 'Japan' },
+		{ value: 'us', label: 'United States' },
+		{ value: 'gb', label: 'United Kingdom' },
+		{ value: 'de', label: 'Germany' },
+		{ value: 'fr', label: 'France' },
+		{ value: 'cn', label: 'China' },
+		{ value: 'kr', label: 'South Korea' },
+		{ value: 'au', label: 'Australia' }
 	];
 
 	const gridColumns = [
-		{ key: 'name', label: '氏名', width: 160 },
-		{ key: 'dept', label: '部署', type: 'select' as const, width: 140, options: [
-			{ value: 'sales', label: '営業' },
-			{ value: 'eng', label: 'エンジニア' },
-			{ value: 'hr', label: '人事' },
-			{ value: 'finance', label: '経理' }
+		{ key: 'name', label: 'Name', width: 160 },
+		{ key: 'dept', label: 'Department', type: 'select' as const, width: 140, options: [
+			{ value: 'sales', label: 'Sales' },
+			{ value: 'eng', label: 'Engineer' },
+			{ value: 'hr', label: 'HR' },
+			{ value: 'finance', label: 'Finance' }
 		]},
-		{ key: 'age', label: '年齢', type: 'number' as const, width: 90 },
-		{ key: 'joined', label: '入社日', width: 130 }
+		{ key: 'age', label: 'Age', type: 'number' as const, width: 90 },
+		{ key: 'joined', label: 'Join Date', width: 130 }
 	];
 
 	const statusOptions = [
-		{ value: 'lead', label: 'リード' },
-		{ value: 'active', label: 'アクティブ' },
-		{ value: 'inactive', label: '非アクティブ' }
+		{ value: 'lead', label: 'Lead' },
+		{ value: 'active', label: 'Active' },
+		{ value: 'inactive', label: 'Inactive' }
 	];
 
 	const tagOptions = [
 		{ value: 'vip', label: 'VIP' },
-		{ value: 'partner', label: 'パートナー' },
-		{ value: 'prospect', label: '見込み' },
-		{ value: 'support', label: 'サポート' }
+		{ value: 'partner', label: 'Partner' },
+		{ value: 'prospect', label: 'Prospect' },
+		{ value: 'support', label: 'Support' }
 	];
 
 	const priorityOptions = [
-		{ value: 'low', label: '低' },
-		{ value: 'medium', label: '中' },
-		{ value: 'high', label: '高' }
+		{ value: 'low', label: 'Low' },
+		{ value: 'medium', label: 'Medium' },
+		{ value: 'high', label: 'High' }
 	];
 
 	const tableColumns = [
-		{ key: 'name', label: '会社名', sortable: true },
-		{ key: 'contact', label: '担当者', sortable: true },
-		{ key: 'status', label: 'ステータス' },
-		{ key: 'revenue', label: '売上', sortable: true }
+		{ key: 'name', label: 'Company Name', sortable: true },
+		{ key: 'contact', label: 'Contact', sortable: true },
+		{ key: 'status', label: 'Status' },
+		{ key: 'revenue', label: 'Revenue', sortable: true }
 	];
 
 	const tableRows = [
-		{ name: '株式会社アルコジー', contact: '山田 太郎', status: 'アクティブ', revenue: '¥1,200,000' },
-		{ name: '合同会社テスト商事', contact: '鈴木 花子', status: 'リード', revenue: '¥380,000' },
-		{ name: 'サンプル株式会社', contact: '佐藤 次郎', status: '非アクティブ', revenue: '¥0' },
-		{ name: '株式会社フューチャー', contact: '田中 三郎', status: 'アクティブ', revenue: '¥2,850,000' }
+		{ name: 'Acme Inc.', contact: 'Taro Yamada', status: 'Active', revenue: '¥1,200,000' },
+		{ name: 'Test Trading LLC', contact: 'Hanako Suzuki', status: 'Lead', revenue: '¥380,000' },
+		{ name: 'Sample Corp.', contact: 'Jiro Sato', status: 'Inactive', revenue: '¥0' },
+		{ name: 'Future Corp.', contact: 'Saburo Tanaka', status: 'Active', revenue: '¥2,850,000' }
 	];
 
 	type Customer = { name: string; contact: string; status: string };
 	const listItems: Customer[] = [
-		{ name: '株式会社アルコジー', contact: '山田 太郎', status: 'アクティブ' },
-		{ name: '合同会社テスト商事', contact: '鈴木 花子', status: 'リード' },
-		{ name: 'サンプル株式会社', contact: '佐藤 次郎', status: '非アクティブ' }
+		{ name: 'Acme Inc.', contact: 'Taro Yamada', status: 'Active' },
+		{ name: 'Test Trading LLC', contact: 'Hanako Suzuki', status: 'Lead' },
+		{ name: 'Sample Corp.', contact: 'Jiro Sato', status: 'Inactive' }
 	];
 
 	const barData = [
-		{ label: '1月', value: 120 },
-		{ label: '2月', value: 85 },
-		{ label: '3月', value: 200 },
-		{ label: '4月', value: 160 },
-		{ label: '5月', value: 240 },
-		{ label: '6月', value: 195 }
+		{ label: 'Jan', value: 120 },
+		{ label: 'Feb', value: 85 },
+		{ label: 'Mar', value: 200 },
+		{ label: 'Apr', value: 160 },
+		{ label: 'May', value: 240 },
+		{ label: 'Jun', value: 195 }
 	];
 
 	const lineData = [
@@ -149,132 +149,132 @@
 	];
 
 	const pieData = [
-		{ label: 'アクティブ', value: 58 },
-		{ label: 'リード', value: 27 },
-		{ label: '非アクティブ', value: 15 }
+		{ label: 'Active', value: 58 },
+		{ label: 'Lead', value: 27 },
+		{ label: 'Inactive', value: 15 }
 	];
 
 	const multiBarSeries = [
-		{ name: '新規', data: [
-			{ label: '1月', value: 45 }, { label: '2月', value: 30 }, { label: '3月', value: 80 },
-			{ label: '4月', value: 60 }, { label: '5月', value: 90 }, { label: '6月', value: 70 }
+		{ name: 'New', data: [
+			{ label: 'Jan', value: 45 }, { label: 'Feb', value: 30 }, { label: 'Mar', value: 80 },
+			{ label: 'Apr', value: 60 }, { label: 'May', value: 90 }, { label: 'Jun', value: 70 }
 		]},
-		{ name: '更新', data: [
-			{ label: '1月', value: 75 }, { label: '2月', value: 55 }, { label: '3月', value: 120 },
-			{ label: '4月', value: 100 }, { label: '5月', value: 150 }, { label: '6月', value: 125 }
+		{ name: 'Renewal', data: [
+			{ label: 'Jan', value: 75 }, { label: 'Feb', value: 55 }, { label: 'Mar', value: 120 },
+			{ label: 'Apr', value: 100 }, { label: 'May', value: 150 }, { label: 'Jun', value: 125 }
 		]}
 	];
 
 	const multiLineSeries = [
-		{ name: '売上', data: [
+		{ name: 'Revenue', data: [
 			{ label: 'Q1', value: 405 }, { label: 'Q2', value: 595 }, { label: 'Q3', value: 520 }, { label: 'Q4', value: 780 }
 		]},
-		{ name: '目標', data: [
+		{ name: 'Target', data: [
 			{ label: 'Q1', value: 450 }, { label: 'Q2', value: 550 }, { label: 'Q3', value: 600 }, { label: 'Q4', value: 700 }
 		]},
-		{ name: '前年', data: [
+		{ name: 'Prior Year', data: [
 			{ label: 'Q1', value: 320 }, { label: 'Q2', value: 410 }, { label: 'Q3', value: 480 }, { label: 'Q4', value: 560 }
 		]}
 	];
 
 	const kanbanColumns = [
-		{ id: 'prospect', label: '見込み' },
-		{ id: 'proposal', label: '提案中' },
-		{ id: 'negotiation', label: '交渉中' },
-		{ id: 'won', label: '受注' }
+		{ id: 'prospect', label: 'Prospect' },
+		{ id: 'proposal', label: 'Proposal' },
+		{ id: 'negotiation', label: 'Negotiation' },
+		{ id: 'won', label: 'Won' }
 	];
 
 	const kanbanCards = [
-		{ id: '1', title: '株式会社アルコジー ERPシステム', subtitle: '田中様', amount: 2000000, columnId: 'proposal' },
-		{ id: '2', title: '合同会社テスト商事 保守契約', subtitle: '鈴木様', amount: 500000, columnId: 'negotiation' },
-		{ id: '3', title: 'サンプル株式会社 初期導入', subtitle: '佐藤様', amount: 800000, columnId: 'prospect' },
-		{ id: '4', title: '株式会社フューチャー 追加開発', subtitle: '山本様', amount: 1200000, columnId: 'won' },
-		{ id: '5', title: 'テック株式会社 コンサルティング', subtitle: '中村様', amount: 350000, columnId: 'proposal' }
+		{ id: '1', title: 'Acme Inc. ERP System', subtitle: 'Mr. Tanaka', amount: 2000000, columnId: 'proposal' },
+		{ id: '2', title: 'Test Trading LLC Maintenance Contract', subtitle: 'Mr. Suzuki', amount: 500000, columnId: 'negotiation' },
+		{ id: '3', title: 'Sample Corp. Initial Rollout', subtitle: 'Mr. Sato', amount: 800000, columnId: 'prospect' },
+		{ id: '4', title: 'Future Corp. Additional Development', subtitle: 'Mr. Yamamoto', amount: 1200000, columnId: 'won' },
+		{ id: '5', title: 'Tech Solutions Inc. Consulting', subtitle: 'Mr. Nakamura', amount: 350000, columnId: 'proposal' }
 	];
 </script>
 
 <div class="page">
-	<h1>UI コンポーネント</h1>
-	<!-- ローディング-->
+	<h1>UI Components</h1>
+	<!-- Loading -->
 	<section>
-		<h2>ローディング</h2>
+		<h2>Loading</h2>
 		<div class="grid2">
 			<TypingIndicator />
 		</div>
 	</section>
-	
-	<!-- フォーム入力 -->
+
+	<!-- Form inputs -->
 	<section>
-		<h2>フォーム入力</h2>
+		<h2>Form Inputs</h2>
 		<div class="grid2">
-			<Textbox label="会社名" bind:value={text} placeholder="株式会社..." required />
-			<Textbox label="メール" bind:value={text} type="email" placeholder="info@example.com" />
-			<Textarea label="メモ" bind:value={memo} placeholder="自由記述..." rows={3} />
-			<Select label="ステータス" bind:value={status} options={statusOptions} />
-			<DatePicker label="契約日" bind:value={date} />
-			<Textbox label="エラー状態" bind:value={text} error="入力してください" />
+			<Textbox label="Company Name" bind:value={text} placeholder="Acme Inc...." required />
+			<Textbox label="Email" bind:value={text} type="email" placeholder="info@example.com" />
+			<Textarea label="Notes" bind:value={memo} placeholder="Free text..." rows={3} />
+			<Select label="Status" bind:value={status} options={statusOptions} />
+			<DatePicker label="Contract Date" bind:value={date} />
+			<Textbox label="Error State" bind:value={text} error="Please enter a value" />
 		</div>
 	</section>
 
-	<!-- 選択コントロール -->
+	<!-- Selection controls -->
 	<section>
-		<h2>選択コントロール</h2>
+		<h2>Selection Controls</h2>
 		<div class="stack">
-			<Toggle label="メール通知を受け取る" bind:checked={toggled} />
+			<Toggle label="Receive email notifications" bind:checked={toggled} />
 			<p class="val">Toggle: {toggled}</p>
-			<MultiSelect label="タグ（複数選択）" bind:value={tags} options={tagOptions} />
-			<p class="val">選択中: {tags.join(', ') || 'なし'}</p>
-			<SingleSelect label="優先度（単一選択）" bind:value={priority} options={priorityOptions} />
-			<p class="val">選択中: {priority || 'なし'}</p>
+			<MultiSelect label="Tags (multi-select)" bind:value={tags} options={tagOptions} />
+			<p class="val">Selected: {tags.join(', ') || 'None'}</p>
+			<SingleSelect label="Priority (single select)" bind:value={priority} options={priorityOptions} />
+			<p class="val">Selected: {priority || 'None'}</p>
 		</div>
 	</section>
 
-	<!-- 拡張入力コントロール -->
+	<!-- Extended input controls -->
 	<section>
-		<h2>拡張入力コントロール</h2>
+		<h2>Extended Input Controls</h2>
 		<div class="grid2">
-			<SearchSelect label="国（検索付きSelect）" bind:value={searchSelectVal} options={searchOptions} />
-			<p class="val val-bottom">選択: {searchSelectVal || 'なし'}</p>
-			<TimePicker label="時刻" bind:value={timeVal} />
-			<DateTimePicker label="日時" bind:value={datetimeVal} />
-			<NumberInput label="数量" bind:value={numVal} min={0} max={100} step={5} suffix="個" />
-			<p class="val val-bottom">値: {numVal}</p>
+			<SearchSelect label="Country (searchable select)" bind:value={searchSelectVal} options={searchOptions} />
+			<p class="val val-bottom">Selected: {searchSelectVal || 'None'}</p>
+			<TimePicker label="Time" bind:value={timeVal} />
+			<DateTimePicker label="Date & Time" bind:value={datetimeVal} />
+			<NumberInput label="Quantity" bind:value={numVal} min={0} max={100} step={5} suffix="units" />
+			<p class="val val-bottom">Value: {numVal}</p>
 		</div>
 	</section>
 
-	<!-- データグリッド -->
+	<!-- Data grid -->
 	<section>
-		<h2>データグリッド（スプレッドシート型）</h2>
+		<h2>Data Grid (Spreadsheet-style)</h2>
 		<DataGrid bind:rows={gridRows} columns={gridColumns} onchange={(r) => { gridRows = r; }} />
-		<p class="val">{gridRows.length} 行</p>
+		<p class="val">{gridRows.length} rows</p>
 	</section>
 
-	<!-- ファイルアップロード -->
+	<!-- File upload -->
 	<section>
-		<h2>ファイルアップロード</h2>
+		<h2>File Upload</h2>
 		<div class="upload-wrap">
-			<FileUpload label="添付ファイル" accept=".pdf,.xlsx,.csv" multiple />
+			<FileUpload label="Attachments" accept=".pdf,.xlsx,.csv" multiple />
 		</div>
 	</section>
 
-	<!-- テーブル -->
+	<!-- Table -->
 	<section>
-		<h2>テーブル（ソート・ページネーション）</h2>
+		<h2>Table (Sort & Pagination)</h2>
 		<Table columns={tableColumns} rows={tableRows} pageSize={2} />
 	</section>
 
-	<!-- ページネーション単体 -->
+	<!-- Pagination alone -->
 	<section>
-		<h2>ページネーション</h2>
+		<h2>Pagination</h2>
 		<div class="stack">
 			<Pagination bind:page={paginationPage} totalPages={12} />
-			<p class="val">現在のページ: {paginationPage}</p>
+			<p class="val">Current page: {paginationPage}</p>
 		</div>
 	</section>
 
-	<!-- リスト -->
+	<!-- List -->
 	<section>
-		<h2>リスト（カード表示）</h2>
+		<h2>List (Card View)</h2>
 		<List items={listItems} columns={3}>
 			{#snippet card(c)}
 				<p class="card-name">{c.name}</p>
@@ -284,76 +284,76 @@
 		</List>
 	</section>
 
-	<!-- アクション選択 -->
+	<!-- Action selector -->
 	<section>
-		<h2>アクション選択（チャット用TUI）</h2>
+		<h2>Action Selector (Chat TUI)</h2>
 		<div class="stack">
 			<ActionSelector
-				title="次の操作を選択してください"
+				title="Select the next action"
 				actions={[
-					{ id: 'create', label: '顧客を登録する', description: '新規顧客情報をフォームで入力します' },
-					{ id: 'list', label: '顧客一覧を見る', description: '登録済みの顧客一覧を表示します' },
-					{ id: 'report', label: 'レポートを見る', description: '月次の売上レポートを表示します' }
+					{ id: 'create', label: 'Register a customer', description: 'Enter new customer information via a form' },
+					{ id: 'list', label: 'View customer list', description: 'Display the list of registered customers' },
+					{ id: 'report', label: 'View report', description: 'Display the monthly sales report' }
 				]}
 				onselect={(a) => selectedAction = a.label}
 			/>
-			{#if selectedAction}<p class="val">選択: {selectedAction}</p>{/if}
+			{#if selectedAction}<p class="val">Selected: {selectedAction}</p>{/if}
 		</div>
 	</section>
 
-	<!-- グラフ -->
+	<!-- Charts -->
 	<section>
-		<h2>グラフ</h2>
+		<h2>Charts</h2>
 		<div class="grid2">
-			<BarChart title="月別売上（万円）" data={barData} />
-			<LineChart title="四半期推移（万円）" data={lineData} color="var(--chart-3)" />
+			<BarChart title="Monthly Sales (¥10k)" data={barData} />
+			<LineChart title="Quarterly Trend (¥10k)" data={lineData} color="var(--chart-3)" />
 		</div>
 		<div class="pie-wrap">
-			<PieChart title="顧客ステータス分布" data={pieData} />
+			<PieChart title="Customer Status Distribution" data={pieData} />
 		</div>
 	</section>
 
-	<!-- 多系列グラフ -->
+	<!-- Multi-series charts -->
 	<section>
-		<h2>グラフ（多系列）</h2>
+		<h2>Charts (Multi-series)</h2>
 		<div class="grid2">
-			<BarChart title="月別売上 グループ比較" series={multiBarSeries} mode="grouped" />
-			<BarChart title="月別売上 積み上げ" series={multiBarSeries} mode="stacked" />
+			<BarChart title="Monthly Sales - Grouped Comparison" series={multiBarSeries} mode="grouped" />
+			<BarChart title="Monthly Sales - Stacked" series={multiBarSeries} mode="stacked" />
 		</div>
 		<div class="chart-spacer">
-			<LineChart title="四半期推移 複数系列" series={multiLineSeries} />
+			<LineChart title="Quarterly Trend - Multiple Series" series={multiLineSeries} />
 		</div>
 	</section>
 
-	<!-- カンバン -->
+	<!-- Kanban -->
 	<section>
-		<h2>カンバン（AIチャット用）</h2>
-		<Kanban title="営業パイプライン" columns={kanbanColumns} cards={kanbanCards} />
+		<h2>Kanban (for AI Chat)</h2>
+		<Kanban title="Sales Pipeline" columns={kanbanColumns} cards={kanbanCards} />
 	</section>
 
-	<!-- チャート（チャット用ラッパー） -->
+	<!-- Chart (chat wrapper) -->
 	<section>
-		<h2>チャート（AIチャット用ラッパー）</h2>
+		<h2>Chart (Chat Wrapper)</h2>
 		<div class="stack">
-			<Chart chartType="bar" title="月別売上（万円）" data={barData} />
-			<Chart chartType="line" title="四半期推移（万円）" data={lineData} />
-			<Chart chartType="pie" title="顧客ステータス分布" data={pieData} />
+			<Chart chartType="bar" title="Monthly Sales (¥10k)" data={barData} />
+			<Chart chartType="line" title="Quarterly Trend (¥10k)" data={lineData} />
+			<Chart chartType="pie" title="Customer Status Distribution" data={pieData} />
 		</div>
 	</section>
 
-	<!-- 資料生成 -->
+	<!-- Document generation -->
 	<section>
-		<h2>資料生成（Word / Excel / PowerPoint）</h2>
+		<h2>Document Generation (Word / Excel / PowerPoint)</h2>
 		<div class="stack">
 			<div class="row">
 				<button class="btn-primary" onclick={() => generateDocument('docx')} disabled={!!generatingDoc}>
-					{generatingDoc === 'docx' ? '生成中...' : 'Word生成'}
+					{generatingDoc === 'docx' ? 'Generating...' : 'Generate Word'}
 				</button>
 				<button class="btn-primary" onclick={() => generateDocument('xlsx')} disabled={!!generatingDoc}>
-					{generatingDoc === 'xlsx' ? '生成中...' : 'Excel生成'}
+					{generatingDoc === 'xlsx' ? 'Generating...' : 'Generate Excel'}
 				</button>
 				<button class="btn-primary" onclick={() => generateDocument('pptx')} disabled={!!generatingDoc}>
-					{generatingDoc === 'pptx' ? '生成中...' : 'PowerPoint生成'}
+					{generatingDoc === 'pptx' ? 'Generating...' : 'Generate PowerPoint'}
 				</button>
 			</div>
 			{#if docError}<p class="val error">{docError}</p>{/if}

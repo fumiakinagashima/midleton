@@ -45,14 +45,14 @@ export async function computeCustomerHandoverSummary(
 
 	const jsonMatch = text.match(/\{[\s\S]*\}/);
 	if (!jsonMatch) {
-		throw new Error(`引き継ぎサマリーの解析に失敗しました。(response: ${text.slice(0, 100)})`);
+		throw new Error(`Failed to parse the handover summary. (response: ${text.slice(0, 100)})`);
 	}
 
 	let parsed: CustomerHandoverSummary;
 	try {
 		parsed = JSON.parse(jsonMatch[0]);
 	} catch {
-		throw new Error('引き継ぎサマリーの解析に失敗しました。');
+		throw new Error('Failed to parse the handover summary.');
 	}
 
 	return {

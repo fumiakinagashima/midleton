@@ -7,7 +7,7 @@ import { getSlackIntegration, sendSlackMessage } from '../slack';
 import { getEmailSetupFromEnv, sendEmail, type EmailEnv } from '../email';
 import type { Db } from '../db';
 
-// リマインダーに accountId が設定されていない場合（ログイン実装前の既存データ）のフォールバック先
+// Fallback destination when a reminder has no accountId set (existing data from before login was implemented)
 const REMINDER_EMAIL_TO = 'alcogyinc@gmail.com';
 
 export type ReminderDeliveryResult = {
@@ -25,30 +25,30 @@ export async function getDueReminders(db: Db, now: Date = new Date()): Promise<R
 
 async function deliverToChannel(db: Db, channel: string, reminder: Reminder, env?: EmailEnv): Promise<void> {
 	if (channel === 'notification') {
-		// accountId が未設定のレガシーデータはスキップ（通知の送り先が特定できないため）
+		// Skip legacy data with no accountId set (the notification destination cannot be determined)
 		if (!reminder.accountId) return;
 		await createNotification(db, {
 			type: 'reminder',
-			title: 'リマインダー',
+			title: 'Reminder',
 			body: reminder.content,
-			seedContent: [{ type: 'text', text: `リマインダー: ${reminder.content}` }],
+			seedContent: [{ type: 'text', text: `Reminder: ${reminder.content}` }],
 			accountId: reminder.accountId
 		});
 		return;
 	}
 
 	if (channel === 'email') {
-		// 通知メールは「送信元メール設定」（/settings/email、send_email用）とは別に、
-		// システムメールとして環境変数（EMAIL_PROVIDER 等）の設定を使う
+		// Notification emails use the system email settings from environment variables (EMAIL_PROVIDER etc.),
+		// separate from the "sender email settings" (/settings/email, used for send_email)
 		const setup = getEmailSetupFromEnv(env ?? {});
-		if (!setup) throw new Error('システムメールが設定されていません（EMAIL_PROVIDER 等の環境変数を確認してください）');
+		if (!setup) throw new Error('System email is not configured (check environment variables such as EMAIL_PROVIDER)');
 		const account = reminder.accountId ? await getAccount(db, reminder.accountId) : null;
 		const to = account?.email ?? REMINDER_EMAIL_TO;
 		await sendEmail(setup.providerConfig, {
 			from: setup.from,
 			fromName: setup.fromName,
 			to,
-			subject: 'リマインダー',
+			subject: 'Reminder',
 			text: reminder.content
 		});
 		return;
@@ -56,12 +56,12 @@ async function deliverToChannel(db: Db, channel: string, reminder: Reminder, env
 
 	if (channel.startsWith('slack:')) {
 		const integration = await getSlackIntegration(db, channel.slice('slack:'.length));
-		if (!integration) throw new Error(`Slack連携が見つかりません: ${channel}`);
+		if (!integration) throw new Error(`Slack integration not found: ${channel}`);
 		await sendSlackMessage(integration, reminder.content);
 		return;
 	}
 
-	throw new Error(`未対応の通知先です: ${channel}`);
+	throw new Error(`Unsupported notification channel: ${channel}`);
 }
 
 export async function deliverReminder(db: Db, reminder: Reminder, env?: EmailEnv): Promise<ReminderDeliveryResult> {

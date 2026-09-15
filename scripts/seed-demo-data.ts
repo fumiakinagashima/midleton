@@ -13,7 +13,7 @@ const client = createClient({ url: `file:${resolve(d1Dir, sqliteFile)}` });
 const db = drizzle(client);
 
 async function main() {
-	console.log('既存データを削除中...');
+	console.log('Deleting existing data...');
 	await db.delete(activities);
 	await db.delete(contacts);
 	await db.delete(deals);
@@ -35,7 +35,7 @@ async function main() {
 	}
 
 	console.log(
-		`完了: 顧客 ${data.customers.length}件 / 担当者 ${data.contacts.length}件 / 案件 ${data.deals.length}件 / 活動履歴 ${data.activities.length}件`
+		`Done: ${data.customers.length} customers / ${data.contacts.length} contacts / ${data.deals.length} deals / ${data.activities.length} activities`
 	);
 	client.close();
 }

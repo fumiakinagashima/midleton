@@ -3,22 +3,22 @@ import { generatePowerpointPresentation } from './powerpoint';
 import { extractZipText } from './test-utils';
 
 describe('generatePowerpointPresentation', () => {
-	it('generates a valid pptx with Japanese content', async () => {
+	it('generates a valid pptx with content', async () => {
 		const buffer = await generatePowerpointPresentation({
-			title: '提案資料',
+			title: 'Proposal',
 			slides: [
 				{
-					title: '導入効果',
-					body: ['業務時間を削減', '入力ミスを防止']
+					title: 'Benefits of Adoption',
+					body: ['Reduces work time', 'Prevents input errors']
 				},
 				{
-					title: '料金プラン',
+					title: 'Pricing Plans',
 					table: {
 						columns: [
-							{ key: 'plan', label: 'プラン名' },
-							{ key: 'price', label: '価格' }
+							{ key: 'plan', label: 'Plan Name' },
+							{ key: 'price', label: 'Price' }
 						],
-						rows: [{ plan: 'スタンダード', price: '50,000円' }]
+						rows: [{ plan: 'Standard', price: '$500' }]
 					}
 				}
 			]
@@ -29,8 +29,8 @@ describe('generatePowerpointPresentation', () => {
 		expect(bytes[1]).toBe(0x4b);
 
 		const text = await extractZipText(buffer);
-		expect(text).toContain('提案資料');
-		expect(text).toContain('導入効果');
-		expect(text).toContain('プラン名');
+		expect(text).toContain('Proposal');
+		expect(text).toContain('Benefits of Adoption');
+		expect(text).toContain('Plan Name');
 	});
 });

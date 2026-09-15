@@ -15,7 +15,7 @@
 
 	let deleting = $state(false);
 
-	const HEALTH_LEVEL_LABELS: Record<string, string> = { good: '良好', warning: '注意', risk: '要注意' };
+	const HEALTH_LEVEL_LABELS: Record<string, string> = { good: 'Good', warning: 'Caution', risk: 'At Risk' };
 	const HEALTH_LEVEL_COLORS: Record<string, string> = { good: 'var(--color-success)', warning: 'var(--color-warning)', risk: 'var(--color-error)' };
 
 	let healthScore = $state<CustomerHealthScoreResult | null>(untrack(() => data.healthScore));
@@ -27,7 +27,7 @@
 	});
 
 	function fmtDateTime(iso: string): string {
-		return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+		return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 	}
 
 	async function runHealthScore() {
@@ -39,7 +39,7 @@
 			const res = await fetch(`/api/customers/${id}/health-score`, { method: 'POST' });
 			const result = await res.json() as CustomerHealthScoreResult & { error?: string };
 			if (!res.ok) {
-				healthScoreError = result.error ?? 'ヘルススコアの取得に失敗しました。';
+				healthScoreError = result.error ?? 'Failed to retrieve health score.';
 				return;
 			}
 			healthScore = result;
@@ -50,7 +50,7 @@
 		}
 	}
 
-	const SOURCE_TYPE_LABELS: Record<string, string> = { activity: '活動履歴', deal: '案件' };
+	const SOURCE_TYPE_LABELS: Record<string, string> = { activity: 'Activity', deal: 'Deal' };
 
 	let handoverSummary = $state<CustomerHandoverSummaryResult | null>(null);
 	let handoverLoading = $state(false);
@@ -65,7 +65,7 @@
 			const res = await fetch(`/api/customers/${id}/handover-summary`, { method: 'POST' });
 			const result = await res.json() as CustomerHandoverSummaryResult & { error?: string };
 			if (!res.ok) {
-				handoverError = result.error ?? '引き継ぎサマリーの生成に失敗しました。';
+				handoverError = result.error ?? 'Failed to generate handover summary.';
 				return;
 			}
 			handoverSummary = result;
@@ -78,11 +78,11 @@
 
 	function formatValue(val: string | number | null, fieldType: string): string {
 		if (val == null || val === '') return '—';
-		if (fieldType === 'number') return new Intl.NumberFormat('ja-JP').format(Number(val));
+		if (fieldType === 'number') return new Intl.NumberFormat('en-US').format(Number(val));
 		if (fieldType === 'date' || fieldType === 'datetime') {
 			const d = typeof val === 'number' ? new Date(val * 1000) : new Date(val);
 			if (isNaN(d.getTime())) return String(val);
-			return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
+			return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
 		}
 		return String(val);
 	}
@@ -97,7 +97,7 @@
 	}
 
 	async function deleteRecord() {
-		if (!confirm('このレコードを削除しますか？')) return;
+		if (!confirm('Delete this record?')) return;
 		deleting = true;
 		await fetch(`/api/database/${type}/records/${id}`, { method: 'DELETE' });
 		location.href = `/database/${type}`;
@@ -107,15 +107,15 @@
 <div class="page">
 	<header class="page-header">
 		<div class="breadcrumb">
-			<a href="/database">データ管理</a>
+			<a href="/database">Data Management</a>
 			<span class="sep">/</span>
 			<a href="/database/{type}">{info?.label ?? type}</a>
 			<span class="sep">/</span>
-			<span>詳細</span>
+			<span>Details</span>
 		</div>
 		<div class="header-actions">
-			<a href="/database/{type}/{id}/edit" class="btn-edit">編集</a>
-			<button class="btn-delete" onclick={deleteRecord} disabled={deleting}>削除</button>
+			<a href="/database/{type}/{id}/edit" class="btn-edit">Edit</a>
+			<button class="btn-delete" onclick={deleteRecord} disabled={deleting}>Delete</button>
 		</div>
 	</header>
 
@@ -142,14 +142,14 @@
 				{/each}
 				{#if record.createdAt}
 					<div class="row meta">
-						<dt>作成日時</dt>
-						<dd>{new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(Number(record.createdAt) * 1000))}</dd>
+						<dt>Created</dt>
+						<dd>{new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(Number(record.createdAt) * 1000))}</dd>
 					</div>
 				{/if}
 				{#if record.updatedAt}
 					<div class="row meta">
-						<dt>更新日時</dt>
-						<dd>{new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(Number(record.updatedAt) * 1000))}</dd>
+						<dt>Updated</dt>
+						<dd>{new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(Number(record.updatedAt) * 1000))}</dd>
 					</div>
 				{/if}
 			</dl>
@@ -159,14 +159,14 @@
 	{#if type === 'customers' && record}
 		<section class="health-section">
 			<div class="section-head">
-				<h2 class="section-title">ヘルススコア</h2>
+				<h2 class="section-title">Health Score</h2>
 				<button class="btn-ai-review" onclick={runHealthScore} disabled={healthScoreLoading}>
 					{#if healthScoreLoading}
-						分析中...
+						Analyzing...
 					{:else if healthScore}
-						✨ 再分析
+						✨ Re-analyze
 					{:else}
-						✨ AIでスコアリング
+						✨ Score with AI
 					{/if}
 				</button>
 			</div>
@@ -184,10 +184,10 @@
 						</span>
 					</div>
 					<p class="ai-review-summary">{healthScore.summary}</p>
-					<p class="health-score-updated">最終更新: {fmtDateTime(healthScore.updatedAt)}</p>
+					<p class="health-score-updated">Last updated: {fmtDateTime(healthScore.updatedAt)}</p>
 					{#if healthScore.positives.length > 0}
 						<div class="ai-review-group">
-							<h3 class="ai-review-group-title">良い兆候</h3>
+							<h3 class="ai-review-group-title">Positive Signs</h3>
 							<ul class="ai-review-list ai-review-positives">
 								{#each healthScore.positives as item}
 									<li>{item}</li>
@@ -197,7 +197,7 @@
 					{/if}
 					{#if healthScore.concerns.length > 0}
 						<div class="ai-review-group">
-							<h3 class="ai-review-group-title">懸念点</h3>
+							<h3 class="ai-review-group-title">Concerns</h3>
 							<ul class="ai-review-list ai-review-concerns">
 								{#each healthScore.concerns as item}
 									<li>{item}</li>
@@ -211,14 +211,14 @@
 
 		<section class="health-section">
 			<div class="section-head">
-				<h2 class="section-title">引き継ぎサマリー</h2>
+				<h2 class="section-title">Handover Summary</h2>
 				<button class="btn-ai-review" onclick={runHandoverSummary} disabled={handoverLoading}>
 					{#if handoverLoading}
-						生成中...
+						Generating...
 					{:else if handoverSummary}
-						✨ 再生成
+						✨ Regenerate
 					{:else}
-						✨ AIで要約
+						✨ Summarize with AI
 					{/if}
 				</button>
 			</div>
@@ -230,7 +230,7 @@
 					<p class="ai-review-summary">{handoverSummary.summary}</p>
 					{#if handoverSummary.attentionItems.length > 0}
 						<div class="ai-review-group">
-							<h3 class="ai-review-group-title">注意点</h3>
+							<h3 class="ai-review-group-title">Points to Watch</h3>
 							<ul class="ai-review-list ai-review-attention">
 								{#each handoverSummary.attentionItems as item}
 									<li>
@@ -241,7 +241,7 @@
 											target="_blank"
 											rel="noopener noreferrer"
 										>
-											{SOURCE_TYPE_LABELS[item.sourceType] ?? item.sourceType}を見る
+											View {SOURCE_TYPE_LABELS[item.sourceType] ?? item.sourceType}
 										</a>
 									</li>
 								{/each}

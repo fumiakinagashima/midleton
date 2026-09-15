@@ -15,7 +15,7 @@
 
 <div class="page">
 	<header class="page-header">
-		<h1>データ管理</h1>
+		<h1>Data Management</h1>
 	</header>
 
 	<section>
@@ -25,7 +25,7 @@
 				<a href="/database/{table.id}" class="card">
 					<span class="card-icon"><Icon size={28} /></span>
 					<span class="card-label">{table.label}</span>
-					<span class="card-count">{table.count} 件</span>
+					<span class="card-count">{table.count} records</span>
 				</a>
 			{/each}
 		</div>

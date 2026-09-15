@@ -34,7 +34,7 @@
 			goto(`/database/${type}/${id}`);
 		} else {
 			const e = await res.json() as { error?: string };
-			error = e.error ?? '保存に失敗しました';
+			error = e.error ?? 'Failed to save';
 			submitting = false;
 		}
 	}
@@ -43,13 +43,13 @@
 <div class="page">
 	<header class="page-header">
 		<div class="breadcrumb">
-			<a href="/database">データ管理</a>
+			<a href="/database">Data Management</a>
 			<span class="sep">/</span>
 			<a href="/database/{type}">{info?.label ?? type}</a>
 			<span class="sep">/</span>
-			<a href="/database/{type}/{id}">詳細</a>
+			<a href="/database/{type}/{id}">Details</a>
 			<span class="sep">/</span>
-			<span>編集</span>
+			<span>Edit</span>
 		</div>
 	</header>
 

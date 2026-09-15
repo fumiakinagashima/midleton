@@ -10,33 +10,33 @@
 	let { form, onclick }: Props = $props();
 
 	const TOOL_LABELS: Record<string, string> = {
-		create_customer: '顧客を登録',
-		update_customer: '顧客を編集',
-		create_contact: '担当者を登録',
-		update_contact: '担当者を編集',
-		create_deal: '案件を登録',
-		update_deal: '案件を編集',
-		create_activity: '活動履歴を登録',
-		create_customer_with_contact: '顧客・担当者を登録',
-		create_reminder: 'リマインダーを設定',
-		send_email: 'メールを送信'
+		create_customer: 'Add customer',
+		update_customer: 'Edit customer',
+		create_contact: 'Add contact',
+		update_contact: 'Edit contact',
+		create_deal: 'Add deal',
+		update_deal: 'Edit deal',
+		create_activity: 'Log activity',
+		create_customer_with_contact: 'Add customer and contact',
+		create_reminder: 'Set reminder',
+		send_email: 'Send email'
 	};
 
 	const TOOL_DESCS: Record<string, string> = {
-		create_customer: '顧客の登録ダイアログを表示します',
-		update_customer: '顧客の編集ダイアログを表示します',
-		create_contact: '担当者の登録ダイアログを表示します',
-		update_contact: '担当者の編集ダイアログを表示します',
-		create_deal: '案件の登録ダイアログを表示します',
-		update_deal: '案件の編集ダイアログを表示します',
-		create_activity: '活動履歴の登録ダイアログを表示します',
-		create_customer_with_contact: '顧客と担当者をまとめて登録するダイアログを表示します',
-		create_reminder: 'リマインダーの設定ダイアログを表示します',
-		send_email: 'メール作成フォームを表示します'
+		create_customer: 'Opens the customer registration dialog',
+		update_customer: 'Opens the customer edit dialog',
+		create_contact: 'Opens the contact registration dialog',
+		update_contact: 'Opens the contact edit dialog',
+		create_deal: 'Opens the deal registration dialog',
+		update_deal: 'Opens the deal edit dialog',
+		create_activity: 'Opens the activity registration dialog',
+		create_customer_with_contact: 'Opens a dialog to register a customer and contact together',
+		create_reminder: 'Opens the reminder setup dialog',
+		send_email: 'Opens the email composition form'
 	};
 
-	const label = $derived(form.title ?? TOOL_LABELS[form.tool] ?? '登録・編集フォームを開く');
-	const desc = $derived(TOOL_DESCS[form.tool] ?? '登録・編集ダイアログを表示します');
+	const label = $derived(form.title ?? TOOL_LABELS[form.tool] ?? 'Open registration/edit form');
+	const desc = $derived(TOOL_DESCS[form.tool] ?? 'Opens the registration/edit dialog');
 </script>
 
 <button class="form-btn" {onclick}>

@@ -29,7 +29,7 @@
 	<!-- Greeting: visible only before first message -->
 	<div class="greeting" class:hidden={s.hasStarted} aria-hidden={s.hasStarted}>
 		<h1>MIDLETON</h1>
-		<p>業務を指示してください</p>
+		<p>Tell it what you need done</p>
 	</div>
 
 	<!-- Messages list -->
@@ -149,7 +149,7 @@
 								s.quickActionMenuOpen = !s.quickActionMenuOpen;
 							}}
 							disabled={s.loading}
-							aria-label="クイックアクション"
+							aria-label="Quick actions"
 							aria-expanded={s.quickActionMenuOpen}
 						>
 							<Plus size={16} />
@@ -158,7 +158,7 @@
 							<div class="quick-action-menu">
 								{#if s.quickActions.length === 0}
 									<p class="menu-empty">
-										クイックアクションが設定されていません。<a href="/settings/quick-actions">設定</a>から追加できます。
+										No quick actions configured. Add some from <a href="/settings/quick-actions">Settings</a>.
 									</p>
 								{:else}
 									{#each s.quickActions as action}
@@ -179,7 +179,7 @@
 					class="send-btn"
 					onclick={s.handleSubmit}
 					disabled={s.loading || !s.input.trim()}
-					aria-label="送信"
+					aria-label="Send"
 				>
 					<ArrowUp size={16} />
 				</button>
@@ -294,8 +294,9 @@
 		flex-direction: column;
 	}
 
-	/* テーブル・ガントチャートを含むメッセージは --chat-width の中央カラムに収めず、
-	   messages-inner の全幅を使う（多くの列・長い期間を見やすくするため） */
+	/* Messages containing a table or Gantt chart don't fit the centered --chat-width
+	   column; they use the full width of messages-inner (for readability with many
+	   columns or long date ranges) */
 	.message.wide {
 		max-width: none;
 	}
@@ -447,8 +448,9 @@
 	.input-wrap {
 		position: absolute;
 		left: 50%;
-		/* 未開始時の初期配置はCSSで中央寄せ（JS不要・SSR時点で正位置）。
-		   開始後はJS(repositionInput)が top(px)/translateX(-50%) を設定して下部へスライドする。 */
+		/* Before the chat starts, initial centering is done via CSS (no JS needed —
+		   correct position already at SSR). After it starts, JS (repositionInput)
+		   sets top(px)/translateX(-50%) to slide it down to the bottom. */
 		top: 50%;
 		transform: translate(-50%, -50%);
 		width: min(var(--chat-width), calc(100% - 48px));

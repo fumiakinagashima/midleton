@@ -16,7 +16,7 @@
 		customers: Customer[];
 		onDateChange: (id: string, plannedStart: string, plannedEnd: string) => void;
 		onDealClick?: (id: string) => void;
-		/** 表示期間を明示的に指定する場合（"YYYY-MM-DD"）。指定した側は自動計算を上書きする */
+		/** Explicitly set the displayed date range ("YYYY-MM-DD"). Whichever side is set overrides the automatic calculation */
 		rangeFrom?: string;
 		rangeTo?: string;
 	};
@@ -78,8 +78,8 @@
 	}
 	function clientXToChartX(clientX: number): number {
 		if (!rightBodyEl) return 0;
-		// スクロールは gantt-body 側にまとめたため、right-body 自体はもう動かない。
-		// getBoundingClientRect() が現在のスクロール位置を反映済みなので scrollLeft の加算は不要。
+		// Scrolling is now consolidated on the gantt-body side, so right-body itself no longer moves.
+		// getBoundingClientRect() already reflects the current scroll position, so adding scrollLeft is unnecessary.
 		return clientX - rightBodyEl.getBoundingClientRect().left;
 	}
 
@@ -93,7 +93,8 @@
 			const segEnd   = Math.min(next.getTime(), chartRange.end.getTime());
 			const x = msToX(segStart);
 			const width = ((segEnd - segStart) / 86400000) * pxPerDay;
-			result.push({ label: `${cur.getFullYear()}年${cur.getMonth() + 1}月`, x, width });
+			const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+			result.push({ label: `${MONTH_LABELS[cur.getMonth()]} ${cur.getFullYear()}`, x, width });
 			cur = next;
 		}
 		return result;
@@ -102,11 +103,11 @@
 	const subHeaders = $derived.by(() => {
 		const result: { label: string; x: number; isWeekend?: boolean }[] = [];
 		if (zoom === 3) {
-			const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+			const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 			let cur = new Date(chartRange.start);
 			while (cur <= chartRange.end) {
 				const dow = cur.getDay();
-				result.push({ label: `${cur.getDate()}${DAY_LABELS[dow]}`, x: msToX(cur.getTime()), isWeekend: dow === 0 || dow === 6 });
+				result.push({ label: `${cur.getDate()} ${DAY_LABELS[dow]}`, x: msToX(cur.getTime()), isWeekend: dow === 0 || dow === 6 });
 				cur = new Date(cur.getTime() + 86400000);
 			}
 		} else {
@@ -137,9 +138,9 @@
 
 	// ── Status colors ────────────────────────────────────────────────────────
 	const STATUS: Record<string, { bg: string; border: string; label: string }> = {
-		open: { bg: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', border: 'var(--color-primary)', label: '商談中' },
-		won:  { bg: 'color-mix(in srgb, var(--color-success) 18%, transparent)', border: 'var(--color-success)', label: '受注' },
-		lost: { bg: 'color-mix(in srgb, var(--color-error) 18%, transparent)', border: 'var(--color-error)', label: '失注' }
+		open: { bg: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', border: 'var(--color-primary)', label: 'In progress' },
+		won:  { bg: 'color-mix(in srgb, var(--color-success) 18%, transparent)', border: 'var(--color-success)', label: 'Won' },
+		lost: { bg: 'color-mix(in srgb, var(--color-error) 18%, transparent)', border: 'var(--color-error)', label: 'Lost' }
 	};
 
 	// ── Customer lookup ──────────────────────────────────────────────────────
@@ -278,9 +279,9 @@
 	}
 
 	// ── Scroll sync ──────────────────────────────────────────────────────────
-	// 縦・横スクロールは gantt-body 一つにまとめる（left-body は sticky で固定表示）。
-	// こうしないと left-body / right-body を別々にスクロールさせる構造になり、
-	// 縦スクロール時に行がずれる・そもそもスクロールできない問題が起きる。
+	// Vertical and horizontal scrolling are consolidated into a single gantt-body (left-body stays fixed via sticky).
+	// Without this, left-body / right-body would scroll independently, causing rows to
+	// misalign on vertical scroll or preventing scrolling altogether.
 	let rightHeadEl = $state<HTMLDivElement | null>(null);
 	let rightBodyEl = $state<HTMLDivElement | null>(null);
 	let ganttBodyEl = $state<HTMLDivElement | null>(null);
@@ -313,20 +314,20 @@
 <div class="gantt" bind:this={ganttEl} style:cursor={cursor}>
 	<!-- ── Controls ──────────────────────────────────────────────────────── -->
 	<div class="controls">
-		<span class="zoom-label">ズーム</span>
+		<span class="zoom-label">Zoom</span>
 		<button class="zoom-btn" onclick={() => zoom = Math.max(0, zoom - 1)} disabled={zoom === 0}>−</button>
-		<span class="zoom-val">{['全体','月','週','日'][zoom]}</span>
+		<span class="zoom-val">{['Overview','Month','Week','Day'][zoom]}</span>
 		<button class="zoom-btn" onclick={() => zoom = Math.min(3, zoom + 1)} disabled={zoom === 3}>＋</button>
-		<span class="hint">期間未設定の行をドラッグしてバーを作成</span>
+		<span class="hint">Drag a row with no dates set to create a bar</span>
 	</div>
 
 	<!-- ── Header ────────────────────────────────────────────────────────── -->
 	<div class="gantt-head">
 		<div class="left-head" style:width="{LEFT_W}px">
-			<div class="lh-col title">案件名</div>
-			{#if showCustomer}<div class="lh-col customer">顧客</div>{/if}
-			{#if showDates}<div class="lh-col dates">期間</div>{/if}
-			{#if showStatus}<div class="lh-col status">状況</div>{/if}
+			<div class="lh-col title">Deal name</div>
+			{#if showCustomer}<div class="lh-col customer">Customer</div>{/if}
+			{#if showDates}<div class="lh-col dates">Period</div>{/if}
+			{#if showStatus}<div class="lh-col status">Status</div>{/if}
 		</div>
 		<div class="right-head" bind:this={rightHeadEl}>
 			<div class="rh-inner" style:width="{chartWidth}px">
@@ -370,7 +371,7 @@
 							{#if deal.plannedStart && deal.plannedEnd}
 								{fmtDate(deal.plannedStart)} – {fmtDate(deal.plannedEnd)}
 							{:else}
-								<span class="unset">未設定</span>
+								<span class="unset">Not set</span>
 							{/if}
 						</span>
 					{/if}
@@ -543,16 +544,16 @@
 	.rh-sub.weekend { color: #e05252; }
 
 	/* Body */
-	/* 縦・横スクロールはここ一箇所にまとめる（left-body/right-body を別々にスクロールさせない）。
-	   align-items:flex-start を指定しないと、子要素が gantt-body の可視高さぶんにストレッチされ、
-	   それを超える行が切れて（スクロールされずに）しまう。 */
+	/* Vertical and horizontal scrolling are consolidated here (left-body/right-body never scroll independently).
+	   Without align-items:flex-start, child elements would stretch to the visible height of gantt-body,
+	   and rows beyond that would be clipped instead of scrollable. */
 	.gantt-body { display: flex; align-items: flex-start; flex: 1; overflow: auto; }
 
 	.left-body {
 		flex-shrink: 0;
 		border-right: 1px solid var(--color-border);
 		background: var(--color-background);
-		/* 横スクロール時は左の見出し列を画面上に固定表示する */
+		/* Keep the left header column fixed on screen during horizontal scroll */
 		position: sticky;
 		left: 0;
 		z-index: 5;
@@ -597,11 +598,11 @@
 	.lh-col.status   { width: 68px; flex-shrink: 0; }
 
 	/* Right body */
-	/* スクロールは親の gantt-body が担うため、ここでは overflow を持たない */
+	/* Scrolling is handled by the parent gantt-body, so this has no overflow of its own */
 	.right-body { flex: 1; min-width: 0; }
-	/* バー・グリッド線は絶対配置で left/width を自由に計算しているため、
-	   表示範囲（chartWidth）の外にはみ出た分は overflow:hidden で見た目だけ切り落とす。
-	   日付データやドラッグ計算（msToX 等）には影響しない、純粋な表示上のクリップ。 */
+	/* Bars and grid lines are absolutely positioned with freely computed left/width, so
+	   anything beyond the visible range (chartWidth) is clipped purely for display via overflow:hidden.
+	   This does not affect date data or drag calculations (msToX, etc.) — it's a purely visual clip. */
 	.chart-inner { position: relative; overflow: hidden; }
 
 	.weekend-bg {

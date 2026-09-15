@@ -6,20 +6,20 @@ import type { FormField } from '$lib/types/chat';
 import type { ToolEnv } from '$lib/server/agent-tools';
 
 const DEAL_STATUS_OPTIONS = [
-	{ label: '商談中', value: 'open' },
-	{ label: '受注', value: 'won' },
-	{ label: '失注', value: 'lost' }
+	{ label: 'In Progress', value: 'open' },
+	{ label: 'Won', value: 'won' },
+	{ label: 'Lost', value: 'lost' }
 ];
 
 const ACTIVITY_TYPE_OPTIONS = [
-	{ label: 'メモ', value: 'note' },
-	{ label: '電話', value: 'call' },
-	{ label: 'メール', value: 'email' },
-	{ label: '面談', value: 'meeting' }
+	{ label: 'Note', value: 'note' },
+	{ label: 'Call', value: 'call' },
+	{ label: 'Email', value: 'email' },
+	{ label: 'Meeting', value: 'meeting' }
 ];
 
-// 既知のツールに対するサーバー定義フォームを返す。
-// FormDialog はこのエンドポイントからフィールド構造を取得し、AIが提供した値をプリフィルとして適用する。
+// Returns server-defined forms for known tools.
+// FormDialog fetches the field structure from this endpoint and applies AI-provided values as prefill.
 export const GET: RequestHandler = async ({ params, platform, locals }) => {
 	if (!platform?.env?.DB) {
 		return json({ error: 'DB not configured' }, { status: 500 });
@@ -34,130 +34,130 @@ export const GET: RequestHandler = async ({ params, platform, locals }) => {
 
 	const { tool } = params;
 
-	// ── リマインダー ──────────────────────────────────────────────
+	// ── Reminder ──────────────────────────────────────────────
 	if (tool === 'create_reminder') {
 		const options = await getReminderChannelOptions(db, toolEnv);
 		const fields: FormField[] = [
-			{ key: 'remind_at', label: '日時', type: 'datetime-local', required: true },
-			{ key: 'channels', label: '通知先', type: 'multiselect', required: true, value: 'notification', options },
-			{ key: 'content', label: '内容', type: 'textarea', required: true }
+			{ key: 'remind_at', label: 'Date/Time', type: 'datetime-local', required: true },
+			{ key: 'channels', label: 'Notify Via', type: 'multiselect', required: true, value: 'notification', options },
+			{ key: 'content', label: 'Content', type: 'textarea', required: true }
 		];
-		return json({ title: 'リマインダー設定', fields });
+		return json({ title: 'Set Reminder', fields });
 	}
 
-	// ── 顧客 ─────────────────────────────────────────────────────
+	// ── Customer ─────────────────────────────────────────────────────
 	if (tool === 'create_customer') {
 		const fields: FormField[] = [
-			{ key: 'name', label: '会社名', type: 'text', required: true },
-			{ key: 'email', label: 'メールアドレス', type: 'email' },
-			{ key: 'phone', label: '電話番号', type: 'tel' },
-			{ key: 'postal_code', label: '郵便番号', type: 'text' },
-			{ key: 'address', label: '住所', type: 'text' },
-			{ key: 'website', label: 'ホームページ', type: 'text' },
+			{ key: 'name', label: 'Company Name', type: 'text', required: true },
+			{ key: 'email', label: 'Email Address', type: 'email' },
+			{ key: 'phone', label: 'Phone Number', type: 'tel' },
+			{ key: 'postal_code', label: 'Postal Code', type: 'text' },
+			{ key: 'address', label: 'Address', type: 'text' },
+			{ key: 'website', label: 'Website', type: 'text' },
 			{
 				key: 'status',
-				label: 'ステータス',
+				label: 'Status',
 				type: 'select',
 				value: 'active',
 				options: [
-					{ label: '有効', value: 'active' },
-					{ label: '無効', value: 'inactive' }
+					{ label: 'Active', value: 'active' },
+					{ label: 'Inactive', value: 'inactive' }
 				]
 			},
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		];
-		return json({ title: '顧客情報登録', fields });
+		return json({ title: 'Register Customer', fields });
 	}
 
 	if (tool === 'update_customer') {
 		const fields: FormField[] = [
 			{ key: 'id', label: '', type: 'hidden' },
-			{ key: 'name', label: '会社名', type: 'text', required: true },
-			{ key: 'email', label: 'メールアドレス', type: 'email' },
-			{ key: 'phone', label: '電話番号', type: 'tel' },
-			{ key: 'postal_code', label: '郵便番号', type: 'text' },
-			{ key: 'address', label: '住所', type: 'text' },
-			{ key: 'website', label: 'ホームページ', type: 'text' },
+			{ key: 'name', label: 'Company Name', type: 'text', required: true },
+			{ key: 'email', label: 'Email Address', type: 'email' },
+			{ key: 'phone', label: 'Phone Number', type: 'tel' },
+			{ key: 'postal_code', label: 'Postal Code', type: 'text' },
+			{ key: 'address', label: 'Address', type: 'text' },
+			{ key: 'website', label: 'Website', type: 'text' },
 			{
 				key: 'status',
-				label: 'ステータス',
+				label: 'Status',
 				type: 'select',
 				options: [
-					{ label: '有効', value: 'active' },
-					{ label: '無効', value: 'inactive' }
+					{ label: 'Active', value: 'active' },
+					{ label: 'Inactive', value: 'inactive' }
 				]
 			},
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		];
-		return json({ title: '顧客情報編集', fields });
+		return json({ title: 'Edit Customer', fields });
 	}
 
-	// ── 案件 ─────────────────────────────────────────────────────
+	// ── Deal ─────────────────────────────────────────────────────
 	if (tool === 'create_deal') {
 		const fields: FormField[] = [
-			{ key: 'customer_id', label: '顧客', type: 'recordSelect', required: true, refTable: 'customers' },
-			{ key: 'title', label: '案件タイトル', type: 'text', required: true },
-			{ key: 'amount', label: '金額（円）', type: 'number' },
-			{ key: 'status', label: 'ステータス', type: 'select', value: 'open', options: DEAL_STATUS_OPTIONS },
-			{ key: 'planned_start', label: '開始予定日', type: 'date' },
-			{ key: 'planned_end', label: '終了予定日', type: 'date' },
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'customer_id', label: 'Customer', type: 'recordSelect', required: true, refTable: 'customers' },
+			{ key: 'title', label: 'Deal Title', type: 'text', required: true },
+			{ key: 'amount', label: 'Amount (JPY)', type: 'number' },
+			{ key: 'status', label: 'Status', type: 'select', value: 'open', options: DEAL_STATUS_OPTIONS },
+			{ key: 'planned_start', label: 'Planned Start Date', type: 'date' },
+			{ key: 'planned_end', label: 'Planned End Date', type: 'date' },
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		];
-		return json({ title: '案件登録', fields });
+		return json({ title: 'Register Deal', fields });
 	}
 
 	if (tool === 'update_deal') {
 		const fields: FormField[] = [
 			{ key: 'id', label: '', type: 'hidden' },
 			{ key: 'customer_id', label: '', type: 'hidden' },
-			{ key: 'title', label: '案件タイトル', type: 'text', required: true },
-			{ key: 'amount', label: '金額（円）', type: 'number' },
-			{ key: 'status', label: 'ステータス', type: 'select', options: DEAL_STATUS_OPTIONS },
-			{ key: 'planned_start', label: '開始予定日', type: 'date' },
-			{ key: 'planned_end', label: '終了予定日', type: 'date' },
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'title', label: 'Deal Title', type: 'text', required: true },
+			{ key: 'amount', label: 'Amount (JPY)', type: 'number' },
+			{ key: 'status', label: 'Status', type: 'select', options: DEAL_STATUS_OPTIONS },
+			{ key: 'planned_start', label: 'Planned Start Date', type: 'date' },
+			{ key: 'planned_end', label: 'Planned End Date', type: 'date' },
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		];
-		return json({ title: '案件編集', fields });
+		return json({ title: 'Edit Deal', fields });
 	}
 
-	// ── 担当者 ───────────────────────────────────────────────────
+	// ── Contact ───────────────────────────────────────────────────
 	if (tool === 'create_contact') {
 		const fields: FormField[] = [
-			{ key: 'customer_id', label: '顧客', type: 'recordSelect', required: true, refTable: 'customers' },
-			{ key: 'name', label: '氏名', type: 'text', required: true },
-			{ key: 'name_kana', label: '氏名（カナ）', type: 'text' },
-			{ key: 'role', label: '役職', type: 'text' },
-			{ key: 'department', label: '部署', type: 'text' },
-			{ key: 'email', label: 'メールアドレス', type: 'email' },
-			{ key: 'phone', label: '電話番号', type: 'tel' },
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'customer_id', label: 'Customer', type: 'recordSelect', required: true, refTable: 'customers' },
+			{ key: 'name', label: 'Name', type: 'text', required: true },
+			{ key: 'name_kana', label: 'Name (Kana)', type: 'text' },
+			{ key: 'role', label: 'Role', type: 'text' },
+			{ key: 'department', label: 'Department', type: 'text' },
+			{ key: 'email', label: 'Email Address', type: 'email' },
+			{ key: 'phone', label: 'Phone Number', type: 'tel' },
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		];
-		return json({ title: '担当者登録', fields });
+		return json({ title: 'Register Contact', fields });
 	}
 
 	if (tool === 'update_contact') {
 		const fields: FormField[] = [
 			{ key: 'id', label: '', type: 'hidden' },
 			{ key: 'customer_id', label: '', type: 'hidden' },
-			{ key: 'name', label: '氏名', type: 'text', required: true },
-			{ key: 'name_kana', label: '氏名（カナ）', type: 'text' },
-			{ key: 'role', label: '役職', type: 'text' },
-			{ key: 'department', label: '部署', type: 'text' },
-			{ key: 'email', label: 'メールアドレス', type: 'email' },
-			{ key: 'phone', label: '電話番号', type: 'tel' },
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'name', label: 'Name', type: 'text', required: true },
+			{ key: 'name_kana', label: 'Name (Kana)', type: 'text' },
+			{ key: 'role', label: 'Role', type: 'text' },
+			{ key: 'department', label: 'Department', type: 'text' },
+			{ key: 'email', label: 'Email Address', type: 'email' },
+			{ key: 'phone', label: 'Phone Number', type: 'tel' },
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		];
-		return json({ title: '担当者編集', fields });
+		return json({ title: 'Edit Contact', fields });
 	}
 
-	// ── 活動履歴 ─────────────────────────────────────────────────
+	// ── Activity ─────────────────────────────────────────────────
 	if (tool === 'create_activity') {
 		const fields: FormField[] = [
-			{ key: 'customer_id', label: '顧客', type: 'recordSelect', required: true, refTable: 'customers' },
-			{ key: 'type', label: '種別', type: 'select', value: 'note', options: ACTIVITY_TYPE_OPTIONS },
-			{ key: 'content', label: '内容', type: 'textarea', required: true }
+			{ key: 'customer_id', label: 'Customer', type: 'recordSelect', required: true, refTable: 'customers' },
+			{ key: 'type', label: 'Type', type: 'select', value: 'note', options: ACTIVITY_TYPE_OPTIONS },
+			{ key: 'content', label: 'Content', type: 'textarea', required: true }
 		];
-		return json({ title: '活動履歴登録', fields });
+		return json({ title: 'Register Activity', fields });
 	}
 
 	return json({ error: 'Not found' }, { status: 404 });

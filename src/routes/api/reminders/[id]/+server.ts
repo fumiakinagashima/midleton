@@ -12,13 +12,13 @@ export const PATCH: RequestHandler = async ({ params, request, platform, locals 
 	const reminder = await getReminder(db, params.id);
 	if (!reminder) return errors.notFound();
 	if (reminder.accountId && reminder.accountId !== locals.account!.id) return errors.forbidden();
-	if (reminder.status !== 'pending') return json({ error: '送信済みのリマインダーは編集できません。' }, { status: 400 });
+	if (reminder.status !== 'pending') return json({ error: 'Reminders that have already been sent cannot be edited.' }, { status: 400 });
 
 	try {
 		const body = (await request.json()) as { remind_at?: string; content?: string; channels?: string };
 		const channels = (body.channels ?? '').split(',').map((c) => c.trim()).filter(Boolean);
 		if (!body.remind_at || !body.content?.trim() || channels.length === 0) {
-			return json({ error: '入力が不正です' }, { status: 400 });
+			return json({ error: 'Invalid input' }, { status: 400 });
 		}
 		const row = await updateReminder(db, params.id, {
 			remindAt: parseJstDatetime(body.remind_at),

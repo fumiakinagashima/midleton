@@ -57,14 +57,14 @@ export async function computeCustomerHealthScore(
 
 	const jsonMatch = text.match(/\{[\s\S]*\}/);
 	if (!jsonMatch) {
-		throw new Error(`ヘルススコアの解析に失敗しました。(response: ${text.slice(0, 100)})`);
+		throw new Error(`Failed to parse the health score. (response: ${text.slice(0, 100)})`);
 	}
 
 	let parsed: { score: number; level: CustomerHealthLevel; summary: string; positives: string[]; concerns: string[] };
 	try {
 		parsed = JSON.parse(jsonMatch[0]);
 	} catch {
-		throw new Error('ヘルススコアの解析に失敗しました。');
+		throw new Error('Failed to parse the health score.');
 	}
 
 	const updatedAt = new Date();

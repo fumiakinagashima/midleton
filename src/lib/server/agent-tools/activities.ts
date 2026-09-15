@@ -9,33 +9,34 @@ import { parseJstDatetime } from '$lib/datetime';
 export const tools: Tool[] = [
 	{
 		name: 'get_activities',
-		description: '指定した顧客の活動履歴を取得する。',
+		description: 'Fetches the activity history for a given customer.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '顧客のID' },
-				limit: { type: 'number', description: '取得件数の上限（デフォルト: 20）' }
+				customer_id: { type: 'string', description: 'Customer ID' },
+				limit: { type: 'number', description: 'Maximum number of results to return (default: 20)' }
 			},
 			required: ['customer_id']
 		}
 	},
 	{
 		name: 'create_activity',
-		description: '活動履歴（メモ・通話・メール・面談）を記録する。',
+		description: 'Records an activity history entry (note, call, email, or meeting).',
 		input_schema: {
 			type: 'object',
 			properties: {
-				customer_id: { type: 'string', description: '記録先の顧客ID' },
+				customer_id: { type: 'string', description: 'Customer ID to record the activity against' },
 				type: {
 					type: 'string',
 					enum: ['note', 'call', 'email', 'meeting', 'deal_created'],
 					description:
-						'活動の種別（note: メモ / call: 通話 / email: メール / meeting: 面談 / deal_created: 案件登録）'
+						'Activity type (note: memo / call: phone call / email: email / meeting: in-person meeting / deal_created: deal registered)'
 				},
-				content: { type: 'string', description: '活動内容（必須）' },
+				content: { type: 'string', description: 'Activity content (required)' },
 				activity_date: {
 					type: 'string',
-					description: '実際に活動を行った日時（JST、"YYYY-MM-DDTHH:mm" 形式、省略可）。登録日時と異なる場合に指定する'
+					description:
+						'Date/time the activity actually took place (JST, "YYYY-MM-DDTHH:mm" format, optional). Specify when it differs from the recorded timestamp'
 				}
 			},
 			required: ['customer_id', 'content']

@@ -7,11 +7,11 @@ import { errors } from '$lib/server/errors';
 const VALID_STATUSES = new Set(['open', 'won', 'lost']);
 
 export const PATCH: RequestHandler = async ({ params, request, platform }) => {
-	if (!platform?.env?.DB) return errors.serviceUnavailable('D1データベースが設定されていません');
+	if (!platform?.env?.DB) return errors.serviceUnavailable('D1 database is not configured');
 
 	const { status } = (await request.json()) as { status?: string };
 	if (typeof status !== 'string' || !VALID_STATUSES.has(status)) {
-		return errors.badRequest('不正なステータスです');
+		return errors.badRequest('Invalid status');
 	}
 
 	const db = createDb(platform.env.DB);

@@ -3,17 +3,17 @@ import { generateExcelWorkbook } from './excel';
 import { extractZipText } from './test-utils';
 
 describe('generateExcelWorkbook', () => {
-	it('generates a valid xlsx with Japanese content', async () => {
+	it('generates a valid xlsx with content', async () => {
 		const buffer = await generateExcelWorkbook([
 			{
-				name: '売上一覧',
+				name: 'Sales List',
 				columns: [
-					{ key: 'name', label: '顧客名' },
-					{ key: 'amount', label: '金額' }
+					{ key: 'name', label: 'Customer Name' },
+					{ key: 'amount', label: 'Amount' }
 				],
 				rows: [
-					{ name: '株式会社サンプル', amount: 100000 },
-					{ name: '合同会社テスト', amount: 50000 }
+					{ name: 'Sample Corp.', amount: 100000 },
+					{ name: 'Test LLC', amount: 50000 }
 				]
 			}
 		]);
@@ -23,7 +23,7 @@ describe('generateExcelWorkbook', () => {
 		expect(bytes[1]).toBe(0x4b); // 'K'
 
 		const text = await extractZipText(buffer);
-		expect(text).toContain('顧客名');
-		expect(text).toContain('株式会社サンプル');
+		expect(text).toContain('Customer Name');
+		expect(text).toContain('Sample Corp.');
 	});
 });

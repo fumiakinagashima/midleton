@@ -46,7 +46,7 @@ function periodLabel(period: 'this_week' | 'next_week' | 'this_month' | undefine
 		const sun = new Date(mon);
 		sun.setDate(mon.getDate() + 6);
 		const fmt = (d: Date) => `${d.getMonth()+1}/${d.getDate()}`;
-		return `今週（${fmt(mon)}〜${fmt(sun)}）`;
+		return `this week (${fmt(mon)}-${fmt(sun)})`;
 	}
 	if (period === 'next_week') {
 		const mon = new Date(today);
@@ -54,15 +54,15 @@ function periodLabel(period: 'this_week' | 'next_week' | 'this_month' | undefine
 		const sun = new Date(mon);
 		sun.setDate(mon.getDate() + 6);
 		const fmt = (d: Date) => `${d.getMonth()+1}/${d.getDate()}`;
-		return `来週（${fmt(mon)}〜${fmt(sun)}）`;
+		return `next week (${fmt(mon)}-${fmt(sun)})`;
 	}
-	return `今月（${today.getFullYear()}年${today.getMonth()+1}月）`;
+	return `this month (${today.getFullYear()}-${today.getMonth()+1})`;
 }
 
 function parseJson<T>(text: string): T {
 	const m = text.match(/\{[\s\S]*\}/);
-	if (!m) throw new Error(`フォローアップ提案の解析に失敗しました。(response: ${text.slice(0, 100)})`);
-	try { return JSON.parse(m[0]); } catch { throw new Error('フォローアップ提案の解析に失敗しました。'); }
+	if (!m) throw new Error(`Failed to parse the follow-up suggestions. (response: ${text.slice(0, 100)})`);
+	try { return JSON.parse(m[0]); } catch { throw new Error('Failed to parse the follow-up suggestions.'); }
 }
 
 export async function computeCustomerFollowupSingle(
@@ -113,19 +113,19 @@ export async function computeCustomerFollowupList(
 ): Promise<CustomerFollowupList> {
 	const today = new Date();
 
-	// 有効な顧客を全件取得
+	// Fetch all active customers
 	const activeCustomers = await db.select().from(customers).where(eq(customers.status, 'active'));
 	if (activeCustomers.length === 0) {
-		return { period: periodLabel(period, today), followups: [], summary: 'フォローアップ対象の顧客がいません。' };
+		return { period: periodLabel(period, today), followups: [], summary: 'No customers need a follow-up.' };
 	}
 
 	const customerIds = activeCustomers.map(c => c.id);
 
-	// 進行中案件を一括取得
+	// Fetch open deals in bulk
 	const openDeals = await db.select().from(deals)
 		.where(and(eq(deals.status, 'open'), inArray(deals.customerId, customerIds)));
 
-	// 進行中案件がある顧客のみ対象
+	// Only consider customers with an open deal
 	const dealsByCustomer = new Map<string, string[]>();
 	for (const d of openDeals) {
 		const list = dealsByCustomer.get(d.customerId) ?? [];
@@ -135,14 +135,14 @@ export async function computeCustomerFollowupList(
 	const candidateIds = new Set(dealsByCustomer.keys());
 	const candidates = activeCustomers.filter(c => candidateIds.has(c.id));
 	if (candidates.length === 0) {
-		return { period: periodLabel(period, today), followups: [], summary: '進行中案件のある顧客がいません。' };
+		return { period: periodLabel(period, today), followups: [], summary: 'No customers have an open deal.' };
 	}
 
-	// 直近活動を一括取得（各顧客の最新1件）
+	// Fetch recent activity in bulk (most recent one per customer)
 	const recentActs = await db.select().from(activities)
 		.where(inArray(activities.customerId, candidates.map(c => c.id)))
 		.orderBy(desc(activities.createdAt))
-		.limit(candidates.length * 3); // 各顧客分カバーできる件数
+		.limit(candidates.length * 3); // enough to cover every candidate customer
 
 	const lastActivityByCustomer = new Map<string, typeof recentActs[0]>();
 	for (const a of recentActs) {

@@ -81,9 +81,9 @@ export const activities = sqliteTable('activities', {
 		.notNull()
 		.default('note'),
 	content: text('content').notNull(),
-	// ユーザーが任意で設定する「実際に活動を行った日時」（登録日時 createdAt と異なる場合に使う）
+	// The "date/time the activity actually took place", optionally set by the user (used when it differs from the createdAt registration timestamp)
 	activityDate: integer('activity_date', { mode: 'timestamp' }),
-	// 登録者の accountId（セッションから設定）。ログイン実装前の既存データは ''
+	// The accountId of the person who registered this (set from the session). Existing data from before login was implemented is ''
 	createdBy: text('created_by').notNull().default(''),
 	custom: text('custom').default('{}'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
@@ -182,10 +182,10 @@ export const reminders = sqliteTable('reminders', {
 	id: text('id').primaryKey(),
 	remindAt: integer('remind_at', { mode: 'timestamp' }).notNull(),
 	content: text('content').notNull(),
-	// JSON配列: 'notification' | 'email' | 'slack:<integration_id>'
+	// JSON array: 'notification' | 'email' | 'slack:<integration_id>'
 	channels: text('channels').notNull().default('[]'),
 	status: text('status', { enum: ['pending', 'sent', 'failed'] }).notNull().default('pending'),
-	// null = 全アカウント共通（ログイン実装前の既存データ）。配信先メールは getAccount(accountId)?.email、なければ REMINDER_EMAIL_TO にフォールバック
+	// null = shared across all accounts (existing data from before login was implemented). The delivery email is getAccount(accountId)?.email, falling back to REMINDER_EMAIL_TO if unset
 	accountId: text('account_id'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
@@ -195,7 +195,7 @@ export const reminders = sqliteTable('reminders', {
 export const chats = sqliteTable('chats', {
 	id: text('id').primaryKey(),
 	title: text('title').notNull().default(''),
-	// null = 全アカウント共通（ログイン実装前の既存データ）。読み取りは accountId IS NULL OR accountId = <自分> でフィルタする
+	// null = shared across all accounts (existing data from before login was implemented). Reads are filtered by accountId IS NULL OR accountId = <self>
 	accountId: text('account_id'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
@@ -222,13 +222,13 @@ export const emailSends = sqliteTable('email_sends', {
 	to: text('to').notNull(),
 	subject: text('subject').notNull(),
 	body: text('body').notNull().default(''),
-	// 関連する顧客ID（send_email の customer_id 指定時のみ）
+	// The related customer ID (only when send_email specifies customer_id)
 	customerId: text('customer_id'),
-	// 送信を実行したアカウント（取得できない場合は null）
+	// The account that performed the send (null if it could not be determined)
 	accountId: text('account_id'),
 	status: text('status', { enum: ['sent', 'failed'] }).notNull().default('sent'),
 	errorMessage: text('error_message'),
-	// 送信元（'chat' = send_email エージェントツール, 'api' = /api/email/send）
+	// The source ('chat' = the send_email agent tool, 'api' = /api/email/send)
 	source: text('source').notNull().default('chat'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
@@ -237,11 +237,11 @@ export const emailSends = sqliteTable('email_sends', {
 
 export const briefings = sqliteTable('briefings', {
 	id: text('id').primaryKey(),
-	// null = 全アカウント共通。通常はログイン中アカウントのIDを設定する
+	// null = shared across all accounts. Normally set to the ID of the currently logged-in account
 	accountId: text('account_id'),
-	// JST日付文字列 "YYYY-MM-DD"
+	// JST date string "YYYY-MM-DD"
 	date: text('date').notNull(),
-	// MessageContent[] をJSON文字列化して保存
+	// Stored as MessageContent[] serialized to a JSON string
 	contents: text('contents').notNull(),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()

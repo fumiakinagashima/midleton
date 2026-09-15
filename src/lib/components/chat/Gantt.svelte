@@ -82,19 +82,19 @@
 				>
 					{#if expanded}
 						<Shrink size={14} />
-						<span>縮小表示する</span>
+						<span>Collapse</span>
 					{:else}
 						<Expand size={14} />
-						<span>拡張表示する</span>
+						<span>Expand</span>
 					{/if}
 				</button>
 			{/if}
 		</div>
 	{/if}
 	{#if loading}
-		<p class="loading">読み込み中...</p>
+		<p class="loading">Loading...</p>
 	{:else if displayDeals.length === 0}
-		<p class="empty">表示できる案件がありません。</p>
+		<p class="empty">No deals to display.</p>
 	{:else}
 		<div class="chart-wrap">
 			<GanttChart deals={displayDeals} {customers} onDateChange={handleDateChange} {onDealClick} />

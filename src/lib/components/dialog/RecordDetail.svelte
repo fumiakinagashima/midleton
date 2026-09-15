@@ -11,7 +11,7 @@
 
 	let { fields, record, onEdit, onDelete }: Props = $props();
 
-	// recordSelect フィールドの id→name ラベルを参照テーブルから解決する（Form.svelte と同方式）
+	// Resolve id→name labels for recordSelect fields from the referenced table (same approach as Form.svelte)
 	let refLabels = $state<Record<string, Record<string, string>>>({});
 
 	onMount(async () => {
@@ -32,16 +32,16 @@
 
 	function formatValue(val: unknown, fieldType: string): string {
 		if (val == null || val === '') return '—';
-		if (fieldType === 'number') return new Intl.NumberFormat('ja-JP').format(Number(val));
+		if (fieldType === 'number') return new Intl.NumberFormat('en-US').format(Number(val));
 		if (fieldType === 'date') {
 			const d = typeof val === 'number' ? new Date(val * 1000) : new Date(String(val));
 			if (isNaN(d.getTime())) return String(val);
-			return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
+			return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
 		}
 		if (fieldType === 'datetime-local') {
 			const d = typeof val === 'number' ? new Date(val * 1000) : new Date(String(val));
 			if (isNaN(d.getTime())) return String(val);
-			return new Intl.DateTimeFormat('ja-JP', {
+			return new Intl.DateTimeFormat('en-US', {
 				year: 'numeric', month: 'long', day: 'numeric',
 				hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo'
 			}).format(d);
@@ -63,7 +63,7 @@
 
 	function fmtTs(ts: unknown): string {
 		if (ts == null) return '—';
-		return new Intl.DateTimeFormat('ja-JP', {
+		return new Intl.DateTimeFormat('en-US', {
 			year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
 		}).format(new Date(Number(ts) * 1000));
 	}
@@ -73,8 +73,8 @@
 	<div class="detail-header">
 		<span class="detail-id mono">{record.id}</span>
 		<div class="header-actions">
-			<button class="action-btn" onclick={onEdit}>編集</button>
-			<button class="action-btn danger" onclick={onDelete}>削除</button>
+			<button class="action-btn" onclick={onEdit}>Edit</button>
+			<button class="action-btn danger" onclick={onDelete}>Delete</button>
 		</div>
 	</div>
 
@@ -84,10 +84,10 @@
 			<dd class:notes={field.type === 'textarea'}>{displayValue(field)}</dd>
 		{/each}
 		{#if record.createdAt}
-			<dt>作成日時</dt><dd>{fmtTs(record.createdAt)}</dd>
+			<dt>Created At</dt><dd>{fmtTs(record.createdAt)}</dd>
 		{/if}
 		{#if record.updatedAt}
-			<dt>更新日時</dt><dd>{fmtTs(record.updatedAt)}</dd>
+			<dt>Updated At</dt><dd>{fmtTs(record.updatedAt)}</dd>
 		{/if}
 	</dl>
 </div>

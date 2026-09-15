@@ -18,7 +18,7 @@
 
 	let page = $state(1);
 	const totalPages = $derived(Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE)));
-	// rows が変わった時に範囲外ページを補正
+	// Correct out-of-range page when rows changes
 	$effect(() => {
 		if (page > totalPages) page = totalPages;
 	});
@@ -39,10 +39,10 @@
 			>
 				{#if expanded}
 					<Shrink size={14} />
-					<span>縮小表示する</span>
+					<span>Collapse</span>
 				{:else}
 					<Expand size={14} />
-					<span>拡張表示する</span>
+					<span>Expand</span>
 				{/if}
 			</button>
 		</div>

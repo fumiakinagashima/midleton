@@ -11,16 +11,16 @@ export const tools: Tool[] = [
 	{
 		name: 'get_customer_detail',
 		description:
-			'顧客の詳細情報（基本情報・担当者・案件・活動履歴）をまとめて取得する。名前（部分一致）またはIDで検索できる。',
+			'Fetches full customer detail (basic info, contacts, deals, and activity history) in one call. Search by name (partial match) or ID.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				id: { type: 'string', description: '顧客ID（id か name のどちらか一方を指定）' },
+				id: { type: 'string', description: 'Customer ID (specify either id or name)' },
 				name: {
 					type: 'string',
-					description: '顧客名（部分一致）（id か name のどちらか一方を指定）'
+					description: 'Customer name (partial match) (specify either id or name)'
 				},
-				activities_limit: { type: 'number', description: '活動履歴の取得件数（デフォルト: 10）' }
+				activities_limit: { type: 'number', description: 'Number of activity history records to fetch (default: 10)' }
 			},
 			required: []
 		}
@@ -28,18 +28,18 @@ export const tools: Tool[] = [
 	{
 		name: 'get_customer_health_score',
 		description:
-			'顧客のヘルススコア（取引関係の健全度を0-100でAIが評価したもの）を取得する。名前（部分一致）またはIDで検索できる。「株式会社◯◯のヘルススコアは？」「◯◯との関係は良好？」などに使う。結果はDBにキャッシュされ、通常はキャッシュ済みの値を即座に返す（未計算の場合のみAIで新規計算する）。最新の状態に更新したい場合は force を true にする。',
+			'Fetches a customer\'s health score (an AI-assessed rating of relationship health on a 0-100 scale). Search by name (partial match) or ID. Used for questions like "What is Acme Corp\'s health score?" or "Is our relationship with X in good shape?". The result is cached in the DB and, normally, the cached value is returned immediately (a new calculation is only run if none exists yet). Set force to true to refresh with the latest calculation.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				id: { type: 'string', description: '顧客ID（id か name のどちらか一方を指定）' },
+				id: { type: 'string', description: 'Customer ID (specify either id or name)' },
 				name: {
 					type: 'string',
-					description: '顧客名（部分一致）（id か name のどちらか一方を指定）'
+					description: 'Customer name (partial match) (specify either id or name)'
 				},
 				force: {
 					type: 'boolean',
-					description: 'true の場合、キャッシュを無視して再計算する（デフォルト: false）'
+					description: 'If true, ignore the cache and recompute (default: false)'
 				}
 			},
 			required: []
@@ -48,16 +48,16 @@ export const tools: Tool[] = [
 	{
 		name: 'get_customer_health_ranking',
 		description:
-			'ヘルススコアが計算済みの顧客を、スコアの高い順・低い順にランキングする。「ヘルススコアが一番高い／低い企業は？」などに使う。スコアが未計算の顧客は対象外で、件数のみ uncomputedCount / uncomputedNames で示される（未計算の顧客のスコアを知りたい場合は get_customer_health_score を個別に呼ぶ）。',
+			'Ranks customers whose health score has already been computed, from highest to lowest score (or vice versa). Used for questions like "Which company has the highest/lowest health score?". Customers without a computed score are excluded; only their count is shown via uncomputedCount / uncomputedNames (to see an uncomputed customer\'s score, call get_customer_health_score individually).',
 		input_schema: {
 			type: 'object',
 			properties: {
 				order: {
 					type: 'string',
 					enum: ['asc', 'desc'],
-					description: '並び順（デフォルト: desc = 高い順）'
+					description: 'Sort order (default: desc = highest first)'
 				},
-				limit: { type: 'number', description: '取得件数の上限（デフォルト: 5）' }
+				limit: { type: 'number', description: 'Maximum number of results to return (default: 5)' }
 			},
 			required: []
 		}
@@ -65,14 +65,14 @@ export const tools: Tool[] = [
 	{
 		name: 'get_customer_handover_summary',
 		description:
-			'顧客とのこれまでのやり取り（案件・活動履歴）をAIが要約し、担当者引き継ぎ用のサマリーと注意点を生成する。名前（部分一致）またはIDで検索できる。「〇〇社の引き継ぎ資料を作って」「〇〇社とのやり取りをまとめて」などに使う。キャッシュは行わず毎回その場で生成するため、時間がかかることがある。注意点（attentionItems）には根拠となった案件・活動履歴へのリンク用情報（sourceType, sourceId）が含まれる。',
+			'Has AI summarize the history with a customer (deals and activity history) to generate a handover summary and points of attention for a rep handoff. Search by name (partial match) or ID. Used for requests like "Create handover materials for Acme Corp" or "Summarize our interactions with Acme Corp". Not cached, so it is generated fresh each time and may take a while. attentionItems includes link info (sourceType, sourceId) pointing to the underlying deals/activity history that back each point.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				id: { type: 'string', description: '顧客ID（id か name のどちらか一方を指定）' },
+				id: { type: 'string', description: 'Customer ID (specify either id or name)' },
 				name: {
 					type: 'string',
-					description: '顧客名（部分一致）（id か name のどちらか一方を指定）'
+					description: 'Customer name (partial match) (specify either id or name)'
 				}
 			},
 			required: []
@@ -80,66 +80,66 @@ export const tools: Tool[] = [
 	},
 	{
 		name: 'get_customers',
-		description: '顧客一覧を取得する。名前・ステータスで絞り込みができる。',
+		description: 'Fetches the customer list. Can be filtered by name and status.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				name: { type: 'string', description: '顧客名（部分一致）' },
+				name: { type: 'string', description: 'Customer name (partial match)' },
 				status: {
 					type: 'string',
 					enum: ['active', 'inactive'],
-					description: 'ステータスで絞り込む'
+					description: 'Filter by status'
 				},
-				limit: { type: 'number', description: '取得件数の上限（デフォルト: 50）' }
+				limit: { type: 'number', description: 'Maximum number of results to return (default: 50)' }
 			},
 			required: []
 		}
 	},
 	{
 		name: 'get_customer',
-		description: '指定IDの顧客を1件取得する。',
+		description: 'Fetches a single customer by ID.',
 		input_schema: {
 			type: 'object',
-			properties: { id: { type: 'string', description: '顧客ID' } },
+			properties: { id: { type: 'string', description: 'Customer ID' } },
 			required: ['id']
 		}
 	},
 	{
 		name: 'create_customer',
-		description: '新しい顧客を登録する。',
+		description: 'Registers a new customer.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				name: { type: 'string', description: '会社名（必須）' },
-				email: { type: 'string', description: 'メールアドレス' },
-				phone: { type: 'string', description: '電話番号' },
-				postal_code: { type: 'string', description: '郵便番号' },
-				address: { type: 'string', description: '住所' },
-				website: { type: 'string', description: 'ホームページURL' },
-				notes: { type: 'string', description: '備考' },
-				custom: { type: 'object', description: 'カスタムフィールド（任意のキー/値）' }
+				name: { type: 'string', description: 'Company name (required)' },
+				email: { type: 'string', description: 'Email address' },
+				phone: { type: 'string', description: 'Phone number' },
+				postal_code: { type: 'string', description: 'Postal code' },
+				address: { type: 'string', description: 'Address' },
+				website: { type: 'string', description: 'Website URL' },
+				notes: { type: 'string', description: 'Notes' },
+				custom: { type: 'object', description: 'Custom fields (arbitrary key/value pairs)' }
 			},
 			required: ['name']
 		}
 	},
 	{
 		name: 'update_customer',
-		description: '既存の顧客情報を更新する。指定したフィールドのみ更新される。',
+		description: 'Updates an existing customer. Only the specified fields are updated.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				id: { type: 'string', description: '顧客ID（必須）' },
-				name: { type: 'string', description: '会社名' },
-				email: { type: 'string', description: 'メールアドレス' },
-				phone: { type: 'string', description: '電話番号' },
-				postal_code: { type: 'string', description: '郵便番号' },
-				address: { type: 'string', description: '住所' },
-				website: { type: 'string', description: 'ホームページURL' },
-				status: { type: 'string', enum: ['active', 'inactive'], description: 'ステータス' },
-				notes: { type: 'string', description: '備考' },
+				id: { type: 'string', description: 'Customer ID (required)' },
+				name: { type: 'string', description: 'Company name' },
+				email: { type: 'string', description: 'Email address' },
+				phone: { type: 'string', description: 'Phone number' },
+				postal_code: { type: 'string', description: 'Postal code' },
+				address: { type: 'string', description: 'Address' },
+				website: { type: 'string', description: 'Website URL' },
+				status: { type: 'string', enum: ['active', 'inactive'], description: 'Status' },
+				notes: { type: 'string', description: 'Notes' },
 				custom: {
 					type: 'object',
-					description: 'カスタムフィールド（既存データとマージされる）'
+					description: 'Custom fields (merged with existing data)'
 				}
 			},
 			required: ['id']
@@ -147,31 +147,31 @@ export const tools: Tool[] = [
 	},
 	{
 		name: 'delete_customer',
-		description: '顧客を削除する。',
+		description: 'Deletes a customer.',
 		input_schema: {
 			type: 'object',
-			properties: { id: { type: 'string', description: '顧客ID' } },
+			properties: { id: { type: 'string', description: 'Customer ID' } },
 			required: ['id']
 		}
 	},
 	{
 		name: 'create_customer_with_contact',
 		description:
-			'新しい顧客（会社）と、その担当者を同時に登録する。名刺情報などから会社と担当者をまとめて新規登録する場合に使う。',
+			'Registers a new customer (company) together with a contact at that company at the same time. Used to register a company and its contact together from business card information, etc.',
 		input_schema: {
 			type: 'object',
 			properties: {
-				name: { type: 'string', description: '会社名（必須）' },
-				email: { type: 'string', description: 'メールアドレス（会社・担当者で共通）' },
-				phone: { type: 'string', description: '電話番号（会社・担当者で共通）' },
-				address: { type: 'string', description: '住所' },
-				website: { type: 'string', description: 'ホームページURL' },
-				notes: { type: 'string', description: '備考' },
-				contact_name: { type: 'string', description: '担当者氏名（必須）' },
-				contact_name_kana: { type: 'string', description: '担当者名のフリガナ（カナ）' },
-				contact_role: { type: 'string', description: '担当者の役職' },
-				contact_department: { type: 'string', description: '担当者の部署' },
-				custom: { type: 'object', description: 'カスタムフィールド（顧客側、任意のキー/値）' }
+				name: { type: 'string', description: 'Company name (required)' },
+				email: { type: 'string', description: 'Email address (shared by the company and contact)' },
+				phone: { type: 'string', description: 'Phone number (shared by the company and contact)' },
+				address: { type: 'string', description: 'Address' },
+				website: { type: 'string', description: 'Website URL' },
+				notes: { type: 'string', description: 'Notes' },
+				contact_name: { type: 'string', description: 'Contact name (required)' },
+				contact_name_kana: { type: 'string', description: 'Contact name reading (kana)' },
+				contact_role: { type: 'string', description: 'Contact\'s job title' },
+				contact_department: { type: 'string', description: 'Contact\'s department' },
+				custom: { type: 'object', description: 'Custom fields (customer side, arbitrary key/value pairs)' }
 			},
 			required: ['name', 'contact_name']
 		}
@@ -185,10 +185,10 @@ const getCustomerDetailSchema = z.object({
 });
 
 async function resolveCustomerByIdOrName(db: Db, id?: string, name?: string) {
-	if (!id && !name) throw new Error('id または name のどちらかを指定してください');
+	if (!id && !name) throw new Error('Please specify either id or name');
 	if (id) {
 		const [row] = await db.select().from(customers).where(eq(customers.id, id));
-		if (!row) throw new Error(`顧客が見つかりません: ${id}`);
+		if (!row) throw new Error(`Customer not found: ${id}`);
 		return row;
 	}
 	const rows = await db
@@ -196,7 +196,7 @@ async function resolveCustomerByIdOrName(db: Db, id?: string, name?: string) {
 		.from(customers)
 		.where(like(customers.name, `%${name}%`))
 		.limit(1);
-	if (!rows[0]) throw new Error(`顧客が見つかりません: ${name}`);
+	if (!rows[0]) throw new Error(`Customer not found: ${name}`);
 	return rows[0];
 }
 
@@ -256,7 +256,7 @@ export async function handleGetCustomerHealthScore(db: Db, input: unknown, env?:
 	}
 
 	const apiKey = env?.ANTHROPIC_API_KEY;
-	if (!apiKey) throw new Error('ANTHROPIC_API_KEY が設定されていません。');
+	if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set.');
 
 	const result = await computeCustomerHealthScore(db, customer, apiKey);
 	return {
@@ -322,7 +322,7 @@ export async function handleGetCustomerHandoverSummary(db: Db, input: unknown, e
 	const customer = await resolveCustomerByIdOrName(db, id, name);
 
 	const apiKey = env?.ANTHROPIC_API_KEY;
-	if (!apiKey) throw new Error('ANTHROPIC_API_KEY が設定されていません。');
+	if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set.');
 
 	const result = await computeCustomerHandoverSummary(db, customer, apiKey);
 	return { id: customer.id, name: customer.name, ...result };
@@ -395,7 +395,7 @@ export async function handleGetCustomers(db: Db, input: unknown) {
 export async function handleGetCustomer(db: Db, input: unknown) {
 	const { id } = getCustomerSchema.parse(input);
 	const [row] = await db.select().from(customers).where(eq(customers.id, id));
-	if (!row) throw new Error(`顧客が見つかりません: ${id}`);
+	if (!row) throw new Error(`Customer not found: ${id}`);
 	return { ...row, custom: parseJson(row.custom) };
 }
 
@@ -420,7 +420,7 @@ export async function handleCreateCustomer(db: Db, input: unknown) {
 export async function handleUpdateCustomer(db: Db, input: unknown) {
 	const data = updateCustomerSchema.parse(input);
 	const [existing] = await db.select().from(customers).where(eq(customers.id, data.id));
-	if (!existing) throw new Error(`顧客が見つかりません: ${data.id}`);
+	if (!existing) throw new Error(`Customer not found: ${data.id}`);
 
 	await db
 		.update(customers)

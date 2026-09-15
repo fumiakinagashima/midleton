@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 		const body = (await request.json()) as { remind_at?: string; content?: string; channels?: string };
 		const channels = (body.channels ?? '').split(',').map((c) => c.trim()).filter(Boolean);
 		if (!body.remind_at || !body.content?.trim() || channels.length === 0) {
-			return json({ error: '入力が不正です' }, { status: 400 });
+			return json({ error: 'Invalid input' }, { status: 400 });
 		}
 		const row = await createReminderRow(db, {
 			remindAt: parseJstDatetime(body.remind_at),

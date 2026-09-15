@@ -39,8 +39,8 @@
 		onsubmit({ ...values });
 	}
 
-	// フォーム選択肢（formOptions）に現在値が含まれない場合は options から補完して表示する
-	// （例: 活動履歴「種類」のフォームでは選択不可だが、既存の「案件登録」レコードは編集時に表示できるようにする）
+	// If the current value isn't included in the form options (formOptions), fall back to options for display
+	// (e.g. the activity "type" form disallows selecting it, but existing "deal created" records should still show when editing)
 	function selectOptions(field: FieldDef): { label: string; value: string }[] {
 		const opts = field.formOptions ?? field.options ?? [];
 		const current = values[field.key];
@@ -76,7 +76,7 @@
 					></textarea>
 				{:else if field.type === 'select'}
 					<select id={field.key} required={field.required} bind:value={values[field.key]}>
-						<option value="">選択してください</option>
+						<option value="">Please select</option>
 						{#each selectOptions(field) as opt}
 							<option value={opt.value}>{opt.label}</option>
 						{/each}
@@ -95,7 +95,7 @@
 
 	<div class="footer">
 		<button type="submit" disabled={submitting}>
-			{submitting ? '保存中...' : '保存'}
+			{submitting ? 'Saving...' : 'Save'}
 		</button>
 	</div>
 </form>

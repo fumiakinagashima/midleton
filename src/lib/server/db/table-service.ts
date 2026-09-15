@@ -13,8 +13,9 @@ export type FieldDef = {
 	type: CustomFieldType | 'recordSelect' | 'datetime-local';
 	required?: boolean;
 	options?: { label: string; value: string }[];
-	// 登録・編集フォームの選択肢（省略時は options を使用）。
-	// システムが自動付与する値（例: 活動履歴の「案件登録」）を表示用 options には残しつつ、フォームでは選択不可にする場合に指定する
+	// Options for the create/edit form (uses `options` if omitted).
+	// Specify this when a value the system assigns automatically (e.g. "Deal Registered" in the activity log)
+	// should remain in the display `options` but not be selectable in the form
 	formOptions?: { label: string; value: string }[];
 	listable?: boolean;
 	isCustom?: boolean;
@@ -36,7 +37,7 @@ const toTs = (d: Date | null | undefined): number | null =>
 
 export const CORE_TABLE_NAMES = ['customers', 'contacts', 'deals', 'activities'];
 
-// /database/[type] ルートと衝突する予約済み名
+// Reserved names that would collide with the /database/[type] route
 const RESERVED_NAMES = new Set([
 	...CORE_TABLE_NAMES,
 	'accounts', 'reminders',
@@ -46,68 +47,68 @@ const RESERVED_NAMES = new Set([
 
 const CORE_TABLE_BASE: Record<string, Omit<TableInfo, 'fields'> & { fields: FieldDef[] }> = {
 	customers: {
-		id: 'customers', label: '顧客', icon: 'building', isCore: true,
+		id: 'customers', label: 'Customers', icon: 'building', isCore: true,
 		fields: [
-			{ key: 'name', label: '会社名', type: 'text', required: true, listable: true },
-			{ key: 'email', label: 'メール', type: 'email', listable: true },
-			{ key: 'phone', label: '電話番号', type: 'tel' },
-			{ key: 'postalCode', label: '郵便番号', type: 'text' },
-			{ key: 'address', label: '住所', type: 'text' },
-			{ key: 'website', label: 'ホームページ', type: 'text' },
+			{ key: 'name', label: 'Company Name', type: 'text', required: true, listable: true },
+			{ key: 'email', label: 'Email', type: 'email', listable: true },
+			{ key: 'phone', label: 'Phone', type: 'tel' },
+			{ key: 'postalCode', label: 'Postal Code', type: 'text' },
+			{ key: 'address', label: 'Address', type: 'text' },
+			{ key: 'website', label: 'Website', type: 'text' },
 			{
-				key: 'status', label: 'ステータス', type: 'select', listable: true,
-				options: [{ label: '有効', value: 'active' }, { label: '無効', value: 'inactive' }]
+				key: 'status', label: 'Status', type: 'select', listable: true,
+				options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }]
 			},
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		]
 	},
 	contacts: {
-		id: 'contacts', label: '担当者', icon: 'user', isCore: true,
+		id: 'contacts', label: 'Contacts', icon: 'user', isCore: true,
 		fields: [
-			{ key: 'name', label: '氏名', type: 'text', required: true, listable: true },
-			{ key: 'nameKana', label: '氏名（カナ）', type: 'text' },
-			{ key: 'customerId', label: '顧客', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
-			{ key: 'email', label: 'メール', type: 'email', listable: true },
-			{ key: 'phone', label: '電話番号', type: 'tel' },
-			{ key: 'role', label: '役職', type: 'text', listable: true },
-			{ key: 'department', label: '部署', type: 'text' },
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'name', label: 'Name', type: 'text', required: true, listable: true },
+			{ key: 'nameKana', label: 'Name (Reading)', type: 'text' },
+			{ key: 'customerId', label: 'Customer', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
+			{ key: 'email', label: 'Email', type: 'email', listable: true },
+			{ key: 'phone', label: 'Phone', type: 'tel' },
+			{ key: 'role', label: 'Title', type: 'text', listable: true },
+			{ key: 'department', label: 'Department', type: 'text' },
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		]
 	},
 	deals: {
-		id: 'deals', label: '案件', icon: 'briefcase', isCore: true,
+		id: 'deals', label: 'Deals', icon: 'briefcase', isCore: true,
 		fields: [
-			{ key: 'title', label: '案件タイトル', type: 'text', required: true, listable: true },
-			{ key: 'customerId', label: '顧客', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
-			{ key: 'amount', label: '金額', type: 'number', listable: true },
+			{ key: 'title', label: 'Deal Title', type: 'text', required: true, listable: true },
+			{ key: 'customerId', label: 'Customer', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
+			{ key: 'amount', label: 'Amount', type: 'number', listable: true },
 			{
-				key: 'status', label: 'ステータス', type: 'select', listable: true,
-				options: [{ label: '商談中', value: 'open' }, { label: '受注', value: 'won' }, { label: '失注', value: 'lost' }]
+				key: 'status', label: 'Status', type: 'select', listable: true,
+				options: [{ label: 'Open', value: 'open' }, { label: 'Won', value: 'won' }, { label: 'Lost', value: 'lost' }]
 			},
-			{ key: 'plannedStart', label: '開始予定日', type: 'date' },
-			{ key: 'plannedEnd', label: '終了予定日', type: 'date' },
-			{ key: 'notes', label: '備考', type: 'textarea' }
+			{ key: 'plannedStart', label: 'Planned Start Date', type: 'date' },
+			{ key: 'plannedEnd', label: 'Planned End Date', type: 'date' },
+			{ key: 'notes', label: 'Notes', type: 'textarea' }
 		]
 	},
 	activities: {
-		id: 'activities', label: '活動履歴', icon: 'clipboard', isCore: true,
+		id: 'activities', label: 'Activity History', icon: 'clipboard', isCore: true,
 		fields: [
-			{ key: 'customerId', label: '顧客', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
+			{ key: 'customerId', label: 'Customer', type: 'recordSelect', required: true, listable: true, refTable: 'customers' },
 			{
-				key: 'type', label: '種類', type: 'select', required: true, listable: true,
+				key: 'type', label: 'Type', type: 'select', required: true, listable: true,
 				options: [
-					{ label: 'メモ', value: 'note' }, { label: '電話', value: 'call' },
-					{ label: 'メール', value: 'email' }, { label: '面談', value: 'meeting' },
-					{ label: '案件登録', value: 'deal_created' }
+					{ label: 'Note', value: 'note' }, { label: 'Call', value: 'call' },
+					{ label: 'Email', value: 'email' }, { label: 'Meeting', value: 'meeting' },
+					{ label: 'Deal Registered', value: 'deal_created' }
 				],
-				// 「案件登録」は案件登録時にシステムが自動で記録するため、フォームでは選択させない
+				// "Deal Registered" is recorded automatically by the system when a deal is created, so it is not selectable in the form
 				formOptions: [
-					{ label: 'メモ', value: 'note' }, { label: '電話', value: 'call' },
-					{ label: 'メール', value: 'email' }, { label: '面談', value: 'meeting' }
+					{ label: 'Note', value: 'note' }, { label: 'Call', value: 'call' },
+					{ label: 'Email', value: 'email' }, { label: 'Meeting', value: 'meeting' }
 				]
 			},
-			{ key: 'content', label: '内容', type: 'textarea', required: true, listable: true },
-			{ key: 'activityDate', label: '活動日時', type: 'datetime-local' }
+			{ key: 'content', label: 'Content', type: 'textarea', required: true, listable: true },
+			{ key: 'activityDate', label: 'Activity Date/Time', type: 'datetime-local' }
 		]
 	}
 };
@@ -292,15 +293,15 @@ export async function recordActivity(
 }
 
 /**
- * 案件登録時の活動履歴の insert クエリを構築する（未実行）。
- * 案件insertと合わせて `db.batch([...])` で原子的に実行するために使う。
+ * Builds (without executing) the insert query for the activity log entry created when a deal is registered.
+ * Used to run it atomically together with the deal insert via `db.batch([...])`.
  */
 export function dealRegisteredActivityInsert(db: Db, customerId: string, dealTitle: string, createdBy?: string) {
 	return db.insert(activities).values({
 		id: crypto.randomUUID(),
 		customerId,
 		type: 'deal_created' as const,
-		content: `案件「${dealTitle}」を登録しました`,
+		content: `Registered deal "${dealTitle}"`,
 		createdBy: createdBy ?? ''
 	});
 }
