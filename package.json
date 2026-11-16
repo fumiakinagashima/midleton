@@ -1,0 +1,11 @@
+{
+    "name": "midleton-monorepo",
+    "private": true,
+    "type": "module",
+    "workspaces": ["packages/*"],
+    "scripts": {
+        "build": "bun run --filter './packages/*' build",
+        "typecheck": "bun run --filter './packages/*' typecheck",
+        "test": "bun test"
+    }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "midleton",
+  "version": "0.0.0",
+  "description": "Lightweight, dependency-free backend framework for AI-native apps on Cloudflare Workers",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fumiakinagashima/midleton.git",
+    "directory": "packages/midleton"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2"
+  }
+}
