@@ -1,11 +1,20 @@
 {
-    "name": "midleton-monorepo",
-    "private": true,
-    "type": "module",
-    "workspaces": ["packages/*"],
-    "scripts": {
-        "build": "bun run --filter './packages/*' build",
-        "typecheck": "bun run --filter './packages/*' typecheck",
-        "test": "bun test"
-    }
+  "name": "midleton-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run --filter './packages/*' build",
+    "typecheck": "bun run --filter './packages/*' typecheck",
+    "test": "bun test",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "ci:check": "biome ci ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8"
+  }
 }
