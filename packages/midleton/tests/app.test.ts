@@ -68,3 +68,34 @@ describe('input validation', () => {
         expect(response.status).toBe(400);
     });
 });
+
+describe('path parameters', () => {
+    const getUser = op({
+        input: s.object({ id: s.string() }),
+        handler: (input) => ({ id: (input as { id: string }).id }),
+    });
+    const usersApp = createApp()
+        .expose(getUser, { rest: 'GET /users/:id' })
+        .expose(getUser, { rest: 'POST /users/:id' });
+
+    test('passes the path parameter as input', async () => {
+        const response = await usersApp.fetch(new Request('http://localhost/users/42'));
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ id: '42' });
+    });
+
+    test('returns 404 when the parameter segment is missing', async () => {
+        const response = await usersApp.fetch(new Request('http://localhost/users/'));
+        expect(response.status).toBe(404);
+    });
+
+    test('path parameters win over the request body', async () => {
+        const response = await usersApp.fetch(
+            new Request('http://localhost/users/42', {
+                method: 'POST',
+                body: JSON.stringify({ id: '999' }),
+            }),
+        );
+        expect(await response.json()).toEqual({ id: '42' });
+    });
+});
