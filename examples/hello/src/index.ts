@@ -11,7 +11,7 @@ const getUser = op({
 });
 
 const app = createApp()
-    .expose(greet, { rest: 'POST /greet' })
+    .expose(greet, { rest: 'POST /greet', mcp: 'greet' })
     .expose(getUser, { rest: 'GET /users/:id' });
 
 Bun.serve({ port: 3000, fetch: app.fetch });

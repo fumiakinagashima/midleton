@@ -1,0 +1,66 @@
+import type { Op } from './op.js';
+
+type Id = string | number | null;
+
+function result(id: Id, value: unknown): Response {
+    return Response.json({ jsonrpc: '2.0', id, result: value });
+}
+
+function failure(id: Id, code: number, message: string, status = 200): Response {
+    return Response.json({ jsonrpc: '2.0', id, error: { code, message } }, { status });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Handlers one MCP JSON-RPC request (Streamable HTTP, JSON responses only). */
+export async function handleMcp(
+    tools: ReadonlyMap<string, Op<unknown, unknown>>,
+    request: Request,
+): Promise<Response> {
+    let body: unknown;
+    try {
+        body = await request.json();
+    } catch {
+        return failure(null, -32700, 'Parse error', 400);
+    }
+    if (!isRecord(body) || typeof body.method !== 'string') {
+        return failure(null, -32600, 'Invalid Request', 400);
+    }
+    const id = (body.id ?? null) as Id;
+
+    if (body.method === 'tools/list') {
+        return result(id, {
+            tools: [...tools].map(([name, operation]) => ({
+                name,
+                // MCP reuires `inputSchema` to be an object schema, even without input.
+                inputSchema: operation.input?.toJSONSchema() ?? { type: 'object' },
+            })),
+        });
+    }
+
+    if (body.method === 'tools/call') {
+        const params = isRecord(body.params) ? body.params : {};
+        const operation = typeof params.name === 'string' ? tools.get(params.name) : undefined;
+        if (operation === undefined) {
+            return failure(id, -32602, 'Unknown tool');
+        }
+        let input: unknown;
+        if (operation.input !== undefined) {
+            const validated = operation.input.validate(params.arguments ?? {});
+            if (!validated.ok) {
+                // Reported as a tool error (not a protocol error) so the model can fix its call.
+                return result(id, {
+                    content: [{ type: 'text', text: JSON.stringify(validated.issues) }],
+                    isError: true,
+                });
+            }
+            input = validated.value;
+        }
+        const output = await operation.handler(input);
+        return result(id, { content: [{ type: 'text', text: JSON.stringify(output) }] });
+    }
+
+    return failure(id, -32601, 'Method not found');
+}

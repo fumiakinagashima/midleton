@@ -11,10 +11,15 @@ export type Result<T> =
     | { readonly ok: true; readonly value: T }
     | { readonly ok: false; readonly issues: readonly Issue[] };
 
+/** A JSON Schema document, kept loose on purpose: only builders in this file create them. */
+export type JsonSchema = Readonly<Record<string, unknown>>;
+
 /** Validates an unknown value and reports the outcome as a {@link Result}. */
 export interface Schema<T> {
     /** Never throws: invalid input is reported through the returned {@link Result}. */
     validate(input: unknown): Result<T>;
+    /** Describes the accepted values as JSON Schema, for consumers such as MCP clients. */
+    toJSONSchema(): JsonSchema;
 }
 
 /** The type a schema produces when validation succeeds. */
@@ -29,6 +34,9 @@ function string(): Schema<string> {
             }
             return { ok: true, value: input };
         },
+        toJSONSchema() {
+            return { type: 'string' };
+        },
     };
 }
 
@@ -36,7 +44,7 @@ function string(): Schema<string> {
  * Schema for a plain object with the given fields.
  * Keys not listed in `shape` are dropped from the validated value.
  */
-export function object<Shape extends Record<string, Schema<unknown>>> (
+export function object<Shape extends Record<string, Schema<unknown>>>(
     shape: Shape,
 ): Schema<{ [K in keyof Shape]: Infer<Shape[K]> }> {
     return {
@@ -62,8 +70,17 @@ export function object<Shape extends Record<string, Schema<unknown>>> (
                 }
             }
             return issues.length > 0
-            ? { ok: false, issues }
-            : { ok: true, value: value as { [K in keyof Shape]: Infer<Shape[K]> } };
+                ? { ok: false, issues }
+                : { ok: true, value: value as { [K in keyof Shape]: Infer<Shape[K]> } };
+        },
+        toJSONSchema() {
+            return {
+                type: 'object',
+                properties: Object.fromEntries(
+                    Object.entries(shape).map(([key, schema]) => [key, schema.toJSONSchema()]),
+                ),
+                required: Object.keys(shape),
+            };
         },
     };
 }
