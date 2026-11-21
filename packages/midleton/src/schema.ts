@@ -17,6 +17,9 @@ export interface Schema<T> {
     validate(input: unknown): Result<T>;
 }
 
+/** The type a schema produces when validation succeeds. */
+export type Infer<S> = S extends Schema<infer T> ? T : never;
+
 /** Schema for a string value. */
 function string(): Schema<string> {
     return {
@@ -33,7 +36,9 @@ function string(): Schema<string> {
  * Schema for a plain object with the given fields.
  * Keys not listed in `shape` are dropped from the validated value.
  */
-function object(shape: Record<string, Schema<unknown>>): Schema<Record<string, unknown>> {
+export function object<Shape extends Record<string, Schema<unknown>>> (
+    shape: Shape,
+): Schema<{ [K in keyof Shape]: Infer<Shape[K]> }> {
     return {
         validate(input) {
             // Arrays are objects in JS, but they are not a valid input here.
@@ -56,7 +61,9 @@ function object(shape: Record<string, Schema<unknown>>): Schema<Record<string, u
                     }
                 }
             }
-            return issues.length > 0 ? { ok: false, issues } : { ok: true, value };
+            return issues.length > 0
+            ? { ok: false, issues }
+            : { ok: true, value: value as { [K in keyof Shape]: Infer<Shape[K]> } };
         },
     };
 }

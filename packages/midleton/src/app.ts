@@ -8,7 +8,7 @@ export interface ExposeOptions {
 
 export interface App {
     /** Serves an operation as a REST endpoint. Returns the app for chaining. */
-    expose<Output>(operation: Op<Output>, options: ExposeOptions): App;
+    expose<Input, Output>(operation: Op<Input, Output>, options: ExposeOptions): App;
     /** Handles a standard `Request`. Pass this to the Workers `fetch` export. */
     fetch(request: Request): Promise<Response>;
 }
@@ -19,11 +19,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Creates an app with no operations exposed. */
 export function createApp(): App {
-    const router = createRouter<Op<unknown>>();
+    const router = createRouter<Op<unknown, unknown>>();
 
     const app: App = {
         expose(operation, options) {
-            router.add(options.rest, operation);
+            router.add(options.rest, operation as Op<unknown, unknown>);
             return app;
         },
 

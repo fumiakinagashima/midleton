@@ -36,7 +36,7 @@ describe('REST', () => {
 describe('input validation', () => {
     const greet = op({
         input: s.object({ name: s.string() }),
-        handler: (input) => ({ message: `Hello, ${(input as { name: string }).name}!` }),
+        handler: (input) => ({ message: `Hello, ${input.name}!` }),
     });
     const greetApp = createApp().expose(greet, { rest: 'POST /greet' });
 
@@ -72,7 +72,7 @@ describe('input validation', () => {
 describe('path parameters', () => {
     const getUser = op({
         input: s.object({ id: s.string() }),
-        handler: (input) => ({ id: (input as { id: string }).id }),
+        handler: (input) => ({ id: input.id }),
     });
     const usersApp = createApp()
         .expose(getUser, { rest: 'GET /users/:id' })
