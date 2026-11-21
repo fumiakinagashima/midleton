@@ -8,6 +8,16 @@
         "@biomejs/biome": "2.6.8",
       },
     },
+    "examples/hello": {
+      "name": "example-hello",
+      "dependencies": {
+        "midleton": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.4",
+        "typescript": "^7.0.2",
+      },
+    },
     "packages/midleton": {
       "name": "midleton",
       "version": "0.0.0",
@@ -88,6 +98,8 @@
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
     "bun-types": ["bun-types@1.4.4", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-yjrJh5oGX7mMPKGd19YXyIjmEuj4G4zNC30bs7PM9Az7NQ3ndF3j6hbeRdvJTRQEhJ/FYQwW0a2moweEi2hMxQ=="],
+
+    "example-hello": ["example-hello@workspace:examples/hello"],
 
     "midleton": ["midleton@workspace:packages/midleton"],
 
