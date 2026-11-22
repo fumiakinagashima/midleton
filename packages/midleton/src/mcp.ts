@@ -14,7 +14,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Handlers one MCP JSON-RPC request (Streamable HTTP, JSON responses only). */
+/** Handles one MCP JSON-RPC request (Streamable HTTP, JSON responses only). */
 export async function handleMcp(
     tools: ReadonlyMap<string, Op<unknown, unknown>>,
     request: Request,
@@ -34,7 +34,7 @@ export async function handleMcp(
         return result(id, {
             tools: [...tools].map(([name, operation]) => ({
                 name,
-                // MCP reuires `inputSchema` to be an object schema, even without input.
+                // MCP requires `inputSchema` to be an object schema, even without input.
                 inputSchema: operation.input?.toJSONSchema() ?? { type: 'object' },
             })),
         });
