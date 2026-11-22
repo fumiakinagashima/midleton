@@ -31,6 +31,40 @@ describe('REST', () => {
         const response = await app.fetch(new Request('http://localhost/hello', { method: 'POST' }));
         expect(response.status).toBe(404);
     });
+
+    test('returns 404 as problem details', async () => {
+        const response = await app.fetch(new Request('http://localhost/nope'));
+        expect(response.status).toBe(404);
+        expect(response.headers.get('content-type')).toBe('application/problem+json');
+        expect(await response.json()).toEqual({
+            type: 'about:blank',
+            title: 'Not Found',
+            status: 404,
+            detail: 'No route matches this request',
+        });
+    });
+
+    test('returns 500 when the handler throws', async () => {
+        const broken = op({
+            handler: () => {
+                throw new Error('secret internal detail');
+            },
+        });
+        const brokenApp = createApp().expose(broken, { rest: 'GET /broken' });
+
+        const response = await brokenApp.fetch(new Request('http://localhost/broken'));
+        expect(response.status).toBe(500);
+        expect(response.headers.get('content-type')).toBe('application/problem+json');
+        const body = await response.json();
+        expect(body).toEqual({
+            type: 'about:blank',
+            title: 'Internal Server Error',
+            status: 500,
+            detail: 'Internal error',
+        });
+        // The error message must not leak to the client.
+        expect(JSON.stringify(body)).not.toContain('secret internal detail');
+    });
 });
 
 describe('input validation', () => {
@@ -53,7 +87,10 @@ describe('input validation', () => {
         const response = await post(JSON.stringify({ name: 42 }));
         expect(response.status).toBe(400);
         expect(await response.json()).toEqual({
-            error: 'Invalid input',
+            type: 'about:blank',
+            title: 'Bad Request',
+            status: 400,
+            detail: 'Invalid input',
             issues: [{ path: ['name'], message: 'Expected string' }],
         });
     });

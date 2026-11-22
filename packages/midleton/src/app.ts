@@ -1,5 +1,6 @@
 import { handleMcp } from './mcp.js';
 import type { Op } from './op.js';
+import { problem } from './problem.js';
 import { createRouter } from './router.js';
 
 export interface ExposeOptions {
@@ -45,7 +46,7 @@ export function createApp(): App {
 
             const match = router.match(request.method, pathname);
             if (match === undefined) {
-                return Response.json({ error: 'Not Found' }, { status: 404 });
+                return problem(404, 'No route matches this request');
             }
             const operation = match.value;
 
@@ -57,22 +58,23 @@ export function createApp(): App {
                     try {
                         body = await request.json();
                     } catch {
-                        return Response.json({ error: 'Invalid JSON' }, { status: 400 });
+                        return problem(400, 'Invalid JSON');
                     }
                     // Path parameters come last so a body cannot override the resource in the URL.
                     raw = isRecord(body) ? { ...body, ...match.params } : body;
                 }
                 const result = operation.input.validate(raw);
                 if (!result.ok) {
-                    return Response.json(
-                        { error: 'Invalid input', issues: result.issues },
-                        { status: 400 },
-                    );
+                    return problem(400, 'Invalid input', { issues: result.issues });
                 }
                 input = result.value;
             }
-            const output = await operation.handler(input);
-            return Response.json(output);
+            try {
+                return Response.json(await operation.handler(input));
+            } catch {
+                // Details of unexpected errors stay server-side; clients get a generic message.
+                return problem(500, 'Internal error');
+            }
         },
     };
 
