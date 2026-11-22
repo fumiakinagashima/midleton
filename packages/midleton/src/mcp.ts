@@ -1,4 +1,5 @@
 import type { Op } from './op.js';
+import { OpError } from './op-error.js';
 
 type Id = string | number | null;
 
@@ -58,8 +59,15 @@ export async function handleMcp(
             }
             input = validated.value;
         }
-        const output = await operation.handler(input);
-        return result(id, { content: [{ type: 'text', text: JSON.stringify(output) }] });
+        try {
+            const output = await operation.handler(input);
+            return result(id, { content: [{ type: 'text', text: JSON.stringify(output) }] });
+        } catch (error) {
+            // Reported as a tool error so the model can see what went wrong.
+            // Only OpError messages are shown; other errors stay server-side.
+            const message = error instanceof OpError ? error.message : 'Internal error';
+            return result(id, { content: [{ type: 'text', text: message }], isError: true });
+        }
     }
 
     return failure(id, -32601, 'Method not found');

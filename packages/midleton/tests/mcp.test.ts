@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createApp, op, s } from '../src/index.js';
+import { createApp, OpError, op, s } from '../src/index.js';
 
 const greet = op({
     input: s.object({ name: s.string() }),
@@ -75,5 +75,41 @@ describe('MCP', () => {
             new Request('http://localhost/greet', { method: 'POST', body: '{"name":"A"}' }),
         );
         expect(await response.json()).toEqual({ message: 'Hello, A!' });
+    });
+
+    const callTool = async (handler: () => never) => {
+        const failing = createApp().expose(op({ handler }), { mcp: 'fail' });
+        const response = await failing.fetch(
+            new Request('http://localhost/mcp', {
+                method: 'POST',
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'tools/call',
+                    params: { name: 'fail', arguments: {} },
+                }),
+            }),
+        );
+        return ((await response.json()) as Rpc).result;
+    };
+
+    test('an OpError becomes a tool error with its message', async () => {
+        const result = await callTool(() => {
+            throw new OpError(404, 'User not found');
+        });
+        expect(result).toEqual({
+            content: [{ type: 'text', text: 'User not found' }],
+            isError: true,
+        });
+    });
+
+    test('an unexpected error becomes a generic tool error', async () => {
+        const result = await callTool(() => {
+            throw new Error('secret internal detail');
+        });
+        expect(result).toEqual({
+            content: [{ type: 'text', text: 'Internal error' }],
+            isError: true,
+        });
     });
 });

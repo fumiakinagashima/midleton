@@ -1,5 +1,6 @@
 import { handleMcp } from './mcp.js';
 import type { Op } from './op.js';
+import { OpError } from './op-error.js';
 import { problem } from './problem.js';
 import { createRouter } from './router.js';
 
@@ -71,7 +72,10 @@ export function createApp(): App {
             }
             try {
                 return Response.json(await operation.handler(input));
-            } catch {
+            } catch (error) {
+                if (error instanceof OpError) {
+                    return problem(error.status, error.message);
+                }
                 // Details of unexpected errors stay server-side; clients get a generic message.
                 return problem(500, 'Internal error');
             }

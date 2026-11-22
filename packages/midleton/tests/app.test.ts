@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createApp, op, s } from '../src/index';
+import { createApp, OpError, op, s } from '../src/index';
 
 const hello = op({
     handler: () => ({ message: 'Hello, Midleton!' }),
@@ -64,6 +64,25 @@ describe('REST', () => {
         });
         // The error message must not leak to the client.
         expect(JSON.stringify(body)).not.toContain('secret internal detail');
+    });
+
+    test('returns the status and message of an OpError', async () => {
+        const missing = op({
+            handler: () => {
+                throw new OpError(404, 'User not found');
+            },
+        });
+        const missingApp = createApp().expose(missing, { rest: 'GET /missing' });
+
+        const response = await missingApp.fetch(new Request('http://localhost/missing'));
+        expect(response.status).toBe(404);
+        expect(response.headers.get('content-type')).toBe('application/problem+json');
+        expect(await response.json()).toEqual({
+            type: 'about:blank',
+            title: 'Not Found',
+            status: 404,
+            detail: 'User not found',
+        });
     });
 });
 
