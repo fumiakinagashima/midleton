@@ -8,7 +8,18 @@ export interface Op<Input, Output> {
     readonly handler: (input: Input) => Output | Promise<Output>;
 }
 
-/** Defines an operation. Returns the definition as is; it exists for type inference. */
-export function op<Input, Output>(definition: Op<Input, Output>): Op<Input, Output> {
+/** Defines an operation that validates its input with a schema. */
+export function op<Input, Output>(definition: {
+    readonly input: Schema<Input>;
+    readonly handler: (input: Input) => Output | Promise<Output>;
+}): Op<Input, Output>;
+
+/** Defines an operation that takes no input. */
+export function op<Output>(definition: {
+    readonly handler: () => Output | Promise<Output>;
+}): Op<unknown, Output>;
+
+/** Returns the definition as is; the overloads above exist for type inference. */
+export function op(definition: Op<unknown, unknown>): Op<unknown, unknown> {
     return definition;
 }
