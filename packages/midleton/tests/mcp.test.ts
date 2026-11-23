@@ -133,4 +133,19 @@ describe('MCP', () => {
         const res = (await response.json()) as { result: { content: [{ text: string }] } };
         expect(JSON.parse(res.result.content[0].text)).toEqual({ greeting: 'hello' });
     });
+
+    test('tools/list includes the description when the op has one', async () => {
+        const described = createApp().expose(
+            op({ description: 'Says hello.', handler: () => 'hi' }),
+            { mcp: 'hello' },
+        );
+        const response = await described.fetch(
+            new Request('http://localhost/mcp', {
+                method: 'POST',
+                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+            }),
+        );
+        const res = (await response.json()) as { result: { tools: [{ description?: string }] } };
+        expect(res.result.tools[0].description).toBe('Says hello.');
+    });
 });

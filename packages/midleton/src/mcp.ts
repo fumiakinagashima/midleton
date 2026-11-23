@@ -36,6 +36,8 @@ export async function handleMcp(
         return result(id, {
             tools: [...tools].map(([name, operation]) => ({
                 name,
+                // Left out of the JSON when undefined.
+                description: operation.description,
                 // MCP requires `inputSchema` to be an object schema, even without input.
                 inputSchema: operation.input?.toJSONSchema() ?? { type: 'object' },
             })),
