@@ -166,3 +166,25 @@ describe('path parameters', () => {
         expect(await response.json()).toEqual({ greeting: 'hello' });
     });
 });
+
+describe('typed env', () => {
+    test('app.op types ctx.env from the app Env', async () => {
+        interface Env {
+            GREETING: string;
+        }
+        const app = createApp<Env>();
+        const whoami = app.op({
+            handler: (_input, ctx) => {
+                // @ts-expect-error UNKNOWN is not part of Env
+                ctx.env.UNKNOWN;
+                return { greeting: ctx.env.GREETING.toUpperCase() };
+            },
+        });
+        app.expose(whoami, { rest: 'GET /whoami' });
+
+        const response = await app.fetch(new Request('http://localhost/whoami'), {
+            GREETING: 'hello',
+        });
+        expect(await response.json()).toEqual({ greeting: 'HELLO' });
+    });
+});

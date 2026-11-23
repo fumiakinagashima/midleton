@@ -1,4 +1,4 @@
-import type { Ctx, Op } from './op.js';
+import type { AnyOp, Ctx } from './op.js';
 import { OpError } from './op-error.js';
 
 type Id = string | number | null;
@@ -17,9 +17,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Handles one MCP JSON-RPC request (Streamable HTTP, JSON responses only). */
 export async function handleMcp(
-    tools: ReadonlyMap<string, Op<unknown, unknown>>,
+    tools: ReadonlyMap<string, AnyOp>,
     request: Request,
-    ctx: Ctx,
+    ctx: Ctx<unknown>,
 ): Promise<Response> {
     let body: unknown;
     try {
