@@ -1,4 +1,4 @@
-import type { Op } from './op.js';
+import type { Ctx, Op } from './op.js';
 import { OpError } from './op-error.js';
 
 type Id = string | number | null;
@@ -19,6 +19,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function handleMcp(
     tools: ReadonlyMap<string, Op<unknown, unknown>>,
     request: Request,
+    ctx: Ctx,
 ): Promise<Response> {
     let body: unknown;
     try {
@@ -60,7 +61,7 @@ export async function handleMcp(
             input = validated.value;
         }
         try {
-            const output = await operation.handler(input);
+            const output = await operation.handler(input, ctx);
             return result(id, { content: [{ type: 'text', text: JSON.stringify(output) }] });
         } catch (error) {
             // Reported as a tool error so the model can see what went wrong.

@@ -154,4 +154,15 @@ describe('path parameters', () => {
         );
         expect(await response.json()).toEqual({ id: '42' });
     });
+
+    test('passes env to the handler as ctx.env', async () => {
+        const whoami = op({
+            handler: (_input, ctx) => ({ greeting: ctx.env.GREETING }),
+        });
+        const app = createApp().expose(whoami, { rest: 'GET /whoami' });
+        const response = await app.fetch(new Request('http://localhost/whoami'), {
+            GREETING: 'hello',
+        });
+        expect(await response.json()).toEqual({ greeting: 'hello' });
+    });
 });

@@ -112,4 +112,25 @@ describe('MCP', () => {
             isError: true,
         });
     });
+
+    test('tools/call passes env to the handler', async () => {
+        const app = createApp().expose(
+            op({ handler: (_input, ctx) => ({ greeting: ctx.env.GREETING }) }),
+            { mcp: 'whoami' },
+        );
+        const response = await app.fetch(
+            new Request('http://localhost/mcp', {
+                method: 'POST',
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'tools/call',
+                    params: { name: 'whoami' },
+                }),
+            }),
+            { GREETING: 'hello' },
+        );
+        const res = (await response.json()) as { result: { content: [{ text: string }] } };
+        expect(JSON.parse(res.result.content[0].text)).toEqual({ greeting: 'hello' });
+    });
 });
