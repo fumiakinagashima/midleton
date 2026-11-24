@@ -148,4 +148,33 @@ describe('MCP', () => {
         const res = (await response.json()) as { result: { tools: [{ description?: string }] } };
         expect(res.result.tools[0].description).toBe('Says hello.');
     });
+
+    test('extend() services are available on ctx for MCP', async () => {
+        interface Env {
+            GREETING: string;
+        }
+        const extended = createApp<Env>().extend((env) => ({
+            greeter: { greet: (name: string) => `${env.GREETING}, ${name}` },
+        }));
+        const hello = extended.op({
+            input: s.object({ name: s.string() }),
+            handler: (input, ctx) => ({ message: ctx.greeter.greet(input.name) }),
+        });
+        extended.expose(hello, { mcp: 'hello' });
+
+        const response = await extended.fetch(
+            new Request('http://localhost/mcp', {
+                method: 'POST',
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'tools/call',
+                    params: { name: 'hello', arguments: { name: 'Ann' } },
+                }),
+            }),
+            { GREETING: 'Hi' },
+        );
+        const res = (await response.json()) as Rpc;
+        expect(res.result.content[0].text).toBe(`{"message":"Hi, Ann"}`);
+    });
 });

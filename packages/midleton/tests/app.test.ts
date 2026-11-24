@@ -188,3 +188,50 @@ describe('typed env', () => {
         expect(await response.json()).toEqual({ greeting: 'HELLO' });
     });
 });
+
+describe('extend', () => {
+    interface Env {
+        GREETING: string;
+    }
+
+    test('extend() adds typed services to ctx for REST and MCP', async () => {
+        const app = createApp<Env>().extend((env) => ({
+            greeter: { greet: (name: string) => `${env.GREETING}, ${name}` },
+        }));
+
+        const hello = app.op({
+            input: s.object({ name: s.string() }),
+            handler: (input, ctx) => ctx.greeter.greet(input.name),
+        });
+        app.expose(hello, { rest: 'POST /hello', mcp: 'hello' });
+
+        const rest = await app.fetch(
+            new Request('http://localhost/hello', {
+                method: 'POST',
+                body: JSON.stringify({ name: 'Ann' }),
+            }),
+            { GREETING: 'Hi' },
+        );
+        expect(await rest.json()).toBe('Hi, Ann');
+    });
+
+    test('extend() factory runs once per request', async () => {
+        let calls = 0;
+        const app = createApp().extend(() => {
+            calls++;
+            return {};
+        });
+        app.expose(app.op({ handler: () => 'ok' }), { rest: 'GET /ping' });
+        await app.fetch(new Request('http://localhost/ping'));
+        await app.fetch(new Request('http://localhost/ping'));
+        expect(calls).toBe(2);
+    });
+
+    test('ctx.greeter is not visible before extend()', () => {
+        const app = createApp<Env>();
+        app.op({
+            // @ts-expect-error `greeter` is only on the ctx of an app that called extend()
+            handler: (_input, ctx) => ctx.greeter,
+        });
+    });
+});

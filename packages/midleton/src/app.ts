@@ -11,11 +11,16 @@ export interface ExposeOptions {
     readonly mcp?: string;
 }
 
-export interface App<Env = DefaultEnv> {
-    /** Like the top-level `op()`, but `ctx.env` is typed as this app's `Env`. */
-    readonly op: DefineOp<Ctx<Env>>;
+export interface App<Env = DefaultEnv, C = Ctx<Env>> {
+    /** Like the top-level `op()`, but `ctx` is typed as this app's context. */
+    readonly op: DefineOp<C>;
     /** Serves an operation as a REST endpoint. Returns the app for chaining. */
-    expose<Input, Output>(operation: Op<Input, Output, Ctx<Env>>, options: ExposeOptions): App<Env>;
+    expose<Input, Output>(operation: Op<Input, Output, C>, options: ExposeOptions): App<Env, C>;
+    /**
+     * Adds request-scoped services to `ctx`. The factory runs once per request.
+     * Define operations after `extend()` to see the added properties in their types.
+     */
+    extend<Added extends object>(factory: (env: Env) => Added): App<Env, C & Added>;
     /** Handles a standard `Request`. `env` is passed through to handlers as `ctx.env`. */
     fetch(request: Request, env?: Env): Promise<Response>;
 }
@@ -28,6 +33,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function createApp<Env = DefaultEnv>(): App<Env> {
     const router = createRouter<AnyOp>();
     const tools = new Map<string, AnyOp>();
+    const factories: Array<(env: unknown) => object> = [];
 
     const app: App<Env> = {
         op: defineOp<Ctx<Env>>(),
@@ -43,9 +49,21 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
             return app;
         },
 
+        extend<Added extends object>(factory: (env: Env) => Added) {
+            factories.push(factory as (env: unknown) => object);
+            // Same app, wider ctx type: the router and tool map stay shared.
+            return app as unknown as App<Env, Ctx<Env> & Added>;
+        },
+
         async fetch(request, env) {
             // Workers always passes `env`; the fallback is for callers that pass only a request, such as tests.
-            const ctx: Ctx<unknown> = { env: env ?? {} };
+            const base = env ?? {};
+            // `env` comes last so a factory cannot replace it.
+            const ctx: Ctx<unknown> = Object.assign(
+                {},
+                ...factories.map((factory) => factory(base)),
+                { env: base },
+            );
             const { pathname } = new URL(request.url);
             if (request.method === 'POST' && pathname === '/mcp') {
                 return handleMcp(tools, request, ctx);
