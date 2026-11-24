@@ -64,7 +64,7 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
                 ...factories.map((factory) => factory(base)),
                 { env: base },
             );
-            const { pathname } = new URL(request.url);
+            const { pathname, searchParams } = new URL(request.url);
             if (request.method === 'POST' && pathname === '/mcp') {
                 return handleMcp(tools, request, ctx);
             }
@@ -77,7 +77,8 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
 
             let input: unknown;
             if (operation.input !== undefined) {
-                let raw: unknown = match.params;
+                const query = Object.fromEntries(searchParams);
+                let raw: unknown = { ...query, ...match.params };
                 if (request.method !== 'GET' && request.method !== 'HEAD') {
                     let body: unknown;
                     try {
@@ -85,8 +86,9 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
                     } catch {
                         return problem(400, 'Invalid JSON');
                     }
-                    // Path parameters come last so a body cannot override the resource in the URL.
-                    raw = isRecord(body) ? { ...body, ...match.params } : body;
+                    // Path parameters come last so a body cannot override the resource in the URL,
+                    // and the body comes after the query so it wins over it.
+                    raw = isRecord(body) ? { ...query, ...body, ...match.params } : body;
                 }
                 const result = operation.input.validate(raw);
                 if (!result.ok) {

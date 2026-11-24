@@ -167,6 +167,59 @@ describe('path parameters', () => {
     });
 });
 
+describe('query parameters', () => {
+    const search = op({
+        input: s.object({ q: s.string(), tag: s.optional(s.string()) }),
+        handler: (input) => input,
+    });
+    const searchApp = createApp()
+        .expose(search, { rest: 'GET /search' })
+        .expose(search, { rest: 'POST /search' });
+
+    test('passes query parameters as input', async () => {
+        const response = await searchApp.fetch(
+            new Request('http://localhost/search?q=abc&tag=news'),
+        );
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ q: 'abc', tag: 'news' });
+    });
+
+    test('returns 400 when a required query parameter is missing', async () => {
+        const response = await searchApp.fetch(new Request('http://localhost/search'));
+        expect(response.status).toBe(400);
+    });
+
+    test('the body wins over the query', async () => {
+        const response = await searchApp.fetch(
+            new Request('http://localhost/search?q=from-query', {
+                method: 'POST',
+                body: JSON.stringify({ q: 'from-body' }),
+            }),
+        );
+        expect(await response.json()).toEqual({ q: 'from-body' });
+    });
+
+    test('the query fills fields the body leaves out', async () => {
+        const response = await searchApp.fetch(
+            new Request('http://localhost/search?tag=news', {
+                method: 'POST',
+                body: JSON.stringify({ q: 'abc' }),
+            }),
+        );
+        expect(await response.json()).toEqual({ q: 'abc', tag: 'news' });
+    });
+
+    test('path parameters win over the query', async () => {
+        const getUser = op({
+            input: s.object({ id: s.string() }),
+            handler: (input) => ({ id: input.id }),
+        });
+        const app = createApp().expose(getUser, { rest: 'GET /users/:id' });
+        const response = await app.fetch(new Request('http://localhost/users/42?id=999'));
+        expect(await response.json()).toEqual({ id: '42' });
+    });
+});
+
 describe('typed env', () => {
     test('app.op types ctx.env from the app Env', async () => {
         interface Env {
