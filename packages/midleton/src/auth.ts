@@ -1,35 +1,41 @@
-import type { Middleware } from './app.js';
 import type { Ctx } from './op.js';
-import { problem } from './problem.js';
 
-/** Decides whether a bearer token is valid. May be async, e.g. to look the token up in a KV. */
-export type VerifyToken<C> = (token: string, ctx: C) => boolean | Promise<boolean>;
+/** What an authenticator returns to say the request is not authenticated. */
+export type Rejected = undefined | null | false;
+
+/**
+ * Identifies who sent a request. Used with `app.authenticate()`.
+ * It gets the whole request, so each scheme can read the place it uses:
+ * `bearer()` reads `Authorization`, and other schemes can read other headers or cookies.
+ */
+export interface Authenticator<C, Caller> {
+    /** Value for the `WWW-Authenticate` header of the 401 response, e.g. `'Bearer'`. */
+    readonly challenge?: string;
+    /** Returns the caller, or `undefined`, `null` or `false` to reject the request. */
+    authenticate(request: Request, ctx: C): Caller | Rejected | Promise<Caller | Rejected>;
+}
+
+/** Looks up who a bearer token belongs to. May be async, e.g. to read it from a KV. */
+export type VerifyToken<C, Caller> = (
+    token: string,
+    ctx: C,
+) => Caller | Rejected | Promise<Caller | Rejected>;
 
 /** Matches `Authorization: Bearer <token>`. The scheme is case-insensitive (RFC 7235). */
 const BEARER = /^Bearer +(\S+)$/i;
 
 /**
- * Builds middleware that requires a valid `Authorization: Bearer <token>` header.
- * A missing, malformed or rejected token gets a 401 problem response, and the handler never runs.
+ * Authenticates with `Authorization: Bearer <token>`.
+ * `verify` returns the caller for a valid token, or `undefined`, `null` or `false` to reject it.
  */
-export function bearer<C = Ctx>(verify: VerifyToken<C>): Middleware<C> {
-    return async (request, ctx, next) => {
-        const token = BEARER.exec(request.headers.get('Authorization') ?? '')?.[1];
-
-        let valid = false;
-        if (token !== undefined) {
-            try {
-                valid = await verify(token, ctx);
-            } catch {
-                // A failing verifier must not let the request through, and details stay server-side.
-                valid = false;
-            }
-        }
-        if (!valid) {
-            const response = problem(401, 'Missing or invalid bearer token');
-            response.headers.set('WWW-Authenticate', 'Bearer');
-            return response;
-        }
-        return next();
+export function bearer<C = Ctx, Caller = unknown>(
+    verify: VerifyToken<C, Caller>,
+): Authenticator<C, Caller> {
+    return {
+        challenge: 'Bearer',
+        authenticate(request, ctx) {
+            const token = BEARER.exec(request.headers.get('Authorization') ?? '')?.[1];
+            return token === undefined ? undefined : verify(token, ctx);
+        },
     };
 }

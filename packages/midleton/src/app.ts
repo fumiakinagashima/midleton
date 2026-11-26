@@ -1,3 +1,4 @@
+import type { Authenticator } from './auth.js';
 import { handleMcp } from './mcp.js';
 import { type AnyOp, type Ctx, type DefaultEnv, type DefineOp, defineOp, type Op } from './op.js';
 import { OpError } from './op-error.js';
@@ -41,8 +42,16 @@ export interface App<Env = DefaultEnv, C = Ctx<Env>> {
      */
     use(middleware: Middleware<C>): App<Env, C>;
     /**
+     * Requires every request to be authenticated. The authenticator's result is available as
+     * `ctx.caller`; a rejected request gets a 401 problem and nothing else runs.
+     * Define operations after `authenticate()` to see `ctx.caller` in their types.
+     */
+    authenticate<Caller>(
+        authenticator: Authenticator<C, Caller>,
+    ): App<Env, C & { readonly caller: Caller }>;
+    /**
      * Serves a raw route, e.g. `'POST /webhooks/stripe'`: the handler gets the request
-     * and returns a `Response`. Use it for what an operation cannnot express, such as webhooks.
+     * and returns a `Response`. Use it for what an operation cannot express, such as webhooks.
      */
     route(pattern: string, handler: RouteHandler<C>): App<Env, C>;
     /** Handles a standard `Request`. `env` is passed through to handlers as `ctx.env`. */
@@ -139,6 +148,29 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
         use(middleware) {
             middlewares.push(middleware as Middleware<Ctx<unknown>>);
             return app;
+        },
+
+        authenticate<Caller>(authenticator: Authenticator<Ctx<Env>, Caller>) {
+            middlewares.push(async (request, ctx, next) => {
+                let caller: Awaited<ReturnType<Authenticator<Ctx<Env>, Caller>['authenticate']>>;
+                try {
+                    caller = await authenticator.authenticate(request, ctx as Ctx<Env>);
+                } catch {
+                    // A failing authenticator must not let the request through; details stay server-side.
+                    caller = undefined;
+                }
+                if (caller === undefined || caller === null || caller === false) {
+                    const response = problem(401, 'Missing or invalid credentials');
+                    if (authenticator.challenge !== undefined) {
+                        response.headers.set('WWW-Authenticate', authenticator.challenge);
+                    }
+                    return response;
+                }
+                Object.assign(ctx, { caller });
+                return next();
+            });
+            // Same app, wider ctx type, like `extend()`.
+            return app as unknown as App<Env, Ctx<Env> & { readonly caller: Caller }>;
         },
 
         route(pattern, handler) {
