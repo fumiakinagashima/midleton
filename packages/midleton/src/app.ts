@@ -18,6 +18,13 @@ export type Middleware<C> = (
     next: () => Promise<Response>,
 ) => Response | Promise<Response>;
 
+/** Handles a request directly, without an operation. Path parameters come as strings. */
+export type RouteHandler<C> = (
+    request: Request,
+    ctx: C,
+    params: Readonly<Record<string, string>>,
+) => Response | Promise<Response>;
+
 export interface App<Env = DefaultEnv, C = Ctx<Env>> {
     /** Like the top-level `op()`, but `ctx` is typed as this app's context. */
     readonly op: DefineOp<C>;
@@ -33,6 +40,11 @@ export interface App<Env = DefaultEnv, C = Ctx<Env>> {
      * Middleware runs in the order it was added, the first one outermost.
      */
     use(middleware: Middleware<C>): App<Env, C>;
+    /**
+     * Serves a raw route, e.g. `'POST /webhooks/stripe'`: the handler gets the request
+     * and returns a `Response`. Use it for what an operation cannnot express, such as webhooks.
+     */
+    route(pattern: string, handler: RouteHandler<C>): App<Env, C>;
     /** Handles a standard `Request`. `env` is passed through to handlers as `ctx.env`. */
     fetch(request: Request, env?: Env): Promise<Response>;
 }
@@ -44,6 +56,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Creates an app with no operations exposed. */
 export function createApp<Env = DefaultEnv>(): App<Env> {
     const router = createRouter<AnyOp>();
+    const routes = createRouter<RouteHandler<Ctx<unknown>>>();
     const tools = new Map<string, AnyOp>();
     const factories: Array<(env: unknown) => object> = [];
     const middlewares: Array<Middleware<Ctx<unknown>>> = [];
@@ -53,6 +66,16 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
         const { pathname, searchParams } = new URL(request.url);
         if (request.method === 'POST' && pathname === '/mcp') {
             return handleMcp(tools, request, ctx);
+        }
+
+        const rawMatch = routes.match(request.method, pathname);
+        if (rawMatch !== undefined) {
+            try {
+                return await rawMatch.value(request, ctx, rawMatch.params);
+            } catch {
+                // Same as operations: details stay server-side.
+                return problem(500, 'Internal error');
+            }
         }
 
         const match = router.match(request.method, pathname);
@@ -115,6 +138,11 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
 
         use(middleware) {
             middlewares.push(middleware as Middleware<Ctx<unknown>>);
+            return app;
+        },
+
+        route(pattern, handler) {
+            routes.add(pattern, handler as RouteHandler<Ctx<unknown>>);
             return app;
         },
 

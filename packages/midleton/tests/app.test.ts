@@ -396,3 +396,79 @@ describe('middleware', () => {
         expect(seen).toBe('hi');
     });
 });
+
+describe('raw routes', () => {
+    test('serves a raw route and returns its Response as is', async () => {
+        const app = createApp().route('GET /health', () => new Response('ok'));
+        const response = await app.fetch(new Request('http://localhost/health'));
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe('ok');
+    });
+
+    test('gives the handler the raw request body', async () => {
+        const app = createApp().route('POST /webhooks/echo', async (request) => {
+            return new Response(await request.text(), { status: 202 });
+        });
+        const response = await app.fetch(
+            new Request('http://localhost/webhooks/echo', {
+                method: 'POST',
+                body: 'not json at all',
+            }),
+        );
+        expect(response.status).toBe(202);
+        expect(await response.text()).toBe('not json at all');
+    });
+
+    test('passes path parameters', async () => {
+        const app = createApp().route('GET /files/:name', (_request, _ctx, params) => {
+            return new Response(params.name);
+        });
+        const response = await app.fetch(new Request('http://localhost/files/report.pdf'));
+        expect(await response.text()).toBe('report.pdf');
+    });
+
+    test('can return a redirect', async () => {
+        const app = createApp().route('GET /callback', () => {
+            return new Response(null, {
+                status: 302,
+                headers: { location: 'http://localhost/done' },
+            });
+        });
+        const response = await app.fetch(new Request('http://localhost/callback'));
+        expect(response.status).toBe(302);
+        expect(response.headers.get('location')).toBe('http://localhost/done');
+    });
+
+    test('receives ctx, including env and extend() services', async () => {
+        const app = createApp<{ SECRET: string }>()
+            .extend(() => ({ greeter: 'hi' }))
+            .route('GET /whoami', (_request, ctx) => {
+                return new Response(`${ctx.greeter}:${ctx.env.SECRET}`);
+            });
+        const response = await app.fetch(new Request('http://localhost/whoami'), { SECRET: 's3' });
+        expect(await response.text()).toBe('hi:s3');
+    });
+
+    test('returns 500 when the handler throws', async () => {
+        const app = createApp().route('GET /boom', () => {
+            throw new Error('secret detail');
+        });
+        const response = await app.fetch(new Request('http://localhost/boom'));
+        expect(response.status).toBe(500);
+        expect(await response.text()).not.toContain('secret detail');
+    });
+
+    test('middleware wraps raw routes too', async () => {
+        const app = createApp()
+            .use(() => new Response('denied', { status: 401 }))
+            .route('GET /health', () => new Response('ok'));
+        const response = await app.fetch(new Request('http://localhost/health'));
+        expect(response.status).toBe(401);
+    });
+
+    test('an unknown path is still 404', async () => {
+        const app = createApp().route('GET /health', () => new Response('ok'));
+        const response = await app.fetch(new Request('http://localhost/nope'));
+        expect(response.status).toBe(404);
+    });
+});
