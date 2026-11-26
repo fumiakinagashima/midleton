@@ -50,3 +50,39 @@ describe('optional', () => {
         });
     });
 });
+
+describe('coerce', () => {
+    test('number: converts a numeric string', () => {
+        expect(s.number({ coerce: true }).validate('10')).toEqual({ ok: true, value: 10 });
+        expect(s.number({ coerce: true }).validate('-1.5')).toEqual({ ok: true, value: -1.5 });
+    });
+
+    test('number: still accepts a real number', () => {
+        expect(s.number({ coerce: true }).validate(3)).toEqual({ ok: true, value: 3 });
+    });
+
+    test('number: rejects non-numeric, blank and non-finite strings', () => {
+        expect(s.number({ coerce: true }).validate('abc').ok).toBe(false);
+        expect(s.number({ coerce: true }).validate('').ok).toBe(false);
+        expect(s.number({ coerce: true }).validate('  ').ok).toBe(false);
+        expect(s.number({ coerce: true }).validate('Infinity').ok).toBe(false);
+    });
+
+    test('number: a string is rejected without coerce', () => {
+        expect(s.number().validate('10').ok).toBe(false);
+    });
+
+    test('boolean: converts "true" and "false"', () => {
+        expect(s.boolean({ coerce: true }).validate('true')).toEqual({ ok: true, value: true });
+        expect(s.boolean({ coerce: true }).validate('false')).toEqual({ ok: true, value: false });
+    });
+
+    test('boolean: rejects other strings', () => {
+        expect(s.boolean({ coerce: true }).validate('yes').ok).toBe(false);
+        expect(s.boolean({ coerce: true }).validate('1').ok).toBe(false);
+    });
+
+    test('boolean: a string is rejected without coerce', () => {
+        expect(s.boolean().validate('true').ok).toBe(false);
+    });
+});

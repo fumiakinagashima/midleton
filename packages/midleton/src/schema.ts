@@ -24,6 +24,12 @@ export interface Schema<T> {
     readonly optional?: true;
 }
 
+/** Options for {@link number} and {@link boolean}. */
+export interface CoerceOptions {
+    /** Accept a string and convert it, for values that arrive as text such as query parameters. */
+    readonly coerce?: boolean;
+}
+
 /** The type a schema produces when validation succeeds. */
 export type Infer<S> = S extends Schema<infer T> ? T : never;
 
@@ -42,14 +48,22 @@ function string(): Schema<string> {
     };
 }
 
-/** Schema for a finite number. NaN and Infinity cannot be written in JSON, so they are rejected. */
-function number(): Schema<number> {
+/**
+ * Schema for a finite number. NaN and Infinity cannot be written in JSON, so they are rejected.
+ * With `coerce`, a numeric string such as `'10'` is converted first.
+ */
+function number(options: CoerceOptions = {}): Schema<number> {
     return {
         validate(input) {
-            if (typeof input !== 'number' || !Number.isFinite(input)) {
+            // An empty or blank string would become 0, so it is not treated as a number.
+            const value =
+                options.coerce && typeof input === 'string' && input.trim() !== ''
+                    ? Number(input)
+                    : input;
+            if (typeof value !== 'number' || !Number.isFinite(value)) {
                 return { ok: false, issues: [{ path: [], message: 'Expected number' }] };
             }
-            return { ok: true, value: input };
+            return { ok: true, value: value };
         },
         toJSONSchema() {
             return { type: 'number' };
@@ -58,13 +72,21 @@ function number(): Schema<number> {
 }
 
 /** Schema for a boolean value. */
-function boolean(): Schema<boolean> {
+function boolean(options: CoerceOptions = {}): Schema<boolean> {
     return {
         validate(input) {
-            if (typeof input !== 'boolean') {
+            let value = input;
+            if (options.coerce) {
+                if (input === 'true') {
+                    value = true;
+                } else if (input === 'false') {
+                    value = false;
+                }
+            }
+            if (typeof value !== 'boolean') {
                 return { ok: false, issues: [{ path: [], message: 'Expected boolean' }] };
             }
-            return { ok: true, value: input };
+            return { ok: true, value: value };
         },
         toJSONSchema() {
             return { type: 'boolean' };

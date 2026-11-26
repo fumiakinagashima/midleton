@@ -218,6 +218,32 @@ describe('query parameters', () => {
         const response = await app.fetch(new Request('http://localhost/users/42?id=999'));
         expect(await response.json()).toEqual({ id: '42' });
     });
+
+    test('coerces query strings for schemas that opt in', async () => {
+        const listItems = op({
+            input: s.object({
+                limit: s.number({ coerce: true }),
+                archived: s.optional(s.boolean({ coerce: true })),
+            }),
+            handler: (input) => ({ limit: input.limit, archived: input.archived ?? false }),
+        });
+        const app = createApp().expose(listItems, { rest: 'GET /items' });
+        const response = await app.fetch(
+            new Request('http://localhost/items?limit=10&archived=true'),
+        );
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ limit: 10, archived: true });
+    });
+
+    test('a query string is rejected for schemas that do not opt in', async () => {
+        const strict = op({
+            input: s.object({ limit: s.number() }),
+            handler: (input) => ({ limit: input.limit }),
+        });
+        const app = createApp().expose(strict, { rest: 'GET /items' });
+        const response = await app.fetch(new Request('http://localhost/items?limit=10'));
+        expect(response.status).toBe(400);
+    });
 });
 
 describe('typed env', () => {
