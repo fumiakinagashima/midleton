@@ -11,6 +11,13 @@ export interface ExposeOptions {
     readonly mcp?: string;
 }
 
+/** Runs around every request. Call `next()` to continue, or return a `Response` to stop. */
+export type Middleware<C> = (
+    request: Request,
+    ctx: C,
+    next: () => Promise<Response>,
+) => Response | Promise<Response>;
+
 export interface App<Env = DefaultEnv, C = Ctx<Env>> {
     /** Like the top-level `op()`, but `ctx` is typed as this app's context. */
     readonly op: DefineOp<C>;
@@ -21,6 +28,11 @@ export interface App<Env = DefaultEnv, C = Ctx<Env>> {
      * Define operations after `extend()` to see the added properties in their types.
      */
     extend<Added extends object>(factory: (env: Env) => Added): App<Env, C & Added>;
+    /**
+     * Adds middleware that wraps every request, REST and MCP alike.
+     * Middleware runs in the order it was added, the first one outermost.
+     */
+    use(middleware: Middleware<C>): App<Env, C>;
     /** Handles a standard `Request`. `env` is passed through to handlers as `ctx.env`. */
     fetch(request: Request, env?: Env): Promise<Response>;
 }
@@ -34,6 +46,52 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
     const router = createRouter<AnyOp>();
     const tools = new Map<string, AnyOp>();
     const factories: Array<(env: unknown) => object> = [];
+    const middlewares: Array<Middleware<Ctx<unknown>>> = [];
+
+    // The roiuting and handling that used to be the whole of `fetch`.
+    async function dispatch(request: Request, ctx: Ctx<unknown>): Promise<Response> {
+        const { pathname, searchParams } = new URL(request.url);
+        if (request.method === 'POST' && pathname === '/mcp') {
+            return handleMcp(tools, request, ctx);
+        }
+
+        const match = router.match(request.method, pathname);
+        if (match === undefined) {
+            return problem(404, 'No route matches this request');
+        }
+        const operation = match.value;
+
+        let input: unknown;
+        if (operation.input !== undefined) {
+            const query = Object.fromEntries(searchParams);
+            let raw: unknown = { ...query, ...match.params };
+            if (request.method !== 'GET' && request.method !== 'HEAD') {
+                let body: unknown;
+                try {
+                    body = await request.json();
+                } catch {
+                    return problem(400, 'Invalid JSON');
+                }
+                // Path parameters come last so a body cannot override the resource in the URL,
+                // and the body comes after the query so it wins over it.
+                raw = isRecord(body) ? { ...query, ...body, ...match.params } : body;
+            }
+            const result = operation.input.validate(raw);
+            if (!result.ok) {
+                return problem(400, 'Invalid input', { issues: result.issues });
+            }
+            input = result.value;
+        }
+        try {
+            return Response.json(await operation.handler(input, ctx));
+        } catch (error) {
+            if (error instanceof OpError) {
+                return problem(error.status, error.message);
+            }
+            // Details of unexpected errors stay server-side; clients get a generic message.
+            return problem(500, 'Internal error');
+        }
+    }
 
     const app: App<Env> = {
         op: defineOp<Ctx<Env>>(),
@@ -55,6 +113,11 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
             return app as unknown as App<Env, Ctx<Env> & Added>;
         },
 
+        use(middleware) {
+            middlewares.push(middleware as Middleware<Ctx<unknown>>);
+            return app;
+        },
+
         async fetch(request, env) {
             // Workers always passes `env`; the fallback is for callers that pass only a request, such as tests.
             const base = env ?? {};
@@ -64,47 +127,14 @@ export function createApp<Env = DefaultEnv>(): App<Env> {
                 ...factories.map((factory) => factory(base)),
                 { env: base },
             );
-            const { pathname, searchParams } = new URL(request.url);
-            if (request.method === 'POST' && pathname === '/mcp') {
-                return handleMcp(tools, request, ctx);
+            // Build the chain from the inside out: the last middleware wraps `dispatch`,
+            // and each earlier one wraps the next, so the first one runs outermost.
+            let handler = () => dispatch(request, ctx);
+            for (const middleware of [...middlewares].reverse()) {
+                const next = handler;
+                handler = async () => middleware(request, ctx, next);
             }
-
-            const match = router.match(request.method, pathname);
-            if (match === undefined) {
-                return problem(404, 'No route matches this request');
-            }
-            const operation = match.value;
-
-            let input: unknown;
-            if (operation.input !== undefined) {
-                const query = Object.fromEntries(searchParams);
-                let raw: unknown = { ...query, ...match.params };
-                if (request.method !== 'GET' && request.method !== 'HEAD') {
-                    let body: unknown;
-                    try {
-                        body = await request.json();
-                    } catch {
-                        return problem(400, 'Invalid JSON');
-                    }
-                    // Path parameters come last so a body cannot override the resource in the URL,
-                    // and the body comes after the query so it wins over it.
-                    raw = isRecord(body) ? { ...query, ...body, ...match.params } : body;
-                }
-                const result = operation.input.validate(raw);
-                if (!result.ok) {
-                    return problem(400, 'Invalid input', { issues: result.issues });
-                }
-                input = result.value;
-            }
-            try {
-                return Response.json(await operation.handler(input, ctx));
-            } catch (error) {
-                if (error instanceof OpError) {
-                    return problem(error.status, error.message);
-                }
-                // Details of unexpected errors stay server-side; clients get a generic message.
-                return problem(500, 'Internal error');
-            }
+            return handler();
         },
     };
 

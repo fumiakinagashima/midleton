@@ -314,3 +314,85 @@ describe('extend', () => {
         });
     });
 });
+
+describe('middleware', () => {
+    const hello = op({
+        handler: () => ({ hello: 'world' }),
+    });
+
+    test('wraps the response', async () => {
+        const app = createApp()
+            .use(async (_request, _ctx, next) => {
+                const response = await next();
+                response.headers.set('x-powered-by', 'midleton');
+                return response;
+            })
+            .expose(hello, { rest: 'GET /hello' });
+        const response = await app.fetch(new Request('http://localhost/hello'));
+        expect(response.status).toBe(200);
+        expect(response.headers.get('x-powered-by')).toBe('midleton');
+        expect(await response.json()).toEqual({ hello: 'world' });
+    });
+
+    test('can stop the request by not calling next', async () => {
+        let called = false;
+        const guarded = op({
+            handler: () => {
+                called = true;
+                return {};
+            },
+        });
+        const app = createApp()
+            .use(() => new Response('denied', { status: 401 }))
+            .expose(guarded, { rest: 'GET /secret' });
+        const response = await app.fetch(new Request('http://localhost/secret'));
+        expect(response.status).toBe(401);
+        expect(called).toBe(false);
+    });
+
+    test('runs in the order it was added, the first one outermost', async () => {
+        const calls: string[] = [];
+        const app = createApp()
+            .use(async (_request, _ctx, next) => {
+                calls.push('a before');
+                const response = await next();
+                calls.push('a after');
+                return response;
+            })
+            .use(async (_request, _ctx, next) => {
+                calls.push('b before');
+                const response = await next();
+                calls.push('b after');
+                return response;
+            })
+            .expose(hello, { rest: 'GET /hello' });
+        await app.fetch(new Request('http://localhost/hello'));
+        expect(calls).toEqual(['a before', 'b before', 'b after', 'a after']);
+    });
+
+    test('also wraps MCP requests', async () => {
+        const app = createApp()
+            .use(() => new Response('denied', { status: 401 }))
+            .expose(hello, { mcp: 'hello' });
+        const response = await app.fetch(
+            new Request('http://localhost/mcp', {
+                method: 'POST',
+                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+            }),
+        );
+        expect(response.status).toBe(401);
+    });
+
+    test('receives ctx, including extend() services', async () => {
+        let seen: string | undefined;
+        const app = createApp()
+            .extend(() => ({ greeter: 'hi' }))
+            .use((_request, ctx, next) => {
+                seen = ctx.greeter;
+                return next();
+            })
+            .expose(hello, { rest: 'GET /hello' });
+        await app.fetch(new Request('http://localhost/hello'));
+        expect(seen).toBe('hi');
+    });
+});
